@@ -8,6 +8,8 @@
 
 #### [Codepen alt url](https://codepen.io/joshbrew/pen/ByNxqKB)
 
+#### See also: [3D point cloud fractals](https://github.com/joshbrew/3D_Fractals_Scale_Space) (earlier non-WebGPU version)
+
 This is a comprehensive WebGPU fractal rendering system built on compute shaders. It features a lot of well known fractals plus a bunch of custom ones that mostly build off of newton's fractals. It is written in pure javascript and WGSL with zero dependencies.
 
 There are 71 fractal formulas to mess around with plus dozens of modifiers that alter the coordinates per-iteration in combinable ways. There are infinite possibilites, you might be surprised what you find.
@@ -62,6 +64,7 @@ Click to go to youtube:
 <img width="400" alt="6image" src="https://github.com/user-attachments/assets/bfb187b4-48c9-41be-9be2-46425c33f575" />
 <img width="400"  alt="3image" src="https://github.com/user-attachments/assets/2df131ac-af52-4887-8182-de2d661ac3a9" />
 <img width="400" alt="2image" src="https://github.com/user-attachments/assets/d543fa56-2711-4682-a810-de43c91cbbcf" />
+
 
 
 
