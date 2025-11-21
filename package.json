@@ -27,7 +27,6 @@
     "esbuild"
   ],
   "dependencies": {
-    "three": "^0.178.0"
   },
   "nodemonConfig": {
     "env": {
