@@ -1,6 +1,6 @@
 ## WebGPU Fractals
 
-<img width="100%"  alt="Screenshot 2025-11-20 224655-min" src="https://github.com/user-attachments/assets/8e010476-165b-4838-bdae-b8727c0085bd" />
+<img width="50%"  alt="Screenshot 2025-11-20 224655-min" src="https://github.com/user-attachments/assets/8e010476-165b-4838-bdae-b8727c0085bd" />
 
 This is a comprehensive WebGPU fractal rendering system built on compute shaders. It features a lot of well known fractals plus a bunch of custom ones that mostly build off of newton's fractals.
 
@@ -40,6 +40,8 @@ Click to go to youtube:
 
 #### More screenshots: 
 
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/41be92a9-16f0-448a-8ec8-ffd030594301" />
+
 <img width="400" alt="fractal-2560-kmrb67" src="https://github.com/user-attachments/assets/e64ac17c-4dc7-4ea5-95dc-0cda4715bb80" />
 
 <img width="400" alt="fractal-1536-jltvae-min" src="https://github.com/user-attachments/assets/b6cd592b-284b-4f1f-94c2-69ed1fc73cd5" />
@@ -54,6 +56,7 @@ Click to go to youtube:
 <img width="400" alt="6image" src="https://github.com/user-attachments/assets/bfb187b4-48c9-41be-9be2-46425c33f575" />
 <img width="400"  alt="3image" src="https://github.com/user-attachments/assets/2df131ac-af52-4887-8182-de2d661ac3a9" />
 <img width="400" alt="2image" src="https://github.com/user-attachments/assets/d543fa56-2711-4682-a810-de43c91cbbcf" />
+
 
 
 
