@@ -1,0 +1,247 @@
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top left, #222 0%, #050505 55%, #000 100%);
+  color: #eee;
+  display: flex;
+  height: 100vh;
+}
+
+hr {
+  width:100%;
+  height:2px;
+  background-color:blue;
+}
+
+#canvas-container {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Let the canvas size be controlled via JS, not CSS width:100%/height:100% */
+#gpu-canvas {
+  display: block;
+  width: 100vh;
+  height: 100vh;
+  left: 262px;
+}
+
+/* UI PANEL */
+#ui {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(8, 8, 10, 0.88);
+  padding: 10px;
+  border-radius: 10px;
+  z-index: 10;
+  font-size: 12px;
+  max-width: 360px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #f5f5f5;
+}
+
+/* header bar */
+#ui .ui-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+#ui .ui-header span {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: #b0bec5;
+  user-select: none;
+}
+
+#ui .ui-header button {
+  background: none;
+  border: none;
+  color: #eee;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  user-select: none;
+}
+
+/* when collapsed, hide the content */
+#ui.collapsed #ui-content {
+  display: none;
+}
+
+#ui-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* row containers */
+#ui .row {
+  margin-bottom: 2px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+#ui .row:last-child {
+  border-bottom: none;
+}
+
+#ui .row label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+/* for rows where we already use label.slider-row */
+#ui .row label.slider-row {
+  display: grid;
+  grid-template-columns: minmax(0, 120px) minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 6px;
+}
+
+#ui .row label.slider-row span {
+  font-size: 11px;
+  color: #cfd8dc;
+}
+
+/* controls */
+#ui input[type="range"],
+#ui select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#ui select {
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(10, 10, 14, 0.9);
+  color: #eceff1;
+  font-size: 11px;
+}
+
+#ui input[type="number"],
+#ui input[type="text"] {
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(15, 15, 20, 0.95);
+  color: #eceff1;
+  font-size: 11px;
+}
+
+/* numeric readouts */
+#ui .numeric-input {
+  width: 64px;
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+/* checkboxes */
+#ui input[type="checkbox"] {
+  margin-left: 4px;
+}
+
+/* range styling */
+#ui input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: #263238;
+  outline: none;
+}
+
+#ui input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #90caf9;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px rgba(144, 202, 249, 0.35);
+}
+
+#ui input[type="range"]::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #90caf9;
+  cursor: pointer;
+  border: none;
+}
+
+/* scale group */
+.scale-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 4px;
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+.scale-group label {
+  font-size: 11px;
+  user-select: none;
+  background: rgba(18, 18, 24, 0.9);
+  padding: 3px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.scale-group input {
+  margin-right: 4px;
+}
+
+
+/* buttons */
+.button-row {
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+  padding-top: 4px;
+}
+
+.button-row button {
+  flex: 1 1 0;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(148, 197, 255, 0.7);
+  background: radial-gradient(
+    circle at 0% 0%,
+    rgba(56, 189, 248, 0.28),
+    rgba(15, 23, 42, 0.95)
+  );
+  color: #e0f2fe;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.button-row button:hover {
+  border-color: rgba(191, 219, 254, 0.96);
+  background: radial-gradient(
+    circle at 0% 0%,
+    rgba(59, 130, 246, 0.4),
+    rgba(15, 23, 42, 0.96)
+  );
+}
