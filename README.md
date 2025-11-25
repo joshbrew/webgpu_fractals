@@ -53,7 +53,12 @@ Click to go to youtube:
 <img width="400" alt="fractal-2560-kmrb67" src="https://github.com/user-attachments/assets/e64ac17c-4dc7-4ea5-95dc-0cda4715bb80" />
 
 <img width="400" alt="fractal-1536-jltvae-min" src="https://github.com/user-attachments/assets/b6cd592b-284b-4f1f-94c2-69ed1fc73cd5" />
-
+<img width="400" alt="fractal-3968-jjxvep-min" src="https://github.com/user-attachments/assets/9f91ef63-b003-416c-80bc-402b6d4f2e53" />
+<img width="400" alt="fractal-3968-vv22hy-min" src="https://github.com/user-attachments/assets/41197fd5-e060-40ef-b19b-5097cd3b3385" />
+<img width="400" alt="fractal-2048-6w645p-min" src="https://github.com/user-attachments/assets/d38ae2cf-b1cd-4450-b989-6e9dcc436ca1" />
+<img width="400" alt="fractal-4096-pl3iog-min" src="https://github.com/user-attachments/assets/d8a089be-39d4-4d7c-9ea2-e5fe72638cdb" />
+<img width="400" alt="fractal-4096-4mfwjr-min" src="https://github.com/user-attachments/assets/058dbf9f-d930-4d6a-911d-8225ce27311a" />
+<img width="400" alt="fractal-4096-1xos3i-min" src="https://github.com/user-attachments/assets/7db77a47-1239-4f7b-a375-bce79862c245" />
 <img width="400" alt="19image" src="https://github.com/user-attachments/assets/6efc14ab-1ede-4fad-96de-4699b7c04544" />
 <img width="400" alt="18image" src="https://github.com/user-attachments/assets/aded6e13-dcbd-4662-ad46-47ac7eb4bb40" />
 <img width="400"  alt="17image" src="https://github.com/user-attachments/assets/55da09e0-720e-4836-9196-80695d2a403a" />
@@ -64,6 +69,7 @@ Click to go to youtube:
 <img width="400" alt="6image" src="https://github.com/user-attachments/assets/bfb187b4-48c9-41be-9be2-46425c33f575" />
 <img width="400"  alt="3image" src="https://github.com/user-attachments/assets/2df131ac-af52-4887-8182-de2d661ac3a9" />
 <img width="400" alt="2image" src="https://github.com/user-attachments/assets/d543fa56-2711-4682-a810-de43c91cbbcf" />
+
 
 
 
