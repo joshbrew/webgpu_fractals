@@ -7,7 +7,7 @@
   });
 
   // shaders/fractalComponent.html
-  var fractalComponent_default = '<!-- shaders/fractalComponent.html -->\r\n<div id="canvas-container">\r\n  <canvas id="gpu-canvas"></canvas>\r\n\r\n  <div id="ui">\r\n    <div class="ui-header">\r\n      <span>\u2630 Menu</span>\r\n      <button id="toggle-ui" type="button" aria-label="Toggle Menu">-</button>\r\n    </div>\r\n\r\n    <div id="ui-content">\r\n      <div class="row">\r\n        <label\r\n          title="Internal render resolution (GPU grid size). Higher values cost more GPU time."\r\n        >\r\n          Resolution:\r\n          <input\r\n            id="gridSize"\r\n            type="range"\r\n            min="64"\r\n            max="8192"\r\n            step="64"\r\n            value="1024"\r\n            title="Internal GPU grid resolution: 64\u20138192"\r\n          />\r\n          <input\r\n            id="gridSizeOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="64"\r\n            max="8192"\r\n            step="64"\r\n            value="1024"\r\n            title="Exact numeric grid resolution"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row button-row">\r\n        <button id="resetCameraBtn" type="button" title="Reset pan and zoom">\r\n          Reset Camera\r\n        </button>\r\n\r\n        <button id="exportCanvasBtn" type="button" title="Save a PNG of the current canvas">\r\n          Save PNG\r\n        </button>\r\n\r\n        <button\r\n          id="exportFullBtn"\r\n          type="button"\r\n          title="Save a full-resolution PNG render"\r\n        >\r\n          Save Full-Res PNG\r\n        </button>\r\n      </div>\r\n\r\n      <div class="row" style="display: none">\r\n        <label>\r\n          zMin:\r\n          <input id="zMin" type="number" step="0.1" value="0.0" />\r\n          <input\r\n            id="zMinOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            step="0.1"\r\n            value="0.0"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row" style="display: none">\r\n        <label>\r\n          dz:\r\n          <input id="dz" type="number" step="0.01" value="0.2" />\r\n          <input\r\n            id="dzOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            step="0.01"\r\n            value="0.2"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Select the fractal equation family">\r\n          Fractal:\r\n          <select id="fractalType" title="Choose the fractal formula (0-71)">\r\n            <option value="0">Mandelbrot</option>\r\n            <option value="1">Tricorn</option>\r\n            <option value="2">Burning Ship</option>\r\n            <option value="3">Perpendicular Mandelbrot</option>\r\n            <option value="4">Celtic</option>\r\n            <option value="5">Buffalo</option>\r\n            <option value="6">Phoenix</option>\r\n            <option value="7">Cubic Multibrot (z\xB3 + c)</option>\r\n            <option value="8">Quartic Multibrot (z\u2074 + c)</option>\r\n            <option value="9">Cosine</option>\r\n            <option value="10">Sine</option>\r\n            <option value="11">Heart</option>\r\n            <option value="12">Perpendicular Buffalo</option>\r\n            <option value="13">Spiral Mandelbrot</option>\r\n            <option value="14">Quintic Multibrot (z\u2075 + c)</option>\r\n            <option value="15">Sextic Multibrot (z\u2076 + c)</option>\r\n            <option value="16">Tangent fractal (tan z + c)</option>\r\n            <option value="17">Exponential fractal (exp z + c)</option>\r\n            <option value="18">Septic Multibrot (z\u2077 + c)</option>\r\n            <option value="19">Octic Multibrot (z\u2078 + c)</option>\r\n            <option value="20">Inverse Mandelbrot (1/z\xB2 + c)</option>\r\n            <option value="21">Burning Ship Deep Zoom</option>\r\n            <option value="22">Cubic Burning Ship (|z|\xB3 + c)</option>\r\n            <option value="23">Quartic Burning Ship (|z|\u2074 + c)</option>\r\n            <option value="24">Quintic Burning Ship (|z|\u2075 + c)</option>\r\n            <option value="25">Hexic Burning Ship (|z|\u2076 + c)</option>\r\n            <option value="26">Nova (Newton z\xB3\u22121)</option>\r\n            <option value="27">Man-o-War</option>\r\n            <option value="28">Stretched Celtic Spiral</option>\r\n            <option value="29">Polar-Flame fractal</option>\r\n            <option value="30">Inverse Cubic (1/z\xB3 + c)</option>\r\n            <option value="31">Inverse Quartic (1/z\u2074 + c)</option>\r\n            <option value="32">Inverse Quintic (1/z\u2075 + c)</option>\r\n            <option value="33">Inverse Sextic (1/z\u2076 + c)</option>\r\n            <option value="34">Inverse Septic (1/z\u2077 + c)</option>\r\n            <option value="35">Inverse Octic (1/z\u2078 + c)</option>\r\n            <option value="36">Inverse Burning Ship</option>\r\n            <option value="37">Inverse Tricorn</option>\r\n            <option value="38">Inverse Celtic</option>\r\n            <option value="39">Inverse Phoenix</option>\r\n            <option value="40">Tri-Nova</option>\r\n            <option value="41">Nova-Mandelbrot</option>\r\n            <option value="42">Nova 2 (inverse)</option>\r\n            <option value="43">Nova 2 variant</option>\r\n            <option value="44">Quartic-Nova</option>\r\n            <option value="45">Flower Nova</option>\r\n            <option value="46">Scatter-Nova</option>\r\n            <option value="47">Twisted-Flower Nova</option>\r\n            <option value="48">Lobed-Scatter Nova</option>\r\n            <option value="49">Hybrid-FlScatter Nova</option>\r\n            <option value="50">Fractional-Nova (p\u22483.7)</option>\r\n            <option value="51">Kaleido-Nova</option>\r\n            <option value="52">Cross-Nova</option>\r\n            <option value="53">Mirror-Nova</option>\r\n            <option value="54">Spiro-Nova</option>\r\n            <option value="55">Vibrant-Nova</option>\r\n            <option value="56">Julia-Nova Hybrid</option>\r\n            <option value="57">Inverse-Spiral Nova</option>\r\n            <option value="58">Wavefront Nova</option>\r\n            <option value="59">Vortex Nova</option>\r\n            <option value="60">Sine Ring Nova</option>\r\n            <option value="61">Inverse-Spiral Nova 2</option>\r\n            <option value="62">Inverse-Vortex Nova</option>\r\n            <option value="63">Inverse Sine Ring Nova</option>\r\n            <option value="64">Inverse-Mirror Nova</option>\r\n            <option value="65">Inverse-Vibrant Nova</option>\r\n            <option value="66">Golden-Ratio Rational</option>\r\n            <option value="67">SinCos-Kernel</option>\r\n            <option value="68">Golden-Push-Pull</option>\r\n            <option value="69">Sinc-Kernel</option>\r\n            <option value="70">Bizarre Grid (set x/y to 1)</option>\r\n            <option value="71">Julia (use pan x/y sliders)</option>\r\n          </select>\r\n\r\n          <input\r\n            id="fractalTypeOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="71"\r\n            step="1"\r\n            value="0"\r\n            title="Numeric fractal type index"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Choose the color palette used for mapping iterations to RGB">\r\n          \u{1F3A8}:\r\n          <select\r\n            id="colorScheme"\r\n            title="Choose the color palette used for mapping iterations to RGB"\r\n          >\r\n            <option value="0">Violet-Cyan-White</option>\r\n            <option value="6">Grayscale</option>\r\n            <option value="1">Fire</option>\r\n            <option value="2">Ice</option>\r\n            <option value="3">Sunset</option>\r\n            <option value="4">Forest</option>\r\n            <option value="5">Neon</option>\r\n            <option value="7">Inferno</option>\r\n            <option value="8">Rainbow 360\xB0</option>\r\n            <option value="9">Rainbow 720\xB0</option>\r\n            <option value="10">Pastel Loop</option>\r\n            <option value="11">Viridis-ish</option>\r\n            <option value="12">Magma</option>\r\n            <option value="13">Plasma</option>\r\n            <option value="14">Cividis</option>\r\n            <option value="15">Ocean</option>\r\n            <option value="16">Midnight Blue</option>\r\n            <option value="17">Cool-Warm Diverge</option>\r\n            <option value="18">Rainbow 1080\xB0 (3 loops)</option>\r\n            <option value="19">Rainbow 1440\xB0 (4 loops)</option>\r\n            <option value="20">Pastel 5-loop</option>\r\n            <option value="21">Thermal</option>\r\n            <option value="22">Turbulent Wave</option>\r\n            <option value="23">Autumn</option>\r\n            <option value="24">Spring</option>\r\n            <option value="25">Summer</option>\r\n            <option value="26">Mono-loop (10\xD7 grayscale flicker)</option>\r\n            <option value="27">High-contrast Diverging</option>\r\n            <option value="28">Sine-wave Hue</option>\r\n            <option value="29">Sawtooth Loop (3 loops)</option>\r\n            <option value="30">Rainbow 2160\xB0 (6 loops)</option>\r\n            <option value="31">Triangle-wave 8 loops</option>\r\n            <option value="32">Exponential 12 loops</option>\r\n            <option value="33">Sawtooth 10 loops + offset</option>\r\n          </select>\r\n\r\n          <input\r\n            id="colorSchemeOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="33"\r\n            step="1"\r\n            value="0"\r\n            title="Numeric color scheme index"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Shift the global hue of the palette (wraps the color wheel)">\r\n          Hue Offset:\r\n          <input\r\n            id="hueOffset"\r\n            type="range"\r\n            min="-1"\r\n            max="1"\r\n            step="0.001"\r\n            value="0"\r\n            title="Hue offset (-1 to +1)"\r\n          />\r\n          <input\r\n            id="hueOffsetOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-1"\r\n            max="1"\r\n            step="0.001"\r\n            value="0.00"\r\n            title="Exact numeric hue offset"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Control zoom scale (size of the complex plane window)">\r\n          Zoom:\r\n          <input\r\n            id="zoom"\r\n            type="range"\r\n            min="0.00000001"\r\n            max="10"\r\n            step="0.000001"\r\n            value="4.0"\r\n            title="Zoom factor (lower values zoom in deeper)"\r\n          />\r\n          <input\r\n            id="zoomOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0.00000001"\r\n            max="10"\r\n            step="0.000001"\r\n            value="4.00"\r\n            title="Exact numeric zoom"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Shift the view left/right in the complex plane">\r\n          Pan X:\r\n          <input\r\n            id="dx"\r\n            type="range"\r\n            min="-2"\r\n            max="2"\r\n            step="0.00001"\r\n            value="0.0"\r\n            title="Horizontal pan"\r\n          />\r\n          <input\r\n            id="dxOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-2"\r\n            max="2"\r\n            step="0.00001"\r\n            value="0.00"\r\n            title="Exact numeric pan X"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Shift the view up/down in the complex plane">\r\n          Pan Y:\r\n          <input\r\n            id="dy"\r\n            type="range"\r\n            min="-2"\r\n            max="2"\r\n            step="0.00001"\r\n            value="0.0"\r\n            title="Vertical pan"\r\n          />\r\n          <input\r\n            id="dyOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-2"\r\n            max="2"\r\n            step="0.00001"\r\n            value="0.00"\r\n            title="Exact numeric pan Y"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Higher values reveal more detail but increase render time">\r\n          Max Iter:\r\n          <input\r\n            id="maxIter"\r\n            type="range"\r\n            min="50"\r\n            max="5000"\r\n            step="50"\r\n            value="150"\r\n            title="Max escape/convergence iterations"\r\n          />\r\n          <input\r\n            id="maxIterOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="50"\r\n            max="5000"\r\n            step="50"\r\n            value="150"\r\n            title="Exact numeric iteration count"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Escape threshold (distance where the orbit is considered divergent)">\r\n          Escape R:\r\n          <input\r\n            id="escapeR"\r\n            type="range"\r\n            min="1"\r\n            max="20"\r\n            step="0.1"\r\n            value="4.0"\r\n            title="Escape radius"\r\n          />\r\n          <input\r\n            id="escapeROut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="1"\r\n            max="20"\r\n            step="0.1"\r\n            value="4.0"\r\n            title="Exact numeric escape radius"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <hr />\r\n\r\n      <div class="row">\r\n        <label title="Enable optional iterative coordinate warps, toggled as a bitmask">\r\n          Scale Mode:\r\n        </label>\r\n        <div class="scale-group">\r\n          <label title="Multiply coordinates by s">\r\n            <input type="checkbox" name="scaleMode" value="1" /> Multiply\r\n          </label>\r\n          <label title="Divide coordinates by s">\r\n            <input type="checkbox" name="scaleMode" value="2" /> Divide\r\n          </label>\r\n          <label title="Apply sin(s) warp">\r\n            <input type="checkbox" name="scaleMode" value="4" /> Sine\r\n          </label>\r\n          <label title="Apply tan(s) warp">\r\n            <input type="checkbox" name="scaleMode" value="8" /> Tangent\r\n          </label>\r\n          <label title="Apply cos(s) warp">\r\n            <input type="checkbox" name="scaleMode" value="16" /> Cosine\r\n          </label>\r\n          <label title="Exponential scaling">\r\n            <input type="checkbox" name="scaleMode" value="32" /> Exp-Zoom\r\n          </label>\r\n          <label title="Logarithmic shrink">\r\n            <input type="checkbox" name="scaleMode" value="64" /> Log-Shrink\r\n          </label>\r\n          <label title="Stretch X and squash Y">\r\n            <input type="checkbox" name="scaleMode" value="128" /> Aniso Warp\r\n          </label>\r\n          <label title="Rotate coordinates by s radians">\r\n            <input type="checkbox" name="scaleMode" value="256" /> Rotate\r\n          </label>\r\n          <label title="Twist radius/angle by s">\r\n            <input type="checkbox" name="scaleMode" value="512" /> Radial Twist\r\n          </label>\r\n          <label title="Hyperbolic warp">\r\n            <input type="checkbox" name="scaleMode" value="1024" /> HyperWarp\r\n          </label>\r\n          <label title="Hyperbolic radial warp">\r\n            <input type="checkbox" name="scaleMode" value="2048" /> RadialHyper\r\n          </label>\r\n          <label title="Add swirl proportional to s">\r\n            <input type="checkbox" name="scaleMode" value="4096" /> Swirl\r\n          </label>\r\n          <label title="Modular wrap">\r\n            <input type="checkbox" name="scaleMode" value="8192" /> Modular\r\n          </label>\r\n          <label title="Swap axes with scaling">\r\n            <input type="checkbox" name="scaleMode" value="16384" /> AxisSwap\r\n          </label>\r\n          <label title="Blend sin and multiply warps">\r\n            <input type="checkbox" name="scaleMode" value="32768" /> MixedWarp\r\n          </label>\r\n          <label title="Add jitter noise">\r\n            <input type="checkbox" name="scaleMode" value="65536" /> Jitter\r\n          </label>\r\n          <label title="Apply signed power warp">\r\n            <input type="checkbox" name="scaleMode" value="131072" /> PowerWarp\r\n          </label>\r\n          <label title="Smoothstep fade warp">\r\n            <input type="checkbox" name="scaleMode" value="262144" /> SmoothFade\r\n          </label>\r\n        </div>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Iteration-based parameter used by warp modes">\r\n          Gamma:\r\n          <input\r\n            id="gamma"\r\n            type="range"\r\n            min="-50"\r\n            max="50"\r\n            step="0.0001"\r\n            value="1.0"\r\n            title="Gamma modifier"\r\n          />\r\n          <input\r\n            id="gammaOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-50"\r\n            max="50"\r\n            step="0.0001"\r\n            value="1.0"\r\n            title="Exact numeric gamma"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <hr />\r\n\r\n      <div class="row">\r\n        <label title="Convergence tolerance for Newton-like fractals">\r\n          Epsilon:\r\n          <input\r\n            id="epsilon"\r\n            type="range"\r\n            min="0.000001"\r\n            max="0.01"\r\n            step="0.000001"\r\n            value="0.000001"\r\n            title="Convergence epsilon"\r\n          />\r\n          <input\r\n            id="epsilonOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0.000001"\r\n            max="0.01"\r\n            step="0.000001"\r\n            value="0.000001"\r\n            title="Exact numeric epsilon"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="What field the threshold masking operates on">\r\n          Threshold basis:\r\n          <select id="thresholdBasis" title="Choose threshold basis">\r\n            <option value="0">Inner</option>\r\n            <option value="1">Outer</option>\r\n            <option value="2">Height (normalized)</option>\r\n          </select>\r\n\r\n          <input\r\n            id="thresholdBasisOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="2"\r\n            step="1"\r\n            value="0"\r\n            title="Numeric threshold basis"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Lower clamp for threshold mask">\r\n          low\r\n          <input\r\n            id="lowThresh"\r\n            type="range"\r\n            min="0"\r\n            max="1"\r\n            step="0.01"\r\n            value="0.00"\r\n            title="Lower threshold"\r\n          />\r\n          <input\r\n            id="lowThreshOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="1"\r\n            step="0.01"\r\n            value="0.00"\r\n            title="Exact numeric lower threshold"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Upper clamp for threshold mask">\r\n          high\r\n          <input\r\n            id="highThresh"\r\n            type="range"\r\n            min="0"\r\n            max="1"\r\n            step="0.01"\r\n            value="1.00"\r\n            title="Upper threshold"\r\n          />\r\n          <input\r\n            id="highThreshOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="1"\r\n            step="0.01"\r\n            value="1.00"\r\n            title="Exact numeric upper threshold"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Controls final canvas alpha compositing mode">\r\n          Alpha mode:\r\n          <select id="alphaMode" title="How transparency is applied to rendered pixels">\r\n            <option value="0">0 - Opaque (no transparency)</option>\r\n            <option value="1">1 - Fade out</option>\r\n            <option value="2">2 - Reverse fade out</option>\r\n          </select>\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Render output mode">\r\n          Render mode:\r\n          <select id="renderMode" title="Fractal rendering, slab view, or raw debug output">\r\n            <option value="fractal">Fractal</option>\r\n            <option value="slab">Slab</option>\r\n            <option value="raw">Raw</option>\r\n          </select>\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Toggle convergence-based termination for Newton or hybrid maps">\r\n          <input id="convergenceTest" type="checkbox" />\r\n          Convergence Test\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Whether the iteration should escape when diverging or converge toward a root">\r\n          Escape Mode:\r\n          <select id="escapeMode" title="Divergence or convergence mode">\r\n            <option value="0">Converge</option>\r\n            <option value="1">Diverge</option>\r\n          </select>\r\n          <input\r\n            id="escapeModeOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="1"\r\n            step="1"\r\n            value="0"\r\n            title="Exact numeric escape mode"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <hr />\r\n\r\n      <div\r\n        class="row"\r\n        title="Enables multi-layer gamma-stepped stacks. Turning this ON auto-sets Displacement=None, Lighting OFF, and Render mode=Fractal."\r\n      >\r\n        <label>\r\n          <input type="checkbox" id="layerMode" />\r\n          Layer Mode (gamma-stepped stacks)\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Number of layers (only used when Layer Mode is enabled)">\r\n          Layers:\r\n          <input id="nLayers" type="range" min="1" max="128" step="1" value="1" />\r\n          <input\r\n            id="nLayersOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="1"\r\n            max="128"\r\n            step="1"\r\n            value="1"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Gamma increment per layer: gamma(li) = gamma + layerGammaStep * li">\r\n          Gamma Step:\r\n          <input\r\n            id="layerGammaStep"\r\n            type="range"\r\n            min="-5"\r\n            max="5"\r\n            step="0.0001"\r\n            value="0.001"\r\n          />\r\n          <input\r\n            id="layerGammaStepOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-5"\r\n            max="5"\r\n            step="0.0001"\r\n            value="0.1"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="World-space separation per layer for stacked rendering">\r\n          Layer Separation:\r\n          <input\r\n            id="layerSeparation"\r\n            type="range"\r\n            min="-10"\r\n            max="10"\r\n            step="0.001"\r\n            value="0.0"\r\n          />\r\n          <input\r\n            id="layerSeparationOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-10"\r\n            max="10"\r\n            step="0.001"\r\n            value="0.0"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Enable radial bowl displacement for lighting/extrusion">\r\n          <input type="checkbox" id="bowlOn" />\r\n          Enable bowl\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Depth of the bowl displacement curve">\r\n          Bowl depth\r\n          <input\r\n            type="range"\r\n            id="bowlDepth"\r\n            min="0"\r\n            max="3.14"\r\n            step="0.01"\r\n            value="0.25"\r\n            title="Bowl depth"\r\n          />\r\n          <input\r\n            id="bowlDepthOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="3.14"\r\n            step="0.01"\r\n            value="0.25"\r\n            title="Exact numeric bowl depth"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Scale the on-screen quad used for rendering (for multi-pass / stacked zoom modes)">\r\n          Quad Scale\r\n          <input\r\n            id="quadScale"\r\n            type="range"\r\n            min="1"\r\n            max="1000"\r\n            step="1"\r\n            value="1"\r\n            title="Quad scale factor"\r\n          />\r\n          <input\r\n            id="quadScaleOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="1"\r\n            max="1000"\r\n            step="1"\r\n            value="1"\r\n            title="Exact numeric quad scale"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Choose the type of height displacement applied to lighting / extrusion">\r\n          Displacement mode\r\n          <select id="dispMode" title="Displacement height mapping mode">\r\n            <option value="0">None</option>\r\n            <option value="1">Max Peak</option>\r\n            <option value="2">Min Peak</option>\r\n            <option value="3">Max Peak Log</option>\r\n            <option value="4">Min Peak Log</option>\r\n            <option value="5">Max Peak Pow</option>\r\n            <option value="6">Min Peak Pow</option>\r\n          </select>\r\n        </label>\r\n      </div>\r\n\r\n      <hr />\r\n\r\n      <div class="row">\r\n        <label title="Resolution of the displacement sampling grid">\r\n          Grid Divs:\r\n          <input\r\n            id="gridDivs"\r\n            type="range"\r\n            min="64"\r\n            max="4096"\r\n            step="64"\r\n            value="256"\r\n            title="Displacement sampling grid resolution"\r\n          />\r\n          <input\r\n            id="gridDivsOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="64"\r\n            max="4096"\r\n            step="64"\r\n            value="256"\r\n            title="Exact numeric grid divs"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Amplitude of displacement applied to lighting">\r\n          Displacement amp\r\n          <input\r\n            type="range"\r\n            id="dispAmp"\r\n            min="0"\r\n            max="2"\r\n            step="0.01"\r\n            value="0.15"\r\n            title="Displacement amplitude"\r\n          />\r\n          <input\r\n            id="dispAmpOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="2"\r\n            step="0.01"\r\n            value="0.15"\r\n            title="Exact numeric displacement amplitude"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Curve shaping for displacement height response">\r\n          Disp curve\r\n          <input\r\n            type="range"\r\n            id="dispCurve"\r\n            min="0.001"\r\n            max="100"\r\n            step="0.001"\r\n            value="3"\r\n            title="Displacement curve exponent"\r\n          />\r\n          <input\r\n            id="dispCurveOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0.001"\r\n            max="100"\r\n            step="0.001"\r\n            value="3"\r\n            title="Exact numeric curve exponent"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <hr />\r\n\r\n      <div class="row">\r\n        <label class="slider-row" title="Enable a max-slope clamp to prevent artifacts">\r\n          <span>Disp limit ON</span>\r\n          <input id="dispLimitOn" type="checkbox" />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label class="slider-row" title="Maximum surface slope allowed (degrees)">\r\n          <span>Max Slope (deg)</span>\r\n          <input\r\n            id="slopeLimit"\r\n            type="range"\r\n            min="0"\r\n            max="91"\r\n            step="0.001"\r\n            value="45"\r\n            title="Maximum allowed displacement slope"\r\n          />\r\n          <input\r\n            id="slopeLimitOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="91"\r\n            step="0.001"\r\n            value="45"\r\n            title="Exact numeric slope limit"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label class="slider-row" title="Maximum height discontinuity allowed (normalized units)">\r\n          <span>Max Wall Height (norm)</span>\r\n          <input\r\n            id="wallJump"\r\n            type="range"\r\n            min="0"\r\n            max="1"\r\n            step="0.001"\r\n            value="0.05"\r\n            title="Wall height clamp"\r\n          />\r\n          <input\r\n            id="wallJumpOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="1"\r\n            step="0.001"\r\n            value="0.05"\r\n            title="Exact numeric height clamp"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <hr />\r\n\r\n      <div class="row">\r\n        <label title="Enable Phong-style shading based on displacement height">\r\n          Lighting ON\r\n          <input id="lightingOn" type="checkbox" />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Light position X coordinate">\r\n          Light X\r\n          <input\r\n            id="lightX"\r\n            type="range"\r\n            min="-50"\r\n            max="50"\r\n            step="0.1"\r\n            value="0"\r\n            title="Light X coordinate"\r\n          />\r\n          <input\r\n            id="lightXOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-50"\r\n            max="50"\r\n            step="0.1"\r\n            value="0"\r\n            title="Numeric light X"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Light position Y coordinate">\r\n          Light Y\r\n          <input\r\n            id="lightY"\r\n            type="range"\r\n            min="-50"\r\n            max="50"\r\n            step="0.1"\r\n            value="0"\r\n            title="Light Y coordinate"\r\n          />\r\n          <input\r\n            id="lightYOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-50"\r\n            max="50"\r\n            step="0.1"\r\n            value="0"\r\n            title="Numeric light Y"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Light position Z coordinate (height)">\r\n          Light Z\r\n          <input\r\n            id="lightZ"\r\n            type="range"\r\n            min="-50"\r\n            max="50"\r\n            step="0.1"\r\n            value="50"\r\n            title="Light Z coordinate"\r\n          />\r\n          <input\r\n            id="lightZOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-50"\r\n            max="50"\r\n            step="0.1"\r\n            value="50"\r\n            title="Numeric light Z"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Specular exponent controlling shininess">\r\n          Spec Power (shininess)\r\n          <input\r\n            id="specPower"\r\n            type="range"\r\n            min="1"\r\n            max="128"\r\n            step="1"\r\n            value="32"\r\n            title="Specular highlight power"\r\n          />\r\n          <input\r\n            id="specPowerOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="1"\r\n            max="128"\r\n            step="1"\r\n            value="32"\r\n            title="Exact numeric specular power"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row" style="display: none">\r\n        <label>\r\n          Max Pixels/Split:\r\n          <input\r\n            id="splitCount"\r\n            type="number"\r\n            step="100000"\r\n            min="100000"\r\n            value="8000000"\r\n          />\r\n          <input\r\n            id="splitCountOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            step="100000"\r\n            min="100000"\r\n            value="8000000"\r\n          />\r\n        </label>\r\n      </div>\r\n    </div>\r\n  </div>\r\n</div>\r\n';
+  var fractalComponent_default = '<!-- shaders/fractalComponent.html -->\r\n<div id="canvas-container">\r\n  <canvas id="gpu-canvas"></canvas>\r\n\r\n  <div id="ui">\r\n    <div class="ui-header">\r\n      <span>\u2630 Menu</span>\r\n      <button id="toggle-ui" type="button" aria-label="Toggle Menu">-</button>\r\n    </div>\r\n\r\n    <div id="ui-content">\r\n      <div class="row">\r\n        <label\r\n          title="Internal render resolution (GPU grid size). Higher values cost more GPU time."\r\n        >\r\n          Resolution:\r\n          <input\r\n            id="gridSize"\r\n            type="range"\r\n            min="64"\r\n            max="8192"\r\n            step="64"\r\n            value="1024"\r\n            title="Internal GPU grid resolution: 64\u20138192"\r\n          />\r\n          <input\r\n            id="gridSizeOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="64"\r\n            max="8192"\r\n            step="64"\r\n            value="1024"\r\n            title="Exact numeric grid resolution"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row button-row">\r\n        <button id="resetCameraBtn" type="button" title="Reset pan and zoom">\r\n          Reset Camera\r\n        </button>\r\n\r\n        <button id="exportCanvasBtn" type="button" title="Save a PNG of the current canvas">\r\n          Save PNG\r\n        </button>\r\n\r\n        <button\r\n          id="exportFullBtn"\r\n          type="button"\r\n          title="Save a full-resolution PNG render"\r\n        >\r\n          Save Full-Res PNG\r\n        </button>\r\n      </div>\r\n\r\n      <div class="row" style="display: none">\r\n        <label>\r\n          zMin:\r\n          <input id="zMin" type="number" step="0.1" value="0.0" />\r\n          <input\r\n            id="zMinOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            step="0.1"\r\n            value="0.0"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row" style="display: none">\r\n        <label>\r\n          dz:\r\n          <input id="dz" type="number" step="0.01" value="0.2" />\r\n          <input\r\n            id="dzOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            step="0.01"\r\n            value="0.2"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Select the fractal equation family">\r\n          Fractal:\r\n          <select id="fractalType" title="Choose the fractal formula (0-71)">\r\n            <option value="0">Mandelbrot</option>\r\n            <option value="1">Tricorn</option>\r\n            <option value="2">Burning Ship</option>\r\n            <option value="3">Perpendicular Mandelbrot</option>\r\n            <option value="4">Celtic</option>\r\n            <option value="5">Buffalo</option>\r\n            <option value="6">Phoenix</option>\r\n            <option value="7">Cubic Multibrot (z\xB3 + c)</option>\r\n            <option value="8">Quartic Multibrot (z\u2074 + c)</option>\r\n            <option value="9">Cosine</option>\r\n            <option value="10">Sine</option>\r\n            <option value="11">Heart</option>\r\n            <option value="12">Perpendicular Buffalo</option>\r\n            <option value="13">Spiral Mandelbrot</option>\r\n            <option value="14">Quintic Multibrot (z\u2075 + c)</option>\r\n            <option value="15">Sextic Multibrot (z\u2076 + c)</option>\r\n            <option value="16">Tangent fractal (tan z + c)</option>\r\n            <option value="17">Exponential fractal (exp z + c)</option>\r\n            <option value="18">Septic Multibrot (z\u2077 + c)</option>\r\n            <option value="19">Octic Multibrot (z\u2078 + c)</option>\r\n            <option value="20">Inverse Mandelbrot (1/z\xB2 + c)</option>\r\n            <option value="21">Burning Ship Deep Zoom</option>\r\n            <option value="22">Cubic Burning Ship (|z|\xB3 + c)</option>\r\n            <option value="23">Quartic Burning Ship (|z|\u2074 + c)</option>\r\n            <option value="24">Quintic Burning Ship (|z|\u2075 + c)</option>\r\n            <option value="25">Hexic Burning Ship (|z|\u2076 + c)</option>\r\n            <option value="26">Nova (Newton z\xB3\u22121)</option>\r\n            <option value="27">Man-o-War</option>\r\n            <option value="28">Stretched Celtic Spiral</option>\r\n            <option value="29">Polar-Flame fractal</option>\r\n            <option value="30">Inverse Cubic (1/z\xB3 + c)</option>\r\n            <option value="31">Inverse Quartic (1/z\u2074 + c)</option>\r\n            <option value="32">Inverse Quintic (1/z\u2075 + c)</option>\r\n            <option value="33">Inverse Sextic (1/z\u2076 + c)</option>\r\n            <option value="34">Inverse Septic (1/z\u2077 + c)</option>\r\n            <option value="35">Inverse Octic (1/z\u2078 + c)</option>\r\n            <option value="36">Inverse Burning Ship</option>\r\n            <option value="37">Inverse Tricorn</option>\r\n            <option value="38">Inverse Celtic</option>\r\n            <option value="39">Inverse Phoenix</option>\r\n            <option value="40">Tri-Nova</option>\r\n            <option value="41">Nova-Mandelbrot</option>\r\n            <option value="42">Nova 2 (inverse)</option>\r\n            <option value="43">Nova 2 variant</option>\r\n            <option value="44">Quartic-Nova</option>\r\n            <option value="45">Flower Nova</option>\r\n            <option value="46">Scatter-Nova</option>\r\n            <option value="47">Twisted-Flower Nova</option>\r\n            <option value="48">Lobed-Scatter Nova</option>\r\n            <option value="49">Hybrid-FlScatter Nova</option>\r\n            <option value="50">Fractional-Nova (p\u22483.7)</option>\r\n            <option value="51">Kaleido-Nova</option>\r\n            <option value="52">Cross-Nova</option>\r\n            <option value="53">Mirror-Nova</option>\r\n            <option value="54">Spiro-Nova</option>\r\n            <option value="55">Vibrant-Nova</option>\r\n            <option value="56">Julia-Nova Hybrid</option>\r\n            <option value="57">Inverse-Spiral Nova</option>\r\n            <option value="58">Wavefront Nova</option>\r\n            <option value="59">Vortex Nova</option>\r\n            <option value="60">Sine Ring Nova</option>\r\n            <option value="61">Inverse-Spiral Nova 2</option>\r\n            <option value="62">Inverse-Vortex Nova</option>\r\n            <option value="63">Inverse Sine Ring Nova</option>\r\n            <option value="64">Inverse-Mirror Nova</option>\r\n            <option value="65">Inverse-Vibrant Nova</option>\r\n            <option value="66">Golden-Ratio Rational</option>\r\n            <option value="67">SinCos-Kernel</option>\r\n            <option value="68">Golden-Push-Pull</option>\r\n            <option value="69">Sinc-Kernel</option>\r\n            <option value="70">Bizarre Grid (set x/y to 1)</option>\r\n            <option value="71">Julia (use pan x/y sliders)</option>\r\n          </select>\r\n\r\n          <input\r\n            id="fractalTypeOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="71"\r\n            step="1"\r\n            value="0"\r\n            title="Numeric fractal type index"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Choose the color palette used for mapping iterations to RGB">\r\n          \u{1F3A8}:\r\n          <select\r\n            id="colorScheme"\r\n            title="Choose the color palette used for mapping iterations to RGB"\r\n          >\r\n            <option value="0">Violet-Cyan-White</option>\r\n            <option value="6">Grayscale</option>\r\n            <option value="1">Fire</option>\r\n            <option value="2">Ice</option>\r\n            <option value="3">Sunset</option>\r\n            <option value="4">Forest</option>\r\n            <option value="5">Neon</option>\r\n            <option value="7">Inferno</option>\r\n            <option value="8">Rainbow 360\xB0</option>\r\n            <option value="9">Rainbow 720\xB0</option>\r\n            <option value="10">Pastel Loop</option>\r\n            <option value="11">Viridis-ish</option>\r\n            <option value="12">Magma</option>\r\n            <option value="13">Plasma</option>\r\n            <option value="14">Cividis</option>\r\n            <option value="15">Ocean</option>\r\n            <option value="16">Midnight Blue</option>\r\n            <option value="17">Cool-Warm Diverge</option>\r\n            <option value="18">Rainbow 1080\xB0 (3 loops)</option>\r\n            <option value="19">Rainbow 1440\xB0 (4 loops)</option>\r\n            <option value="20">Pastel 5-loop</option>\r\n            <option value="21">Thermal</option>\r\n            <option value="22">Turbulent Wave</option>\r\n            <option value="23">Autumn</option>\r\n            <option value="24">Spring</option>\r\n            <option value="25">Summer</option>\r\n            <option value="26">Mono-loop (10\xD7 grayscale flicker)</option>\r\n            <option value="27">High-contrast Diverging</option>\r\n            <option value="28">Sine-wave Hue</option>\r\n            <option value="29">Sawtooth Loop (3 loops)</option>\r\n            <option value="30">Rainbow 2160\xB0 (6 loops)</option>\r\n            <option value="31">Triangle-wave 8 loops</option>\r\n            <option value="32">Exponential 12 loops</option>\r\n            <option value="33">Sawtooth 10 loops + offset</option>\r\n          </select>\r\n\r\n          <input\r\n            id="colorSchemeOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="33"\r\n            step="1"\r\n            value="0"\r\n            title="Numeric color scheme index"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Shift the global hue of the palette (wraps the color wheel)">\r\n          Hue Offset:\r\n          <input\r\n            id="hueOffset"\r\n            type="range"\r\n            min="-1"\r\n            max="1"\r\n            step="0.001"\r\n            value="0"\r\n            title="Hue offset (-1 to +1)"\r\n          />\r\n          <input\r\n            id="hueOffsetOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-1"\r\n            max="1"\r\n            step="0.001"\r\n            value="0.00"\r\n            title="Exact numeric hue offset"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Control zoom scale (size of the complex plane window)">\r\n          Zoom:\r\n          <input\r\n            id="zoom"\r\n            type="range"\r\n            min="0.00000001"\r\n            max="10"\r\n            step="0.000001"\r\n            value="4.0"\r\n            title="Zoom factor (lower values zoom in deeper)"\r\n          />\r\n          <input\r\n            id="zoomOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0.00000001"\r\n            max="10"\r\n            step="0.000001"\r\n            value="4.00"\r\n            title="Exact numeric zoom"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Shift the view left/right in the complex plane">\r\n          Pan X:\r\n          <input\r\n            id="dx"\r\n            type="range"\r\n            min="-2"\r\n            max="2"\r\n            step="0.00001"\r\n            value="0.0"\r\n            title="Horizontal pan"\r\n          />\r\n          <input\r\n            id="dxOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-2"\r\n            max="2"\r\n            step="0.00001"\r\n            value="0.00"\r\n            title="Exact numeric pan X"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Shift the view up/down in the complex plane">\r\n          Pan Y:\r\n          <input\r\n            id="dy"\r\n            type="range"\r\n            min="-2"\r\n            max="2"\r\n            step="0.00001"\r\n            value="0.0"\r\n            title="Vertical pan"\r\n          />\r\n          <input\r\n            id="dyOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-2"\r\n            max="2"\r\n            step="0.00001"\r\n            value="0.00"\r\n            title="Exact numeric pan Y"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Higher values reveal more detail but increase render time">\r\n          Max Iter:\r\n          <input\r\n            id="maxIter"\r\n            type="range"\r\n            min="50"\r\n            max="5000"\r\n            step="50"\r\n            value="150"\r\n            title="Max escape/convergence iterations"\r\n          />\r\n          <input\r\n            id="maxIterOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="50"\r\n            max="5000"\r\n            step="50"\r\n            value="150"\r\n            title="Exact numeric iteration count"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Escape threshold (distance where the orbit is considered divergent)">\r\n          Escape R:\r\n          <input\r\n            id="escapeR"\r\n            type="range"\r\n            min="1"\r\n            max="20"\r\n            step="0.1"\r\n            value="4.0"\r\n            title="Escape radius"\r\n          />\r\n          <input\r\n            id="escapeROut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="1"\r\n            max="20"\r\n            step="0.1"\r\n            value="4.0"\r\n            title="Exact numeric escape radius"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <hr />\r\n\r\n      <div class="row">\r\n        <label title="Enable optional iterative coordinate warps, toggled as a bitmask">\r\n          Scale Mode:\r\n        </label>\r\n        <div class="scale-group">\r\n          <label title="Multiply coordinates by s">\r\n            <input type="checkbox" name="scaleMode" value="1" /> Multiply\r\n          </label>\r\n          <label title="Divide coordinates by s">\r\n            <input type="checkbox" name="scaleMode" value="2" /> Divide\r\n          </label>\r\n          <label title="Apply sin(s) warp">\r\n            <input type="checkbox" name="scaleMode" value="4" /> Sine\r\n          </label>\r\n          <label title="Apply tan(s) warp">\r\n            <input type="checkbox" name="scaleMode" value="8" /> Tangent\r\n          </label>\r\n          <label title="Apply cos(s) warp">\r\n            <input type="checkbox" name="scaleMode" value="16" /> Cosine\r\n          </label>\r\n          <label title="Exponential scaling">\r\n            <input type="checkbox" name="scaleMode" value="32" /> Exp-Zoom\r\n          </label>\r\n          <label title="Logarithmic shrink">\r\n            <input type="checkbox" name="scaleMode" value="64" /> Log-Shrink\r\n          </label>\r\n          <label title="Stretch X and squash Y">\r\n            <input type="checkbox" name="scaleMode" value="128" /> Aniso Warp\r\n          </label>\r\n          <label title="Rotate coordinates by s radians">\r\n            <input type="checkbox" name="scaleMode" value="256" /> Rotate\r\n          </label>\r\n          <label title="Twist radius/angle by s">\r\n            <input type="checkbox" name="scaleMode" value="512" /> Radial Twist\r\n          </label>\r\n          <label title="Hyperbolic warp">\r\n            <input type="checkbox" name="scaleMode" value="1024" /> HyperWarp\r\n          </label>\r\n          <label title="Hyperbolic radial warp">\r\n            <input type="checkbox" name="scaleMode" value="2048" /> RadialHyper\r\n          </label>\r\n          <label title="Add swirl proportional to s">\r\n            <input type="checkbox" name="scaleMode" value="4096" /> Swirl\r\n          </label>\r\n          <label title="Modular wrap">\r\n            <input type="checkbox" name="scaleMode" value="8192" /> Modular\r\n          </label>\r\n          <label title="Swap axes with scaling">\r\n            <input type="checkbox" name="scaleMode" value="16384" /> AxisSwap\r\n          </label>\r\n          <label title="Blend sin and multiply warps">\r\n            <input type="checkbox" name="scaleMode" value="32768" /> MixedWarp\r\n          </label>\r\n          <label title="Add jitter noise">\r\n            <input type="checkbox" name="scaleMode" value="65536" /> Jitter\r\n          </label>\r\n          <label title="Apply signed power warp">\r\n            <input type="checkbox" name="scaleMode" value="131072" /> PowerWarp\r\n          </label>\r\n          <label title="Smoothstep fade warp">\r\n            <input type="checkbox" name="scaleMode" value="262144" /> SmoothFade\r\n          </label>\r\n        </div>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Iteration-based parameter used by warp modes">\r\n          Gamma:\r\n          <input\r\n            id="gamma"\r\n            type="range"\r\n            min="-50"\r\n            max="50"\r\n            step="0.001"\r\n            value="1.0"\r\n            title="Gamma modifier"\r\n          />\r\n          <input\r\n            id="gammaOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-50"\r\n            max="50"\r\n            step="0.001"\r\n            value="1.0"\r\n            title="Exact numeric gamma"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <hr />\r\n\r\n      <div class="row">\r\n        <label title="Convergence tolerance for Newton-like fractals">\r\n          Epsilon:\r\n          <input\r\n            id="epsilon"\r\n            type="range"\r\n            min="0.000001"\r\n            max="0.01"\r\n            step="0.000001"\r\n            value="0.000001"\r\n            title="Convergence epsilon"\r\n          />\r\n          <input\r\n            id="epsilonOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0.000001"\r\n            max="0.01"\r\n            step="0.000001"\r\n            value="0.000001"\r\n            title="Exact numeric epsilon"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="What field the threshold masking operates on">\r\n          Threshold basis:\r\n          <select id="thresholdBasis" title="Choose threshold basis">\r\n            <option value="0">Inner</option>\r\n            <option value="1">Outer</option>\r\n            <option value="2">Height (normalized)</option>\r\n          </select>\r\n\r\n          <input\r\n            id="thresholdBasisOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="2"\r\n            step="1"\r\n            value="0"\r\n            title="Numeric threshold basis"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Lower clamp for threshold mask">\r\n          low\r\n          <input\r\n            id="lowThresh"\r\n            type="range"\r\n            min="0"\r\n            max="1"\r\n            step="0.01"\r\n            value="0.00"\r\n            title="Lower threshold"\r\n          />\r\n          <input\r\n            id="lowThreshOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="1"\r\n            step="0.01"\r\n            value="0.00"\r\n            title="Exact numeric lower threshold"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Upper clamp for threshold mask">\r\n          high\r\n          <input\r\n            id="highThresh"\r\n            type="range"\r\n            min="0"\r\n            max="1"\r\n            step="0.01"\r\n            value="1.00"\r\n            title="Upper threshold"\r\n          />\r\n          <input\r\n            id="highThreshOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="1"\r\n            step="0.01"\r\n            value="1.00"\r\n            title="Exact numeric upper threshold"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Controls final canvas alpha compositing mode">\r\n          Alpha mode:\r\n          <select id="alphaMode" title="How transparency is applied to rendered pixels">\r\n            <option value="0">0 - Opaque (no transparency)</option>\r\n            <option value="1">1 - Fade out</option>\r\n            <option value="2">2 - Reverse fade out</option>\r\n          </select>\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Render output mode">\r\n          Render mode:\r\n          <select id="renderMode" title="Fractal rendering, slab view, or raw debug output">\r\n            <option value="fractal">Fractal</option>\r\n            <option value="slab">Slab</option>\r\n            <option value="raw">Raw</option>\r\n          </select>\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Toggle convergence-based termination for Newton or hybrid maps">\r\n          <input id="convergenceTest" type="checkbox" />\r\n          Convergence Test\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Whether the iteration should escape when diverging or converge toward a root">\r\n          Escape Mode:\r\n          <select id="escapeMode" title="Divergence or convergence mode">\r\n            <option value="0">Converge</option>\r\n            <option value="1">Diverge</option>\r\n          </select>\r\n          <input\r\n            id="escapeModeOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="1"\r\n            step="1"\r\n            value="0"\r\n            title="Exact numeric escape mode"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <hr />\r\n\r\n      <div\r\n        class="row"\r\n        title="Enables multi-layer gamma-stepped stacks. Turning this ON auto-sets Displacement=None, Lighting OFF, and Render mode=Fractal."\r\n      >\r\n        <label>\r\n          <input type="checkbox" id="layerMode" />\r\n          Layer Mode (gamma-stepped stacks)\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Number of layers (only used when Layer Mode is enabled)">\r\n          Layers:\r\n          <input id="nLayers" type="range" min="1" max="128" step="1" value="1" />\r\n          <input\r\n            id="nLayersOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="1"\r\n            max="128"\r\n            step="1"\r\n            value="1"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Gamma increment per layer: gamma(li) = gamma + layerGammaStep * li">\r\n          Gamma Step:\r\n          <input\r\n            id="layerGammaStep"\r\n            type="range"\r\n            min="-5"\r\n            max="5"\r\n            step="0.0001"\r\n            value="0.001"\r\n          />\r\n          <input\r\n            id="layerGammaStepOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-5"\r\n            max="5"\r\n            step="0.0001"\r\n            value="0.1"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="World-space separation per layer for stacked rendering">\r\n          Layer Separation:\r\n          <input\r\n            id="layerSeparation"\r\n            type="range"\r\n            min="-10"\r\n            max="10"\r\n            step="0.001"\r\n            value="0.0"\r\n          />\r\n          <input\r\n            id="layerSeparationOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-10"\r\n            max="10"\r\n            step="0.001"\r\n            value="0.0"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Enable radial bowl displacement for lighting/extrusion">\r\n          <input type="checkbox" id="bowlOn" />\r\n          Enable bowl\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Depth of the bowl displacement curve">\r\n          Bowl depth\r\n          <input\r\n            type="range"\r\n            id="bowlDepth"\r\n            min="0"\r\n            max="3.14"\r\n            step="0.01"\r\n            value="0.25"\r\n            title="Bowl depth"\r\n          />\r\n          <input\r\n            id="bowlDepthOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="3.14"\r\n            step="0.01"\r\n            value="0.25"\r\n            title="Exact numeric bowl depth"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Scale the on-screen quad used for rendering (for multi-pass / stacked zoom modes)">\r\n          Quad Scale\r\n          <input\r\n            id="quadScale"\r\n            type="range"\r\n            min="1"\r\n            max="1000"\r\n            step="1"\r\n            value="1"\r\n            title="Quad scale factor"\r\n          />\r\n          <input\r\n            id="quadScaleOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="1"\r\n            max="1000"\r\n            step="1"\r\n            value="1"\r\n            title="Exact numeric quad scale"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Choose the type of height displacement applied to lighting / extrusion">\r\n          Displacement mode\r\n          <select id="dispMode" title="Displacement height mapping mode">\r\n            <option value="0">None</option>\r\n            <option value="1">Max Peak</option>\r\n            <option value="2">Min Peak</option>\r\n            <option value="3">Max Peak Log</option>\r\n            <option value="4">Min Peak Log</option>\r\n            <option value="5">Max Peak Pow</option>\r\n            <option value="6">Min Peak Pow</option>\r\n          </select>\r\n        </label>\r\n      </div>\r\n\r\n      <hr />\r\n\r\n      <div class="row">\r\n        <label title="Resolution of the displacement sampling grid">\r\n          Grid Divs:\r\n          <input\r\n            id="gridDivs"\r\n            type="range"\r\n            min="64"\r\n            max="4096"\r\n            step="64"\r\n            value="256"\r\n            title="Displacement sampling grid resolution"\r\n          />\r\n          <input\r\n            id="gridDivsOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="64"\r\n            max="4096"\r\n            step="64"\r\n            value="256"\r\n            title="Exact numeric grid divs"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Amplitude of displacement applied to lighting">\r\n          Displacement amp\r\n          <input\r\n            type="range"\r\n            id="dispAmp"\r\n            min="0"\r\n            max="2"\r\n            step="0.01"\r\n            value="0.15"\r\n            title="Displacement amplitude"\r\n          />\r\n          <input\r\n            id="dispAmpOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="2"\r\n            step="0.01"\r\n            value="0.15"\r\n            title="Exact numeric displacement amplitude"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Curve shaping for displacement height response">\r\n          Disp curve\r\n          <input\r\n            type="range"\r\n            id="dispCurve"\r\n            min="0.001"\r\n            max="100"\r\n            step="0.001"\r\n            value="3"\r\n            title="Displacement curve exponent"\r\n          />\r\n          <input\r\n            id="dispCurveOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0.001"\r\n            max="100"\r\n            step="0.001"\r\n            value="3"\r\n            title="Exact numeric curve exponent"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <hr />\r\n\r\n      <div class="row">\r\n        <label class="slider-row" title="Enable a max-slope clamp to prevent artifacts">\r\n          <span>Disp limit ON</span>\r\n          <input id="dispLimitOn" type="checkbox" />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label class="slider-row" title="Maximum surface slope allowed (degrees)">\r\n          <span>Max Slope (deg)</span>\r\n          <input\r\n            id="slopeLimit"\r\n            type="range"\r\n            min="0"\r\n            max="91"\r\n            step="0.001"\r\n            value="45"\r\n            title="Maximum allowed displacement slope"\r\n          />\r\n          <input\r\n            id="slopeLimitOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="91"\r\n            step="0.001"\r\n            value="45"\r\n            title="Exact numeric slope limit"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label class="slider-row" title="Maximum height discontinuity allowed (normalized units)">\r\n          <span>Max Wall Height (norm)</span>\r\n          <input\r\n            id="wallJump"\r\n            type="range"\r\n            min="0"\r\n            max="1"\r\n            step="0.001"\r\n            value="0.05"\r\n            title="Wall height clamp"\r\n          />\r\n          <input\r\n            id="wallJumpOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="0"\r\n            max="1"\r\n            step="0.001"\r\n            value="0.05"\r\n            title="Exact numeric height clamp"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <hr />\r\n\r\n      <div class="row">\r\n        <label title="Enable Phong-style shading based on displacement height">\r\n          Lighting ON\r\n          <input id="lightingOn" type="checkbox" />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Light position X coordinate">\r\n          Light X\r\n          <input\r\n            id="lightX"\r\n            type="range"\r\n            min="-50"\r\n            max="50"\r\n            step="0.1"\r\n            value="0"\r\n            title="Light X coordinate"\r\n          />\r\n          <input\r\n            id="lightXOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-50"\r\n            max="50"\r\n            step="0.1"\r\n            value="0"\r\n            title="Numeric light X"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Light position Y coordinate">\r\n          Light Y\r\n          <input\r\n            id="lightY"\r\n            type="range"\r\n            min="-50"\r\n            max="50"\r\n            step="0.1"\r\n            value="0"\r\n            title="Light Y coordinate"\r\n          />\r\n          <input\r\n            id="lightYOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-50"\r\n            max="50"\r\n            step="0.1"\r\n            value="0"\r\n            title="Numeric light Y"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Light position Z coordinate (height)">\r\n          Light Z\r\n          <input\r\n            id="lightZ"\r\n            type="range"\r\n            min="-50"\r\n            max="50"\r\n            step="0.1"\r\n            value="50"\r\n            title="Light Z coordinate"\r\n          />\r\n          <input\r\n            id="lightZOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="-50"\r\n            max="50"\r\n            step="0.1"\r\n            value="50"\r\n            title="Numeric light Z"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row">\r\n        <label title="Specular exponent controlling shininess">\r\n          Spec Power (shininess)\r\n          <input\r\n            id="specPower"\r\n            type="range"\r\n            min="1"\r\n            max="128"\r\n            step="1"\r\n            value="32"\r\n            title="Specular highlight power"\r\n          />\r\n          <input\r\n            id="specPowerOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            min="1"\r\n            max="128"\r\n            step="1"\r\n            value="32"\r\n            title="Exact numeric specular power"\r\n          />\r\n        </label>\r\n      </div>\r\n\r\n      <div class="row" style="display: none">\r\n        <label>\r\n          Max Pixels/Split:\r\n          <input\r\n            id="splitCount"\r\n            type="number"\r\n            step="100000"\r\n            min="100000"\r\n            value="8000000"\r\n          />\r\n          <input\r\n            id="splitCountOut"\r\n            class="numeric-input"\r\n            type="number"\r\n            step="100000"\r\n            min="100000"\r\n            value="8000000"\r\n          />\r\n        </label>\r\n      </div>\r\n    </div>\r\n  </div>\r\n</div>\r\n';
 
   // shaders/fractalCompute.wgsl
   var fractalCompute_default = `// Compute WGSL (entry point: main)\r
@@ -2070,13 +2070,14 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
   };
 
   // shaders/fsdfCompute.wgsl
-  var fsdfCompute_default = "// slabs: marching-squares wall extraction into an instance buffer\r\n\r\nstruct SlabParams {\r\n  layerIndex : u32,\r\n  fieldMode  : u32,   // 0=escape r, 1=grad |\u2207h|, 2=height h(r) (normalized)\r\n  useBand    : u32,   // 0=iso, 1=band [low,high]\r\n  meshStep   : u32,   // sample stride in texels (1..)\r\n\r\n  offX       : u32,   // chunk origin in texels within the atlas\r\n  offY       : u32,\r\n  chunkW     : u32,   // chunk dimensions in texels\r\n  chunkH     : u32,\r\n\r\n  maxWalls   : u32,   // capacity in wallInstances\r\n  _pad0_u32  : u32,\r\n  _pad1_u32  : u32,\r\n  _pad2_u32  : u32,\r\n\r\n  iso        : f32,\r\n  bandLow    : f32,\r\n  bandHigh   : f32,\r\n  capBias    : f32,\r\n\r\n  quadScale  : f32,\r\n  dispAmp    : f32,\r\n  dispCurve  : f32,\r\n  dispMode   : u32,\r\n\r\n  gradScale  : f32,\r\n  _pad3_f    : vec3<f32>,\r\n};\r\n\r\n@group(0) @binding(0) var myTex : texture_2d_array<f32>;\r\n@group(0) @binding(1) var<uniform> slab : SlabParams;\r\n\r\nstruct WallInstance {\r\n  uvA  : vec2<f32>,\r\n  uvB  : vec2<f32>,\r\n  nXY  : vec2<f32>,\r\n  _pad : vec2<f32>,\r\n};\r\n\r\nstruct Counter {\r\n  count : atomic<u32>,\r\n};\r\n\r\nstruct DrawIndirectArgs {\r\n  vertexCount   : u32,\r\n  instanceCount : u32,\r\n  firstVertex   : u32,\r\n  firstInstance : u32,\r\n};\r\n\r\n@group(0) @binding(2) var<storage, read_write> wallInstances : array<WallInstance>;\r\n@group(0) @binding(3) var<storage, read_write> wallCount : Counter;\r\n@group(0) @binding(4) var<storage, read_write> wallDrawArgs : DrawIndirectArgs;\r\n\r\nfn clampI(v: i32, lo: i32, hi: i32) -> i32 {\r\n  return clamp(v, lo, hi);\r\n}\r\n\r\nfn loadR_global(ix: i32, iy: i32, layer: i32, texW: i32, texH: i32) -> f32 {\r\n  let x = clampI(ix, 0, texW - 1);\r\n  let y = clampI(iy, 0, texH - 1);\r\n  return textureLoad(myTex, vec2<i32>(x, y), layer, 0).r;\r\n}\r\n\r\nfn computeHnorm(v: f32) -> f32 {\r\n  switch (slab.dispMode) {\r\n    case 0u, 1u: { return v; }\r\n    case 2u: { return 1.0 - v; }\r\n    case 3u, 4u: {\r\n      let k = slab.dispCurve;\r\n      let x = select(v, 1.0 - v, slab.dispMode == 4u);\r\n      return log(1.0 + k * x) / log(1.0 + k);\r\n    }\r\n    case 5u, 6u: {\r\n      let p = max(slab.dispCurve, 1e-4);\r\n      let x = select(v, 1.0 - v, slab.dispMode == 6u);\r\n      return pow(x, p);\r\n    }\r\n    default: { return v; }\r\n  }\r\n}\r\n\r\nfn evalField_local(x: i32, y: i32, layer: i32, texW: i32, texH: i32) -> f32 {\r\n  let ox = i32(slab.offX);\r\n  let oy = i32(slab.offY);\r\n\r\n  let gx = ox + x;\r\n  let gy = oy + y;\r\n\r\n  let rC = loadR_global(gx, gy, layer, texW, texH);\r\n\r\n  switch (slab.fieldMode) {\r\n    case 0u: {\r\n      return rC;\r\n    }\r\n    case 1u: {\r\n      let rL = loadR_global(gx - 1, gy, layer, texW, texH);\r\n      let rR = loadR_global(gx + 1, gy, layer, texW, texH);\r\n      let rD = loadR_global(gx, gy - 1, layer, texW, texH);\r\n      let rU = loadR_global(gx, gy + 1, layer, texW, texH);\r\n\r\n      let hL = computeHnorm(rL);\r\n      let hR = computeHnorm(rR);\r\n      let hD = computeHnorm(rD);\r\n      let hU = computeHnorm(rU);\r\n\r\n      let gx2 = 0.5 * (hR - hL);\r\n      let gy2 = 0.5 * (hU - hD);\r\n\r\n      return slab.gradScale * length(vec2<f32>(gx2, gy2));\r\n    }\r\n    default: {\r\n      return computeHnorm(rC);\r\n    }\r\n  }\r\n}\r\n\r\nfn signedFromField(f: f32) -> f32 {\r\n  if (slab.useBand != 0u) {\r\n    return max(slab.bandLow - f, f - slab.bandHigh) - slab.capBias;\r\n  }\r\n  return (slab.iso - f) - slab.capBias;\r\n}\r\n\r\nfn edgeT(sa: f32, sb: f32) -> f32 {\r\n  let d = (sa - sb);\r\n  if (abs(d) < 1e-20) { return 0.5; }\r\n  return clamp(sa / d, 0.0, 1.0);\r\n}\r\n\r\nfn lerp2(a: vec2<f32>, b: vec2<f32>, t: f32) -> vec2<f32> {\r\n  return a + (b - a) * t;\r\n}\r\n\r\nfn emitWall(uvA: vec2<f32>, uvB: vec2<f32>, grad: vec2<f32>) {\r\n  let idx = atomicAdd(&wallCount.count, 1u);\r\n  if (idx >= slab.maxWalls) { return; }\r\n\r\n  let d = uvB - uvA;\r\n  let len2 = dot(d, d);\r\n  var n = vec2<f32>(0.0, 1.0);\r\n\r\n  if (len2 > 1e-20) {\r\n    let invLen = inverseSqrt(len2);\r\n    let dir = d * invLen;\r\n    n = normalize(vec2<f32>(-dir.y, dir.x));\r\n  }\r\n\r\n  if (dot(n, grad) < 0.0) { n = -n; }\r\n\r\n  wallInstances[idx] = WallInstance(uvA, uvB, n, vec2<f32>(0.0));\r\n}\r\n\r\n@compute @workgroup_size(8, 8, 1)\r\nfn build(@builtin(global_invocation_id) gid: vec3<u32>) {\r\n  let dimsU = textureDimensions(myTex);\r\n  let texW = i32(dimsU.x);\r\n  let texH = i32(dimsU.y);\r\n\r\n  let cw = i32(max(1u, slab.chunkW));\r\n  let ch = i32(max(1u, slab.chunkH));\r\n\r\n  let layer = i32(slab.layerIndex);\r\n\r\n  let step = max(1u, slab.meshStep);\r\n  let cellsX = max(0, (cw - 1) / i32(step));\r\n  let cellsY = max(0, (ch - 1) / i32(step));\r\n\r\n  if (i32(gid.x) >= cellsX || i32(gid.y) >= cellsY) { return; }\r\n\r\n  let x0 = i32(gid.x) * i32(step);\r\n  let y0 = i32(gid.y) * i32(step);\r\n  let x1 = min(x0 + i32(step), cw - 1);\r\n  let y1 = min(y0 + i32(step), ch - 1);\r\n\r\n  let ox = i32(slab.offX);\r\n  let oy = i32(slab.offY);\r\n\r\n  let denomX = f32(max(1, texW - 1));\r\n  let denomY = f32(max(1, texH - 1));\r\n\r\n  let uv0 = vec2<f32>(f32(ox + x0) / denomX, f32(oy + y0) / denomY);\r\n  let uv1 = vec2<f32>(f32(ox + x1) / denomX, f32(oy + y0) / denomY);\r\n  let uv2 = vec2<f32>(f32(ox + x1) / denomX, f32(oy + y1) / denomY);\r\n  let uv3 = vec2<f32>(f32(ox + x0) / denomX, f32(oy + y1) / denomY);\r\n\r\n  let f0 = evalField_local(x0, y0, layer, texW, texH);\r\n  let f1 = evalField_local(x1, y0, layer, texW, texH);\r\n  let f2 = evalField_local(x1, y1, layer, texW, texH);\r\n  let f3 = evalField_local(x0, y1, layer, texW, texH);\r\n\r\n  let s0 = signedFromField(f0);\r\n  let s1 = signedFromField(f1);\r\n  let s2 = signedFromField(f2);\r\n  let s3 = signedFromField(f3);\r\n\r\n  let b0 = select(0u, 1u, s0 <= 0.0);\r\n  let b1 = select(0u, 1u, s1 <= 0.0);\r\n  let b2 = select(0u, 1u, s2 <= 0.0);\r\n  let b3 = select(0u, 1u, s3 <= 0.0);\r\n  let c = b0 | (b1 << 1u) | (b2 << 2u) | (b3 << 3u);\r\n\r\n  if (c == 0u || c == 15u) { return; }\r\n\r\n  let saddle = (s0 * s2) - (s1 * s3);\r\n\r\n  let t0 = edgeT(s0, s1);\r\n  let t1 = edgeT(s1, s2);\r\n  let t2 = edgeT(s3, s2);\r\n  let t3 = edgeT(s0, s3);\r\n\r\n  let e0 = lerp2(uv0, uv1, t0);\r\n  let e1 = lerp2(uv1, uv2, t1);\r\n  let e2 = lerp2(uv3, uv2, t2);\r\n  let e3 = lerp2(uv0, uv3, t3);\r\n\r\n  let gx = 0.5 * ((s1 + s2) - (s0 + s3));\r\n  let gy = 0.5 * ((s3 + s2) - (s0 + s1));\r\n  let grad = vec2<f32>(gx, gy);\r\n\r\n  switch (c) {\r\n    case 1u:  { emitWall(e3, e0, grad); }\r\n    case 2u:  { emitWall(e0, e1, grad); }\r\n    case 3u:  { emitWall(e3, e1, grad); }\r\n    case 4u:  { emitWall(e1, e2, grad); }\r\n    case 5u:  {\r\n      if (saddle < 0.0) { emitWall(e0, e1, grad); emitWall(e2, e3, grad); }\r\n      else { emitWall(e3, e0, grad); emitWall(e1, e2, grad); }\r\n    }\r\n    case 6u:  { emitWall(e0, e2, grad); }\r\n    case 7u:  { emitWall(e3, e2, grad); }\r\n    case 8u:  { emitWall(e2, e3, grad); }\r\n    case 9u:  { emitWall(e2, e0, grad); }\r\n    case 10u: {\r\n      if (saddle < 0.0) { emitWall(e3, e0, grad); emitWall(e1, e2, grad); }\r\n      else { emitWall(e0, e1, grad); emitWall(e2, e3, grad); }\r\n    }\r\n    case 11u: { emitWall(e1, e2, grad); }\r\n    case 12u: { emitWall(e3, e1, grad); }\r\n    case 13u: { emitWall(e0, e1, grad); }\r\n    case 14u: { emitWall(e3, e0, grad); }\r\n    default:  { }\r\n  }\r\n}\r\n\r\n@compute @workgroup_size(1, 1, 1)\r\nfn finalize() {\r\n  let n = atomicLoad(&wallCount.count);\r\n  wallDrawArgs.vertexCount = 6u;\r\n  wallDrawArgs.instanceCount = min(n, slab.maxWalls);\r\n  wallDrawArgs.firstVertex = 0u;\r\n  wallDrawArgs.firstInstance = 0u;\r\n}\r\n";
+  var fsdfCompute_default = "// \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\r\n//  SDF + Normal + Connectivity   (compute entry: main)\r\n//  \u2013 works with horizontal strip tiling \u2013\r\n// \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\r\n\r\nstruct SDFParams {\r\n    gridSize        : u32,   // full fractal resolution (square)\r\n    layerIndex      : u32,\r\n    tileOffsetX     : u32,   // unused once we switch to local coords\r\n    tileOffsetY     : u32,\r\n    tileWidth       : u32,   // local X range of this texture view\r\n    tileHeight      : u32,   // = gridSize in current layout (full height)\r\n    dispAmp         : f32,\r\n    quadScale       : f32,\r\n    slopeLimit      : f32,\r\n    wallJump        : f32,\r\n    connectivityMode: u32,   // 0=2-way , 1=4-way , 2=8-way\r\n    dispMode        : u32,\r\n    dispCurve       : f32,\r\n    normalMode      : u32,   // 0=2-sample , 1=4-sample , 2=8-sample\r\n};\r\n\r\n@group(0) @binding(0) var<uniform> sdfParams : SDFParams;\r\n\r\n@group(1) @binding(0) var fractalTex : texture_storage_2d_array<rgba8unorm , read >;\r\n@group(1) @binding(1) var sdfTex     : texture_storage_2d_array<rgba16float, write>;\r\n@group(1) @binding(2) var flagTex    : texture_storage_2d_array<r32uint   , write>;\r\n\r\n\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 helper functions \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nfn computeHnorm(v: f32) -> f32 {\r\n    switch (sdfParams.dispMode) {\r\n        case 1u  { return v; }\r\n        case 2u  { return 1.0 - v; }\r\n        case 3u, 4u {\r\n            let k = sdfParams.dispCurve;\r\n            let x = select(v, 1.0 - v, sdfParams.dispMode == 4u);\r\n            return log(1.0 + k * x) / log(1.0 + k);\r\n        }\r\n        case 5u, 6u {\r\n            let p = max(sdfParams.dispCurve, 1e-4);\r\n            let x = select(v, 1.0 - v, sdfParams.dispMode == 6u);\r\n            return pow(x, p);\r\n        }\r\n        default  { return 0.0; }\r\n    }\r\n}\r\n\r\n/*  Clamp X to tile-width (local) and Y to full grid (global). */\r\nfn clampLocal(px: i32, py: i32, w: i32, h: i32) -> vec2<i32> {\r\n    return vec2<i32>(clamp(px, 0, w - 1),\r\n                     clamp(py, 0, h - 1));\r\n}\r\n\r\n/*  4-sample normal (cross) */\r\nfn normal4(px: i32, py: i32, L: i32,\r\n           w: i32, h: i32, ws: f32, dScalar: f32) -> vec3<f32> {\r\n\r\n    let uvL = clampLocal(px - 1, py,     w, h);\r\n    let uvR = clampLocal(px + 1, py,     w, h);\r\n    let uvD = clampLocal(px,     py - 1, w, h);\r\n    let uvU = clampLocal(px,     py + 1, w, h);\r\n\r\n    let hL = computeHnorm(textureLoad(fractalTex, uvL, L).r) * dScalar;\r\n    let hR = computeHnorm(textureLoad(fractalTex, uvR, L).r) * dScalar;\r\n    let hD = computeHnorm(textureLoad(fractalTex, uvD, L).r) * dScalar;\r\n    let hU = computeHnorm(textureLoad(fractalTex, uvU, L).r) * dScalar;\r\n\r\n    let dx = (hR - hL) * 0.5;\r\n    let dy = (hU - hD) * 0.5;\r\n    return normalize(vec3<f32>(dx, dy, ws));\r\n}\r\n\r\n/*  8-sample normal (cross + diagonals) */\r\nfn normal8(px: i32, py: i32, L: i32,\r\n           w: i32, h: i32, ws: f32, dScalar: f32) -> vec3<f32> {\r\n\r\n    let uv  = array<vec2<i32>, 8>(\r\n        clampLocal(px + 1, py,     w, h), // R\r\n        clampLocal(px - 1, py,     w, h), // L\r\n        clampLocal(px,     py + 1, w, h), // U\r\n        clampLocal(px,     py - 1, w, h), // D\r\n        clampLocal(px + 1, py + 1, w, h), // UR\r\n        clampLocal(px - 1, py + 1, w, h), // UL\r\n        clampLocal(px + 1, py - 1, w, h), // DR\r\n        clampLocal(px - 1, py - 1, w, h)  // DL\r\n    );\r\n\r\n    let hVal = array<f32, 8>(\r\n        computeHnorm(textureLoad(fractalTex, uv[0], L).r) * dScalar,\r\n        computeHnorm(textureLoad(fractalTex, uv[1], L).r) * dScalar,\r\n        computeHnorm(textureLoad(fractalTex, uv[2], L).r) * dScalar,\r\n        computeHnorm(textureLoad(fractalTex, uv[3], L).r) * dScalar,\r\n        computeHnorm(textureLoad(fractalTex, uv[4], L).r) * dScalar,\r\n        computeHnorm(textureLoad(fractalTex, uv[5], L).r) * dScalar,\r\n        computeHnorm(textureLoad(fractalTex, uv[6], L).r) * dScalar,\r\n        computeHnorm(textureLoad(fractalTex, uv[7], L).r) * dScalar\r\n    );\r\n\r\n    let dx = ((hVal[0] + 0.5 * (hVal[4] + hVal[6])) -\r\n              (hVal[1] + 0.5 * (hVal[5] + hVal[7]))) * 0.5;\r\n    let dy = ((hVal[2] + 0.5 * (hVal[4] + hVal[5])) -\r\n              (hVal[3] + 0.5 * (hVal[6] + hVal[7]))) * 0.5;\r\n\r\n    return normalize(vec3<f32>(dx, dy, ws));\r\n}\r\n\r\n\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 compute entry \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n@compute @workgroup_size(8, 8)\r\nfn main(@builtin(global_invocation_id) gid : vec3<u32>) {\r\n\r\n    /* 1) guard: stay inside this tile view */\r\n    if (gid.x >= sdfParams.tileWidth || gid.y >= sdfParams.tileHeight) {\r\n        return;\r\n    }\r\n\r\n    /* 2) constants */\r\n    let px = i32(gid.x);\r\n    let py = i32(gid.y);\r\n    let w  = i32(sdfParams.tileWidth);   // local clamp (X)\r\n    let h  = i32(sdfParams.gridSize);    // global clamp (Y)\r\n    let L  = i32(sdfParams.layerIndex);\r\n    let ws = 2.0 * sdfParams.quadScale / f32(sdfParams.gridSize);\r\n\r\n    /* 3) height at centre */\r\n    let vC     = textureLoad(fractalTex, clampLocal(px, py, w, h), L).r;\r\n    let hNormC = computeHnorm(vC);\r\n    let dScalar = sdfParams.dispAmp * sdfParams.quadScale;\r\n    let hC     = hNormC * dScalar;\r\n    let wallJump = sdfParams.wallJump * dScalar;\r\n \r\n    /* \u2500\u2500 4) decide once which neighbours we need \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\r\n    let needLDU  = (sdfParams.normalMode >= 1u) ||\r\n                (sdfParams.connectivityMode >= 1u);\r\n\r\n    let needDiag = (sdfParams.normalMode == 2u) ||\r\n                (sdfParams.connectivityMode == 2u);\r\n\r\n    /* always R + U -------------------------------------------------- */\r\n    let hR = computeHnorm(textureLoad(\r\n            fractalTex, clampLocal(px + 1, py    , w, h), L).r)\r\n            * dScalar;\r\n\r\n    let hU = computeHnorm(textureLoad(\r\n            fractalTex, clampLocal(px    , py + 1, w, h), L).r)\r\n            * dScalar;\r\n\r\n    /* optional L + D ------------------------------------------------ */\r\n    var hL : f32 = 0.0;\r\n    var hD : f32 = 0.0;\r\n\r\n    if (needLDU) {\r\n        hL = computeHnorm(textureLoad(\r\n                fractalTex, clampLocal(px - 1, py    , w, h), L).r)\r\n            * dScalar;\r\n\r\n        hD = computeHnorm(textureLoad(\r\n                fractalTex, clampLocal(px    , py - 1, w, h), L).r)\r\n            * dScalar;\r\n    }\r\n\r\n    /* optional diagonals ------------------------------------------- */\r\n    var hUR : f32 = 0.0;\r\n    var hUL : f32 = 0.0;\r\n    var hDR : f32 = 0.0;\r\n    var hDL : f32 = 0.0;\r\n\r\n    if (needDiag) {\r\n        hUR = computeHnorm(textureLoad(\r\n                fractalTex, clampLocal(px + 1, py + 1, w, h), L).r)\r\n            * dScalar;\r\n        hUL = computeHnorm(textureLoad(\r\n                fractalTex, clampLocal(px - 1, py + 1, w, h), L).r)\r\n            * dScalar;\r\n        hDR = computeHnorm(textureLoad(\r\n                fractalTex, clampLocal(px + 1, py - 1, w, h), L).r)\r\n            * dScalar;\r\n        hDL = computeHnorm(textureLoad(\r\n                fractalTex, clampLocal(px - 1, py - 1, w, h), L).r)\r\n            * dScalar;\r\n    }\r\n\r\n   \r\n    /* 5) normal + gradient ----------------------------------------- */\r\n    var n      : vec3<f32>;\r\n    var grad2  : f32;          // (rise)\xB2  =  dx\xB2 + dy\xB2\r\n\r\n    switch (sdfParams.normalMode) {\r\n        // ---------- 2-sample ---------------------------------------\r\n        case 0u {\r\n            let dx =  hR - hC;\r\n            let dy =  hU - hC;\r\n            grad2 = dx*dx + dy*dy;\r\n            n     = normalize(vec3<f32>(dx, dy, ws));\r\n        }\r\n\r\n        // ---------- 4-sample ---------------------------------------\r\n        case 1u {\r\n            let dx = (hR - hL) * 0.5;\r\n            let dy = (hU - hD) * 0.5;\r\n            grad2 = dx*dx + dy*dy;\r\n            n     = normalize(vec3<f32>(dx, dy, ws));\r\n        }\r\n\r\n        // ---------- 8-sample ---------------------------------------\r\n        default {\r\n            let dx = ((hR + 0.5*(hUR+hDR)) -\r\n                    (hL + 0.5*(hUL+hDL))) * 0.5;\r\n            let dy = ((hU + 0.5*(hUR+hUL)) -\r\n                    (hD + 0.5*(hDR+hDL))) * 0.5;\r\n            grad2 = dx*dx + dy*dy;\r\n            n     = normalize(vec3<f32>(dx, dy, ws));\r\n        }\r\n    }\r\n\r\n    /* ---- 6) wall flags ------------------------------------------- */\r\n    /* bit layout: 0 R,1 U,2 L,3 D,4-7 diagonals, 8 = steep slope   */\r\n    var flags : u32 = 0u;\r\n\r\n    /* always test R & U ------------------------------------------- */\r\n    if (abs(hR - hC) > wallJump) { flags |= 1u << 0; }   // R\r\n    if (abs(hU - hC) > wallJump) { flags |= 1u << 1; }   // U\r\n\r\n    /* 4-way adds L & D -------------------------------------------- */\r\n    if (sdfParams.connectivityMode >= 1u) {\r\n        if (abs(hL - hC) > wallJump) { flags |= 1u << 2; } // L\r\n        if (abs(hD - hC) > wallJump) { flags |= 1u << 3; } // D\r\n    }\r\n\r\n    /* 8-way adds diagonals ---------------------------------------- */\r\n    if (sdfParams.connectivityMode == 2u) {\r\n        if (abs(hUR - hC) > wallJump) { flags |= 1u << 4; } // UR\r\n        if (abs(hUL - hC) > wallJump) { flags |= 1u << 5; } // UL\r\n        if (abs(hDR - hC) > wallJump) { flags |= 1u << 6; } // DR\r\n        if (abs(hDL - hC) > wallJump) { flags |= 1u << 7; } // DL\r\n    }\r\n\r\n    let invRun2 =            // ( gridSize / 2\xB7quadScale )\xB2\r\n        (f32(sdfParams.gridSize) *\r\n        f32(sdfParams.gridSize)) /\r\n        (4.0 * sdfParams.quadScale * sdfParams.quadScale);\r\n\r\n    // (rise / run)\xB2   =   grad2 \xB7 invRun2\r\n    if (grad2 * invRun2 > sdfParams.slopeLimit) {\r\n        flags |= 1u << 8;\r\n    }\r\n\r\n    /* \u2500\u2500 7) store height, normal & flags ---------------- */\r\n    textureStore(sdfTex , vec2<i32>(px, py), L,\r\n                vec4<f32>(hC, n.x, n.y, n.z));\r\n\r\n    textureStore(flagTex, vec2<i32>(px, py), L,\r\n                vec4<u32>(flags, 0u, 0u, 0u));\r\n}";
 
   // shaders/fsdfCompute.js
   var SdfComputeGPU = class {
     constructor(device, uniformStride = 256, group0 = null, group1 = null) {
       this.device = device;
       this.uniformStride = uniformStride;
+      this._allocEpoch = 0;
       this._group0 = group0 ?? device.createBindGroupLayout({
         entries: [
           {
@@ -2140,19 +2141,23 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     }
     /**
      * Ensure SDF & Flag textures + layer-0 views exist for every chunk.
-     * Always allocates **1 layer** (arrayLayerCount=1).
+     * Always allocates 1 layer (arrayLayerCount=1).
+     *
+     * Note: GPUTexture has no readable `.size`, so we track allocation dimensions on the chunk.
      */
     ensureSdfForChunks(chunks) {
       if (!Array.isArray(chunks)) {
         throw new Error("ensureSdfForChunks: chunks must be an array");
       }
       for (const c of chunks) {
-        if (typeof c.width !== "number" || typeof c.height !== "number") {
+        const w = c && Number.isFinite(+c.width) ? c.width | 0 : 0;
+        const h = c && Number.isFinite(+c.height) ? c.height | 0 : 0;
+        if (w <= 0 || h <= 0) {
           throw new Error(
             "ensureSdfForChunks: each chunk must have numeric width and height"
           );
         }
-        const needRecreate = !c.sdfTex || !c.sdfTex.size || c.sdfTex.size[0] !== c.width || c.sdfTex.size[1] !== c.height || c.sdfTex.size[2] !== 1;
+        const needRecreate = !c.sdfTex || !c.flagTex || (c._sdfW | 0) !== w || (c._sdfH | 0) !== h || (c._sdfLayers | 0) !== 1;
         if (needRecreate) {
           try {
             if (c.sdfTex) c.sdfTex.destroy();
@@ -2163,29 +2168,25 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
           } catch (_) {
           }
           const sdfTex = this.device.createTexture({
-            size: [c.width, c.height, 1],
+            size: [w, h, 1],
             format: "rgba16float",
             usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
           });
           const flagTex = this.device.createTexture({
-            size: [c.width, c.height, 1],
+            size: [w, h, 1],
             format: "r32uint",
             usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
           });
-          const sdfLayerViews = [
-            sdfTex.createView({
-              dimension: "2d-array",
-              baseArrayLayer: 0,
-              arrayLayerCount: 1
-            })
-          ];
-          const flagLayerViews = [
-            flagTex.createView({
-              dimension: "2d-array",
-              baseArrayLayer: 0,
-              arrayLayerCount: 1
-            })
-          ];
+          const sdfLayerView0 = sdfTex.createView({
+            dimension: "2d-array",
+            baseArrayLayer: 0,
+            arrayLayerCount: 1
+          });
+          const flagLayerView0 = flagTex.createView({
+            dimension: "2d-array",
+            baseArrayLayer: 0,
+            arrayLayerCount: 1
+          });
           const sdfView = sdfTex.createView({
             dimension: "2d-array",
             arrayLayerCount: 1
@@ -2196,11 +2197,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
           });
           c.sdfTex = sdfTex;
           c.flagTex = flagTex;
-          c.sdfLayerViews = sdfLayerViews;
-          c.flagLayerViews = flagLayerViews;
+          c.sdfLayerViews = [sdfLayerView0];
+          c.flagLayerViews = [flagLayerView0];
           c.sdfView = sdfView;
           c.flagView = flagView;
+          c._sdfW = w;
+          c._sdfH = h;
+          c._sdfLayers = 1;
           c._sdfLayerBgs = /* @__PURE__ */ new Map();
+          c._sdfFractalView = null;
+          this._allocEpoch = this._allocEpoch + 1 | 0;
         } else {
           if (!Array.isArray(c.sdfLayerViews) || !c.sdfLayerViews[0]) {
             c.sdfLayerViews = [
@@ -2220,19 +2226,23 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
               })
             ];
           }
-          try {
-            c.sdfView = c.sdfTex.createView({
-              dimension: "2d-array",
-              arrayLayerCount: 1
-            });
-          } catch (_) {
+          if (!c.sdfView) {
+            try {
+              c.sdfView = c.sdfTex.createView({
+                dimension: "2d-array",
+                arrayLayerCount: 1
+              });
+            } catch (_) {
+            }
           }
-          try {
-            c.flagView = c.flagTex.createView({
-              dimension: "2d-array",
-              arrayLayerCount: 1
-            });
-          } catch (_) {
+          if (!c.flagView) {
+            try {
+              c.flagView = c.flagTex.createView({
+                dimension: "2d-array",
+                arrayLayerCount: 1
+              });
+            } catch (_) {
+            }
           }
           if (!c._sdfLayerBgs) c._sdfLayerBgs = /* @__PURE__ */ new Map();
         }
@@ -2240,8 +2250,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     }
     /**
      * Resolve a fractal source view for a chunk.
-     * We *prefer* layer 0 (since fractal is also single-layer in the real-time path),
-     * but fall back gracefully if chunk carries per-layer views.
+     * Prefer layer 0; fall back to whatever the chunk carries.
      */
     _getFractalView(chunk) {
       if (Array.isArray(chunk.layerViews)) {
@@ -2261,15 +2270,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
           return chunk.fractalTex.createView({ dimension: "2d" });
         }
       }
-      throw new Error(
-        "SdfComputeGPU: chunk has no fractal view/texture to read from"
-      );
+      throw new Error("SdfComputeGPU: chunk has no fractal view/texture to read");
     }
     /**
      * Pack one dynamic UBO block for a tile. Matches WGSL layout.
-     * Note: we still send `layerIndex` for shader logic, but we always write to layer 0.
+     * We always write to array-layer 0 (single-layer outputs).
      */
-    _pack(paramsState, chunk, layerIndex, aspect = 1) {
+    _pack(paramsState, chunk) {
       const buf = new ArrayBuffer(this.uniformStride);
       const dv = new DataView(buf);
       let off = 0;
@@ -2304,8 +2311,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       return buf;
     }
     /**
-     * Compute SDFs for chunks into **layer 0**.
-     * We recompute per requested `layerIndex`, but outputs are always targeted at array layer 0.
+     * Compute SDFs for chunks into layer 0.
      */
     async compute(chunks, paramsState, layerIndex = 0, aspect = 1, entryPoint = "main") {
       if (!chunks || !chunks.length) return chunks;
@@ -2328,12 +2334,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       const sBgs = new Array(N);
       for (let i = 0; i < N; ++i) {
         const c = chunks[i];
+        const fractalView = this._getFractalView(c);
+        if (c._sdfFractalView !== fractalView) {
+          if (c._sdfLayerBgs) c._sdfLayerBgs.clear();
+          c._sdfFractalView = fractalView;
+        }
         const cacheKey = 0;
         let bg = c._sdfLayerBgs.get(cacheKey);
         if (!bg) {
-          const fractalView = this._getFractalView(c);
-          const sdfView = c.sdfLayerViews[0];
-          const flagView = c.flagLayerViews[0];
+          const sdfView = c.sdfLayerViews && c.sdfLayerViews[0];
+          const flagView = c.flagLayerViews && c.flagLayerViews[0];
           if (!sdfView || !flagView) {
             throw new Error(
               "SdfComputeGPU.compute: missing sdf/flag layer-0 views for chunk " + i
@@ -2368,24 +2378,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       pass.end();
       this.device.queue.submit([enc.finish()]);
       await this.device.queue.onSubmittedWorkDone();
-      for (const c of chunks) {
-        try {
-          if (!c.sdfView)
-            c.sdfView = c.sdfTex.createView({
-              dimension: "2d-array",
-              arrayLayerCount: 1
-            });
-        } catch (_) {
-        }
-        try {
-          if (!c.flagView)
-            c.flagView = c.flagTex.createView({
-              dimension: "2d-array",
-              arrayLayerCount: 1
-            });
-        } catch (_) {
-        }
-      }
       return chunks;
     }
     destroy(chunks = []) {
@@ -2404,6 +2396,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
         c.sdfView = null;
         c.flagView = null;
         c._sdfLayerBgs = null;
+        c._sdfFractalView = null;
+        c._sdfW = 0;
+        c._sdfH = 0;
+        c._sdfLayers = 0;
       }
       this._pipeCache.clear();
     }
@@ -2656,16 +2652,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
   }
 
   // shaders/fractalFragment.wgsl
-  var fractalFragment_default = "// \u2500\u2500 camera & sampler (group 0) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct Camera {\r\n  viewProj : mat4x4<f32>,\r\n};\r\n@group(0) @binding(3) var<uniform> camera : Camera;\r\n\r\n@group(0) @binding(1) var mySamp : sampler;\r\n\r\n// \u2500\u2500 render params (group 0 / binding 2) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Must match vertex shader and JS packing.\r\nstruct RenderParams {\r\n  layerIndex      : u32,\r\n  scheme          : u32,\r\n  useHueGradient  : u32,\r\n  dispMode        : u32,\r\n\r\n  bowlOn          : u32,\r\n  lightingOn      : u32,\r\n  dispLimitOn     : u32,\r\n  alphaMode       : u32,\r\n\r\n  hueOffset       : f32,\r\n  dispAmp         : f32,\r\n  dispCurve       : f32,\r\n  bowlDepth       : f32,\r\n\r\n  quadScale       : f32,\r\n  gridSize        : f32,\r\n  slopeLimit      : f32,\r\n  wallJump        : f32,\r\n\r\n  lightPos        : vec3<f32>,\r\n  specPower       : f32,\r\n\r\n  worldOffset     : f32,\r\n  worldStart      : f32,\r\n  _pad0           : vec2<f32>,\r\n};\r\n@group(0) @binding(2) var<uniform> render : RenderParams;\r\n\r\nstruct Threshold {\r\n  lowT   : f32,\r\n  highT  : f32,\r\n  basis  : f32,\r\n  _pad0  : f32,\r\n};\r\n@group(0) @binding(4) var<uniform> thr : Threshold;\r\n\r\n// Optional gradient texture (group 0 / binding 5)\r\n// 1D gradient packed in a 2D texture: width = N, height = 1\r\n@group(0) @binding(5) var gradTex : texture_2d<f32>;\r\n\r\n// group 0 / binding 0 -> color array texture (fractal source)\r\n@group(0) @binding(0) var myTex : texture_2d_array<f32>;\r\n\r\n// group 1: model + sdf + flag + sampler (bindings exist even if fragment doesn't read them)\r\nstruct Model {\r\n  world         : mat4x4<f32>,\r\n  uvOffsetScale : vec4<f32>,\r\n};\r\n@group(1) @binding(0) var<uniform> model : Model;\r\n\r\n@group(1) @binding(1) var sdfTex : texture_2d_array<f32>;\r\n@group(1) @binding(2) var flagTex : texture_2d_array<u32>;\r\n@group(1) @binding(3) var samp : sampler;\r\n\r\n// vertex -> fragment IO (must match your vertex shader)\r\nstruct FSIn {\r\n  @builtin(position)              pos    : vec4<f32>,\r\n  @location(0)                    uv     : vec2<f32>,\r\n  @location(1)                    wPos   : vec3<f32>,\r\n  @location(2)                    s      : vec4<f32>,\r\n  @location(3) @interpolate(flat) flag   : u32,\r\n};\r\n\r\nfn hsl2rgb(hsl : vec3<f32>) -> vec3<f32> {\r\n  let H = fract(hsl.x);\r\n  let S = clamp(hsl.y, 0.0, 1.0);\r\n  let L = clamp(hsl.z, 0.0, 1.0);\r\n\r\n  let C  = (1.0 - abs(2.0 * L - 1.0)) * S;\r\n  let Hp = H * 6.0;\r\n\r\n  let t  = Hp - 2.0 * floor(Hp * 0.5);\r\n  let X  = C * (1.0 - abs(t - 1.0));\r\n\r\n  var rgb = vec3<f32>(0.0);\r\n\r\n  if      (Hp < 1.0) { rgb = vec3<f32>(C, X, 0.0); }\r\n  else if (Hp < 2.0) { rgb = vec3<f32>(X, C, 0.0); }\r\n  else if (Hp < 3.0) { rgb = vec3<f32>(0.0, C, X); }\r\n  else if (Hp < 4.0) { rgb = vec3<f32>(0.0, X, C); }\r\n  else if (Hp < 5.0) { rgb = vec3<f32>(X, 0.0, C); }\r\n  else               { rgb = vec3<f32>(C, 0.0, X); }\r\n\r\n  let m = L - 0.5 * C;\r\n  return rgb + vec3<f32>(m, m, m);\r\n}\r\n\r\nfn sampleGradientRGB(t: f32) -> vec3<f32> {\r\n  let u = clamp(t, 0.0, 1.0);\r\n  let c = textureSampleLevel(gradTex, mySamp, vec2<f32>(u, 0.5), 0.0);\r\n  return clamp(c.rgb, vec3<f32>(0.0), vec3<f32>(1.0));\r\n}\r\n\r\nstruct GateResult {\r\n  passed : bool,\r\n  alpha  : f32,\r\n};\r\n\r\nfn shouldPassAndComputeAlpha(r: f32, a_in: f32, s_r: f32, flagVal: u32) -> GateResult {\r\n  var res : GateResult;\r\n  var a = a_in;\r\n\r\n  if (render.alphaMode == 1u) {\r\n    a = r;\r\n  } else if (render.alphaMode == 2u) {\r\n    a = 1.0 - r;\r\n  }\r\n\r\n  if (thr.basis < 2.0) {\r\n    let inside = (r >= thr.lowT) && (r <= thr.highT);\r\n    if (thr.basis == 0.0 && !inside) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    } else if (thr.basis == 1.0 && inside) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    }\r\n  } else {\r\n    let hC = s_r;\r\n    if (hC < thr.lowT || hC > thr.highT) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    }\r\n  }\r\n\r\n  if (render.dispLimitOn != 0u && flagVal != 0u) {\r\n    res.passed = false;\r\n    res.alpha = a;\r\n    return res;\r\n  }\r\n\r\n  if (a < 0.01) {\r\n    res.passed = false;\r\n    res.alpha = a;\r\n    return res;\r\n  }\r\n\r\n  res.passed = true;\r\n  res.alpha = a;\r\n  return res;\r\n}\r\n\r\nfn effectiveArrayLayerIndex() -> i32 {\r\n  let nl = max(1u, textureNumLayers(myTex));\r\n  return i32(render.layerIndex % nl);\r\n}\r\n\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Depth-only prepass\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n@fragment\r\nfn fs_prepass(input : FSIn) -> @location(0) vec4<f32> {\r\n  let li = effectiveArrayLayerIndex();\r\n  let texel = textureSample(myTex, mySamp, input.uv, li);\r\n  let r = texel.r;\r\n  let a = texel.a;\r\n\r\n  let s_r = input.s.r;\r\n  let flagVal = input.flag;\r\n\r\n  let g = shouldPassAndComputeAlpha(r, a, s_r, flagVal);\r\n  if (!g.passed) {\r\n    discard;\r\n  }\r\n\r\n  return vec4<f32>(0.0, 0.0, 0.0, 0.0);\r\n}\r\n\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Full shading pass\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n@fragment\r\nfn fs_main(input : FSIn) -> @location(0) vec4<f32> {\r\n  let li = effectiveArrayLayerIndex();\r\n  let texel = textureSample(myTex, mySamp, input.uv, li);\r\n  let r     = texel.r;\r\n  let a_in  = texel.a;\r\n\r\n  let s_r = input.s.r;\r\n  let flagVal = input.flag;\r\n\r\n  let g = shouldPassAndComputeAlpha(r, a_in, s_r, flagVal);\r\n  if (!g.passed) {\r\n    discard;\r\n  }\r\n  let a = g.alpha;\r\n\r\n  var rgb = vec3<f32>(0.0);\r\n\r\n  if (render.useHueGradient != 0u) {\r\n    let u = fract(r + render.hueOffset);\r\n    rgb = sampleGradientRGB(u);\r\n  } else {\r\n    var H : f32 = 0.0;\r\n    var S : f32 = 1.0;\r\n    var L : f32 = 0.5;\r\n\r\n    switch (render.scheme) {\r\n      case 0u: { H = (260.0 - 260.0 * pow(r, 0.9)) / 360.0; L = (10.0  + 65.0  * pow(r, 1.2)) / 100.0; }\r\n      case 1u: { H = (0.0 + 60.0 * r) / 360.0; L = 0.50 + 0.50 * r; }\r\n      case 2u: { H = (200.0 - 100.0 * r) / 360.0; L = 0.30 + 0.70 * r; }\r\n      case 3u: { H = (30.0 + 270.0 * r) / 360.0; L = 0.30 + 0.40 * r; }\r\n      case 4u: { H = (120.0 -  90.0 * r) / 360.0; L = 0.20 + 0.50 * r; }\r\n      case 5u: { H = (300.0 - 240.0 * r) / 360.0; L = 0.55 + 0.20 * sin(r * 3.14159); }\r\n      case 6u: { return vec4<f32>(vec3<f32>(r), a); }\r\n      case 7u: { H = (10.0 + 60.0 * pow(r, 1.2)) / 360.0; L = 0.15 + 0.75 * pow(r, 1.5); }\r\n      case 8u: { H = r; L = 0.45 + 0.25 * (1.0 - r); }\r\n      case 9u: { H = fract(2.0 * r); L = 0.50; }\r\n      case 10u: { H = fract(3.0 * r + 0.1); L = 0.65; }\r\n      case 11u: { H = 0.75 - 0.55 * r; L = 0.25 + 0.55 * r * r; }\r\n      case 12u: { H = (5.0 + 70.0 * r) / 360.0; L = 0.10 + 0.80 * pow(r, 1.4); }\r\n      case 13u: { H = (260.0 - 260.0 * r) / 360.0; L = 0.30 + 0.60 * pow(r, 0.8); }\r\n      case 14u: { H = (230.0 - 160.0 * r) / 360.0; L = 0.25 + 0.60 * r; }\r\n      case 15u: { H = (200.0 + 40.0 * r) / 360.0; L = 0.20 + 0.50 * r; }\r\n      case 16u: { H = 0.60; L = 0.15 + 0.35 * r; }\r\n      case 17u: {\r\n        if (r < 0.5) { H = 0.55 + (0.75 - 0.55) * (r * 2.0); }\r\n        else { H = 0.02 + (0.11 - 0.02) * ((r - 0.5) * 2.0); }\r\n        L = 0.25 + 0.55 * abs(r - 0.5);\r\n      }\r\n      case 18u: { H = fract(3.0 * r); L = 0.50 + 0.25 * (1.0 - r); }\r\n      case 19u: { H = fract(4.0 * r); L = 0.50; }\r\n      case 20u: { H = fract(5.0 * r + 0.2); L = 0.65; }\r\n      case 21u: { H = (240.0 - 240.0 * r) / 360.0; L = 0.30 + 0.40 * r; }\r\n      case 22u: { H = fract(r * 6.0 + sin(r * 10.0)); L = 0.40 + 0.30 * sin(r * 20.0); }\r\n      case 23u: { H = (30.0 + 50.0 * r) / 360.0; L = 0.45 + 0.30 * r; }\r\n      case 24u: { H = (90.0 - 80.0 * r) / 360.0; L = 0.50 + 0.40 * r; }\r\n      case 25u: { H = (100.0 - 100.0 * r) / 360.0; L = 0.40 + 0.50 * r; }\r\n      case 26u: {\r\n        let loopVal = fract(r * 10.0);\r\n        let Lmono   = loopVal * 0.8;\r\n        return vec4<f32>(vec3<f32>(Lmono), a);\r\n      }\r\n      case 27u: {\r\n        if (r < 0.5) { H = 0.80 + (0.40 - 0.80) * (r * 2.0); }\r\n        else { H = 0.10 + (0.00 - 0.10) * ((r - 0.5) * 2.0); }\r\n        L = 0.20 + 0.60 * abs(r - 0.5);\r\n      }\r\n      case 28u: { H = fract(sin(r * 6.28318) * 0.5 + 0.5); L = 0.50; }\r\n      case 29u: { H = fract(r * 3.0); L = fract(r * 3.0); }\r\n      case 30u: { H = fract(r * 6.0); L = 0.45 + 0.40 * abs(sin(r * 6.0 * 3.14159)); }\r\n      case 31u: {\r\n        let t = fract(r * 8.0);\r\n        if (t < 0.5) { H = t * 2.0; } else { H = (1.0 - t) * 2.0; }\r\n        L = 0.60 - 0.30 * abs(t - 0.5);\r\n      }\r\n      case 32u: { H = fract(pow(r, 0.7) * 12.0); L = 0.50 + 0.30 * pow(r, 1.2); }\r\n      case 33u: { H = fract(r * 10.0 + 0.3); L = 0.40 + 0.50 * r; }\r\n      default: { H = (40.0 + 310.0 * pow(r, 1.3)) / 360.0; L = 0.20 + 0.50 * pow(r, 0.8); }\r\n    }\r\n\r\n    H = fract(H + render.hueOffset);\r\n    rgb = hsl2rgb(vec3<f32>(H, S, L));\r\n  }\r\n\r\n  if (render.lightingOn != 0u) {\r\n    let n       = normalize(input.s.gba);\r\n    let lightWS = render.lightPos * render.quadScale;\r\n    let Ldir    = normalize(lightWS - input.wPos);\r\n    let Vdir    = normalize(-input.wPos);\r\n    let hVec    = normalize(Ldir + Vdir);\r\n\r\n    let diff = max(dot(n, Ldir), 0.0);\r\n    let spec = pow(max(dot(n, hVec), 0.0), render.specPower) * smoothstep(0.0, 0.1, diff);\r\n\r\n    let ambient    = 0.15;\r\n    let diffWeight = 1.0;\r\n    let specWeight = 1.25;\r\n\r\n    rgb = clamp(\r\n      rgb * (ambient + diffWeight * diff) + specWeight * spec,\r\n      vec3<f32>(0.0),\r\n      vec3<f32>(1.0)\r\n    );\r\n  }\r\n\r\n  return vec4<f32>(rgb, a);\r\n}\r\n";
+  var fractalFragment_default = "// \u2500\u2500 camera & sampler (group 0) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct Camera {\r\n  viewProj : mat4x4<f32>,\r\n};\r\n@group(0) @binding(3) var<uniform> camera : Camera;\r\n\r\n@group(0) @binding(1) var mySamp : sampler;\r\n\r\n// \u2500\u2500 render params (group 0 / binding 2) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Must match vertex shader and JS packing.\r\nstruct RenderParams {\r\n  layerIndex      : u32,\r\n  scheme          : u32,\r\n  useHueGradient  : u32,\r\n  dispMode        : u32,\r\n\r\n  bowlOn          : u32,\r\n  lightingOn      : u32,\r\n  dispLimitOn     : u32,\r\n  alphaMode       : u32,\r\n\r\n  hueOffset       : f32,\r\n  dispAmp         : f32,\r\n  dispCurve       : f32,\r\n  bowlDepth       : f32,\r\n\r\n  quadScale       : f32,\r\n  gridSize        : f32,\r\n  slopeLimit      : f32,\r\n  wallJump        : f32,\r\n\r\n  lightPos        : vec3<f32>,\r\n  specPower       : f32,\r\n\r\n  worldOffset     : f32,\r\n  worldStart      : f32,\r\n  _pad0           : vec2<f32>,\r\n};\r\n@group(0) @binding(2) var<uniform> render : RenderParams;\r\n\r\nstruct Threshold {\r\n  lowT   : f32,\r\n  highT  : f32,\r\n  basis  : f32,\r\n  _pad0  : f32,\r\n};\r\n@group(0) @binding(4) var<uniform> thr : Threshold;\r\n\r\n// Optional gradient texture (group 0 / binding 5)\r\n// 1D gradient packed in a 2D texture: width = N, height = 1\r\n@group(0) @binding(5) var gradTex : texture_2d<f32>;\r\n\r\n// group 0 / binding 0 -> color array texture (fractal source)\r\n@group(0) @binding(0) var myTex : texture_2d_array<f32>;\r\n\r\n// group 1: model + sdf + flag + sampler (bindings exist even if fragment doesn't read them)\r\nstruct Model {\r\n  world         : mat4x4<f32>,\r\n  uvOffsetScale : vec4<f32>,\r\n};\r\n@group(1) @binding(0) var<uniform> model : Model;\r\n\r\n@group(1) @binding(1) var sdfTex : texture_2d_array<f32>;\r\n@group(1) @binding(2) var flagTex : texture_2d_array<u32>;\r\n@group(1) @binding(3) var samp : sampler;\r\n\r\n// vertex -> fragment IO (must match your vertex shader)\r\nstruct FSIn {\r\n  @builtin(position)              pos    : vec4<f32>,\r\n  @location(0)                    uv     : vec2<f32>,\r\n  @location(1)                    wPos   : vec3<f32>,\r\n  @location(2)                    s      : vec4<f32>,\r\n  @location(3) @interpolate(flat) flag   : u32,\r\n};\r\n\r\nfn hsl2rgb(hsl : vec3<f32>) -> vec3<f32> {\r\n  let H = fract(hsl.x);\r\n  let S = clamp(hsl.y, 0.0, 1.0);\r\n  let L = clamp(hsl.z, 0.0, 1.0);\r\n\r\n  let C  = (1.0 - abs(2.0 * L - 1.0)) * S;\r\n  let Hp = H * 6.0;\r\n\r\n  let t  = Hp - 2.0 * floor(Hp * 0.5);\r\n  let X  = C * (1.0 - abs(t - 1.0));\r\n\r\n  var rgb = vec3<f32>(0.0);\r\n\r\n  if      (Hp < 1.0) { rgb = vec3<f32>(C, X, 0.0); }\r\n  else if (Hp < 2.0) { rgb = vec3<f32>(X, C, 0.0); }\r\n  else if (Hp < 3.0) { rgb = vec3<f32>(0.0, C, X); }\r\n  else if (Hp < 4.0) { rgb = vec3<f32>(0.0, X, C); }\r\n  else if (Hp < 5.0) { rgb = vec3<f32>(X, 0.0, C); }\r\n  else               { rgb = vec3<f32>(C, 0.0, X); }\r\n\r\n  let m = L - 0.5 * C;\r\n  return rgb + vec3<f32>(m, m, m);\r\n}\r\n\r\nfn sampleGradientRGB(t: f32) -> vec3<f32> {\r\n  let u = clamp(t, 0.0, 1.0);\r\n  let c = textureSampleLevel(gradTex, mySamp, vec2<f32>(u, 0.5), 0.0);\r\n  return clamp(c.rgb, vec3<f32>(0.0), vec3<f32>(1.0));\r\n}\r\n\r\nfn monoTintRGB(l: f32) -> vec3<f32> {\r\n  let ll = clamp(l, 0.0, 1.0);\r\n\r\n  if (abs(render.hueOffset) <= 1e-6) {\r\n    return vec3<f32>(ll);\r\n  }\r\n\r\n  let hue = sampleGradientRGB(fract(render.hueOffset));\r\n  return hue * ll;\r\n}\r\n\r\nfn paletteRGB(r: f32) -> vec3<f32> {\r\n  if (render.useHueGradient != 0u) {\r\n    let u = fract(r + render.hueOffset);\r\n    return sampleGradientRGB(u);\r\n  }\r\n\r\n  var H : f32 = 0.0;\r\n  var S : f32 = 1.0;\r\n  var L : f32 = 0.5;\r\n\r\n  var monoL : f32 = -1.0;\r\n\r\n  switch (render.scheme) {\r\n    case 0u:  { H = (260.0 - 260.0 * pow(r, 0.9)) / 360.0; L = (10.0  + 65.0  * pow(r, 1.2)) / 100.0; }\r\n    case 1u:  { H = (0.0 + 60.0 * r) / 360.0;            L = 0.50 + 0.50 * r; }\r\n    case 2u:  { H = (200.0 - 100.0 * r) / 360.0;         L = 0.30 + 0.70 * r; }\r\n    case 3u:  { H = (30.0 + 270.0 * r) / 360.0;          L = 0.30 + 0.40 * r; }\r\n    case 4u:  { H = (120.0 -  90.0 * r) / 360.0;         L = 0.20 + 0.50 * r; }\r\n    case 5u:  { H = (300.0 - 240.0 * r) / 360.0;         L = 0.55 + 0.20 * sin(r * 3.14159); }\r\n\r\n    case 6u:  { monoL = r; }\r\n\r\n    case 7u:  { H = (10.0 + 60.0 * pow(r, 1.2)) / 360.0; L = 0.15 + 0.75 * pow(r, 1.5); }\r\n    case 8u:  { H = r;                                   L = 0.45 + 0.25 * (1.0 - r); }\r\n    case 9u:  { H = fract(2.0 * r);                       L = 0.50; }\r\n    case 10u: { H = fract(3.0 * r + 0.1);                 L = 0.65; }\r\n    case 11u: { H = 0.75 - 0.55 * r;                      L = 0.25 + 0.55 * r * r; }\r\n    case 12u: { H = (5.0 + 70.0 * r) / 360.0;             L = 0.10 + 0.80 * pow(r, 1.4); }\r\n    case 13u: { H = (260.0 - 260.0 * r) / 360.0;          L = 0.30 + 0.60 * pow(r, 0.8); }\r\n    case 14u: { H = (230.0 - 160.0 * r) / 360.0;          L = 0.25 + 0.60 * r; }\r\n    case 15u: { H = (200.0 + 40.0 * r) / 360.0;           L = 0.20 + 0.50 * r; }\r\n    case 16u: { H = 0.60;                                 L = 0.15 + 0.35 * r; }\r\n    case 17u: {\r\n      if (r < 0.5) { H = 0.55 + (0.75 - 0.55) * (r * 2.0); }\r\n      else        { H = 0.02 + (0.11 - 0.02) * ((r - 0.5) * 2.0); }\r\n      L = 0.25 + 0.55 * abs(r - 0.5);\r\n    }\r\n    case 18u: { H = fract(3.0 * r);                       L = 0.50 + 0.25 * (1.0 - r); }\r\n    case 19u: { H = fract(4.0 * r);                       L = 0.50; }\r\n    case 20u: { H = fract(5.0 * r + 0.2);                 L = 0.65; }\r\n    case 21u: { H = (240.0 - 240.0 * r) / 360.0;          L = 0.30 + 0.40 * r; }\r\n    case 22u: { H = fract(r * 6.0 + sin(r * 10.0));       L = 0.40 + 0.30 * sin(r * 20.0); }\r\n    case 23u: { H = (30.0 + 50.0 * r) / 360.0;            L = 0.45 + 0.30 * r; }\r\n    case 24u: { H = (90.0 - 80.0 * r) / 360.0;            L = 0.50 + 0.40 * r; }\r\n    case 25u: { H = (100.0 - 100.0 * r) / 360.0;          L = 0.40 + 0.50 * r; }\r\n\r\n    case 26u: {\r\n      let loopVal = fract(r * 10.0);\r\n      monoL = loopVal * 0.8;\r\n    }\r\n\r\n    case 27u: {\r\n      if (r < 0.5) { H = 0.80 + (0.40 - 0.80) * (r * 2.0); }\r\n      else        { H = 0.10 + (0.00 - 0.10) * ((r - 0.5) * 2.0); }\r\n      L = 0.20 + 0.60 * abs(r - 0.5);\r\n    }\r\n    case 28u: { H = fract(sin(r * 6.28318) * 0.5 + 0.5);  L = 0.50; }\r\n    case 29u: { H = fract(r * 3.0);                       L = fract(r * 3.0); }\r\n    case 30u: { H = fract(r * 6.0);                       L = 0.45 + 0.40 * abs(sin(r * 6.0 * 3.14159)); }\r\n    case 31u: {\r\n      let t = fract(r * 8.0);\r\n      if (t < 0.5) { H = t * 2.0; } else { H = (1.0 - t) * 2.0; }\r\n      L = 0.60 - 0.30 * abs(t - 0.5);\r\n    }\r\n    case 32u: { H = fract(pow(r, 0.7) * 12.0);            L = 0.50 + 0.30 * pow(r, 1.2); }\r\n    case 33u: { H = fract(r * 10.0 + 0.3);                L = 0.40 + 0.50 * r; }\r\n\r\n    default:  { H = (40.0 + 310.0 * pow(r, 1.3)) / 360.0; L = 0.20 + 0.50 * pow(r, 0.8); }\r\n  }\r\n\r\n  if (monoL >= 0.0) {\r\n    return monoTintRGB(monoL);\r\n  }\r\n\r\n  H = fract(H + render.hueOffset);\r\n  return hsl2rgb(vec3<f32>(H, S, L));\r\n}\r\n\r\nstruct GateResult {\r\n  passed : bool,\r\n  alpha  : f32,\r\n};\r\n\r\nfn shouldPassAndComputeAlpha(r: f32, a_in: f32, s_r: f32, flagVal: u32) -> GateResult {\r\n  var res : GateResult;\r\n  var a = a_in;\r\n\r\n  if (render.alphaMode == 1u) {\r\n    a = r;\r\n  } else if (render.alphaMode == 2u) {\r\n    a = 1.0 - r;\r\n  }\r\n\r\n  if (thr.basis < 2.0) {\r\n    let inside = (r >= thr.lowT) && (r <= thr.highT);\r\n    if (thr.basis == 0.0 && !inside) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    } else if (thr.basis == 1.0 && inside) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    }\r\n  } else {\r\n    let hC = s_r;\r\n    if (hC < thr.lowT || hC > thr.highT) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    }\r\n  }\r\n\r\n  if (render.dispLimitOn != 0u && flagVal != 0u) {\r\n    res.passed = false;\r\n    res.alpha = a;\r\n    return res;\r\n  }\r\n\r\n  if (a < 0.01) {\r\n    res.passed = false;\r\n    res.alpha = a;\r\n    return res;\r\n  }\r\n\r\n  res.passed = true;\r\n  res.alpha = a;\r\n  return res;\r\n}\r\n\r\nfn effectiveArrayLayerIndex() -> i32 {\r\n  let nl = max(1u, textureNumLayers(myTex));\r\n  return i32(render.layerIndex % nl);\r\n}\r\n\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Depth-only prepass\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n@fragment\r\nfn fs_prepass(input : FSIn) -> @location(0) vec4<f32> {\r\n  let li = effectiveArrayLayerIndex();\r\n  let texel = textureSample(myTex, mySamp, input.uv, li);\r\n  let r = texel.r;\r\n  let a = texel.a;\r\n\r\n  let s_r = input.s.r;\r\n  let flagVal = input.flag;\r\n\r\n  let g = shouldPassAndComputeAlpha(r, a, s_r, flagVal);\r\n  if (!g.passed) {\r\n    discard;\r\n  }\r\n\r\n  return vec4<f32>(0.0, 0.0, 0.0, 0.0);\r\n}\r\n\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Full shading pass\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n@fragment\r\nfn fs_main(input : FSIn) -> @location(0) vec4<f32> {\r\n  let li = effectiveArrayLayerIndex();\r\n  let texel = textureSample(myTex, mySamp, input.uv, li);\r\n  let r     = texel.r;\r\n  let a_in  = texel.a;\r\n\r\n  let s_r = input.s.r;\r\n  let flagVal = input.flag;\r\n\r\n  let g = shouldPassAndComputeAlpha(r, a_in, s_r, flagVal);\r\n  if (!g.passed) {\r\n    discard;\r\n  }\r\n  let a = clamp(g.alpha, 0.0, 1.0);\r\n\r\n  var rgb = paletteRGB(r);\r\n\r\n  if (render.lightingOn != 0u) {\r\n    let n       = normalize(input.s.gba);\r\n    let lightWS = render.lightPos * render.quadScale;\r\n    let Ldir    = normalize(lightWS - input.wPos);\r\n    let Vdir    = normalize(-input.wPos);\r\n    let hVec    = normalize(Ldir + Vdir);\r\n\r\n    let diff = max(dot(n, Ldir), 0.0);\r\n    let spec = pow(max(dot(n, hVec), 0.0), render.specPower) * smoothstep(0.0, 0.1, diff);\r\n\r\n    let ambient    = 0.15;\r\n    let diffWeight = 1.0;\r\n    let specWeight = 1.25;\r\n\r\n    rgb = clamp(\r\n      rgb * (ambient + diffWeight * diff) + specWeight * spec,\r\n      vec3<f32>(0.0),\r\n      vec3<f32>(1.0)\r\n    );\r\n  }\r\n\r\n  return vec4<f32>(rgb, a);\r\n}\r\n\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Weighted blended OIT pass\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct OITOut {\r\n  @location(0) accum  : vec4<f32>,\r\n  @location(1) reveal : vec4<f32>,\r\n};\r\n\r\nfn oitWeight(depth01: f32, a: f32) -> f32 {\r\n  let z = clamp(depth01, 0.0, 1.0);\r\n  let z2 = z * z;\r\n  let z4 = z2 * z2;\r\n  let wZ = clamp(0.03 / (0.0001 + z4), 0.01, 50.0);\r\n  let wA = max(a, 0.02);\r\n  return wZ * wA;\r\n}\r\n\r\n@fragment\r\nfn fs_oit(input : FSIn) -> OITOut {\r\n  let li = effectiveArrayLayerIndex();\r\n  let texel = textureSample(myTex, mySamp, input.uv, li);\r\n  let r     = texel.r;\r\n  let a_in  = texel.a;\r\n\r\n  let s_r = input.s.r;\r\n  let flagVal = input.flag;\r\n\r\n  let g = shouldPassAndComputeAlpha(r, a_in, s_r, flagVal);\r\n  if (!g.passed) {\r\n    discard;\r\n  }\r\n\r\n  let a = clamp(g.alpha, 0.0, 1.0);\r\n\r\n  var rgb = paletteRGB(r);\r\n\r\n  if (render.lightingOn != 0u) {\r\n    let n       = normalize(input.s.gba);\r\n    let lightWS = render.lightPos * render.quadScale;\r\n    let Ldir    = normalize(lightWS - input.wPos);\r\n    let Vdir    = normalize(-input.wPos);\r\n    let hVec    = normalize(Ldir + Vdir);\r\n\r\n    let diff = max(dot(n, Ldir), 0.0);\r\n    let spec = pow(max(dot(n, hVec), 0.0), render.specPower) * smoothstep(0.0, 0.1, diff);\r\n\r\n    let ambient    = 0.15;\r\n    let diffWeight = 1.0;\r\n    let specWeight = 1.25;\r\n\r\n    rgb = clamp(\r\n      rgb * (ambient + diffWeight * diff) + specWeight * spec,\r\n      vec3<f32>(0.0),\r\n      vec3<f32>(1.0)\r\n    );\r\n  }\r\n\r\n  let w = oitWeight(input.pos.z, a);\r\n\r\n  var out : OITOut;\r\n  out.accum = vec4<f32>(rgb * (a * w), a * w);\r\n  out.reveal = vec4<f32>(0.0, 0.0, 0.0, a);\r\n  return out;\r\n}\r\n";
 
   // shaders/fractalVertex.wgsl
   var fractalVertex_default = "// \u2500\u2500 camera & sampler (group 0) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct Camera {\r\n  viewProj : mat4x4<f32>,\r\n};\r\n@group(0) @binding(3) var<uniform> camera : Camera;\r\n\r\n@group(0) @binding(1) var mySamp : sampler;\r\n\r\n// \u2500\u2500 render-wide parameters (group 0 / binding 2) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Must match JS packing in RenderPipelineGPU.writeRenderUniform() and the fragment shader.\r\nstruct RenderParams {\r\n  layerIndex      : u32,\r\n  scheme          : u32,\r\n  useHueGradient  : u32,\r\n  dispMode        : u32,\r\n\r\n  bowlOn          : u32,\r\n  lightingOn      : u32,\r\n  dispLimitOn     : u32,\r\n  alphaMode       : u32,\r\n\r\n  hueOffset       : f32,\r\n  dispAmp         : f32,\r\n  dispCurve       : f32,\r\n  bowlDepth       : f32,\r\n\r\n  quadScale       : f32,\r\n  gridSize        : f32,\r\n  slopeLimit      : f32,\r\n  wallJump        : f32,\r\n\r\n  lightPos        : vec3<f32>,\r\n  specPower       : f32,\r\n\r\n  worldOffset     : f32,\r\n  worldStart      : f32,\r\n  _pad0           : vec2<f32>,\r\n};\r\n@group(0) @binding(2) var<uniform> render : RenderParams;\r\n\r\n// \u2500\u2500 group 1: per-tile model + precomputed textures + sampler \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct Model {\r\n  world         : mat4x4<f32>,\r\n  uvOffsetScale : vec4<f32>,\r\n};\r\n@group(1) @binding(0) var<uniform> model : Model;\r\n\r\n@group(1) @binding(1) var sdfTex : texture_2d_array<f32>;\r\n@group(1) @binding(2) var flagTex : texture_2d_array<u32>;\r\n@group(1) @binding(3) var samp : sampler;\r\n\r\n// \u2500\u2500 vertex I/O \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct VertexIn {\r\n  @location(0) position : vec3<f32>,\r\n  @location(1) uv       : vec2<f32>,\r\n};\r\n\r\nstruct VSOut {\r\n  @builtin(position)              pos  : vec4<f32>,\r\n  @location(0)                    uv   : vec2<f32>,\r\n  @location(1)                    wPos : vec3<f32>,\r\n  @location(2)                    s    : vec4<f32>,\r\n  @location(3) @interpolate(flat) flag : u32,\r\n};\r\n\r\nfn texelIJ(tileUV : vec2<f32>) -> vec2<i32> {\r\n  let dims = vec2<i32>(textureDimensions(sdfTex).xy);\r\n  let ix = clamp(i32(tileUV.x * f32(dims.x)), 0, dims.x - 1);\r\n  let iy = clamp(i32(tileUV.y * f32(dims.y)), 0, dims.y - 1);\r\n  return vec2<i32>(ix, iy);\r\n}\r\n\r\n@vertex\r\nfn vs_main(in: VertexIn) -> VSOut {\r\n  var out : VSOut;\r\n\r\n  var worldPos = model.world * vec4<f32>(in.position, 1.0);\r\n\r\n  if (render.bowlOn != 0u && render.bowlDepth > 0.00001) {\r\n    let globalUV = model.uvOffsetScale.xy + in.uv * model.uvOffsetScale.zw;\r\n    let offset = globalUV - vec2<f32>(0.5, 0.5);\r\n    let r2 = dot(offset, offset);\r\n    let maxR2 = 0.5;\r\n    let t = 1.0 - clamp(r2 / maxR2, 0.0, 1.0);\r\n    worldPos.z += -render.bowlDepth * t * render.quadScale;\r\n  }\r\n\r\n  var s : vec4<f32> = vec4<f32>(0.0);\r\n  var maskVal : u32 = 0u;\r\n\r\n  if (render.dispMode != 0u || render.lightingOn != 0u) {\r\n    let ij = texelIJ(in.uv);\r\n\r\n    let sdfL = max(1u, textureNumLayers(sdfTex));\r\n    let li = i32(render.layerIndex % sdfL);\r\n\r\n    s = textureLoad(sdfTex, ij, li, 0);\r\n\r\n    if (render.dispMode != 0u && render.dispAmp != 0.0) {\r\n      let h0 = s.r;\r\n      let curve = max(render.dispCurve, 0.0001);\r\n      let h = sign(h0) * pow(abs(h0), curve) * render.dispAmp;\r\n      worldPos.z += h;\r\n    }\r\n\r\n    let flagL = max(1u, textureNumLayers(flagTex));\r\n    let liF = i32(render.layerIndex % flagL);\r\n\r\n    maskVal = textureLoad(flagTex, ij, liF, 0).r;\r\n  }\r\n\r\n  let layerZ = render.worldStart + render.worldOffset * f32(render.layerIndex);\r\n  worldPos.z += layerZ;\r\n\r\n  out.pos  = camera.viewProj * worldPos;\r\n  out.uv   = in.uv;\r\n  out.wPos = worldPos.xyz;\r\n  out.s    = s;\r\n  out.flag = maskVal;\r\n  return out;\r\n}\r\n";
 
   // shaders/fBlitFragment.wgsl
-  var fBlitFragment_default = "// fBlitFragment.wgsl\r\n\r\nstruct RenderParams {\r\n    layerIndex  : u32,\r\n    scheme      : u32,\r\n    dispMode    : u32,\r\n    bowlOn      : u32,\r\n\r\n    hueOffset   : f32,\r\n    dispAmp     : f32,\r\n    dispCurve   : f32,\r\n    bowlDepth   : f32,\r\n\r\n    quadScale   : f32,\r\n    gridSize    : f32,\r\n    lightingOn  : u32,\r\n    dispLimitOn : u32,\r\n\r\n    lightPos    : vec3<f32>,\r\n    specPower   : f32,\r\n\r\n    slopeLimit  : f32,\r\n    wallJump    : f32,\r\n    alphaMode   : u32,\r\n    _pad2       : vec2<u32>,\r\n};\r\n\r\nstruct Threshold {\r\n    lowT   : f32,\r\n    highT  : f32,\r\n    basis  : f32,\r\n    _pad0  : f32,\r\n};\r\n\r\nstruct Model {\r\n    world         : mat4x4<f32>,\r\n    uvOffsetScale : vec4<f32>,\r\n};\r\n\r\n@group(0) @binding(0) var myTex  : texture_2d_array<f32>;\r\n@group(0) @binding(1) var mySamp : sampler;\r\n@group(0) @binding(2) var<uniform> render : RenderParams;\r\n@group(0) @binding(4) var<uniform> thr    : Threshold;\r\n\r\n@group(1) @binding(0) var<uniform> model   : Model;\r\n@group(1) @binding(1) var sdfTex  : texture_2d_array<f32>;\r\n@group(1) @binding(2) var flagTex : texture_2d_array<u32>;\r\n@group(1) @binding(3) var samp    : sampler;\r\n\r\nstruct VSOut {\r\n    @builtin(position)              pos  : vec4<f32>,\r\n    @location(0)                    uv   : vec2<f32>,\r\n    @location(1)                    wPos : vec3<f32>,\r\n    @location(2)                    s    : vec4<f32>,\r\n    @location(3) @interpolate(flat) flag : u32,\r\n};\r\n\r\nfn hsl2rgb(hsl : vec3<f32>) -> vec3<f32> {\r\n    let H = hsl.x;\r\n    let S = hsl.y;\r\n    let L = hsl.z;\r\n\r\n    let C  = (1.0 - abs(2.0 * L - 1.0)) * S;\r\n    let Hp = H * 6.0;\r\n\r\n    let X  = C * (1.0 - abs(fract(Hp) * 2.0 - 1.0));\r\n    var rgb = vec3<f32>(0.0);\r\n\r\n    if      (Hp < 1.0) { rgb = vec3<f32>(C, X, 0.0); }\r\n    else if (Hp < 2.0) { rgb = vec3<f32>(X, C, 0.0); }\r\n    else if (Hp < 3.0) { rgb = vec3<f32>(0.0, C, X); }\r\n    else if (Hp < 4.0) { rgb = vec3<f32>(0.0, X, C); }\r\n    else if (Hp < 5.0) { rgb = vec3<f32>(C, 0.0, X); }\r\n    else               { rgb = vec3<f32>(C, 0.0, X); }\r\n\r\n    let m = L - 0.5 * C;\r\n    return rgb + m;\r\n}\r\n\r\nstruct GateResult {\r\n    passed : bool,\r\n    alpha  : f32,\r\n};\r\n\r\nfn shouldPassAndComputeAlpha(r : f32, a_in : f32, s_r : f32, flagVal : u32) -> GateResult {\r\n    var res : GateResult;\r\n    var a = a_in;\r\n\r\n    if (render.alphaMode == 1u) {\r\n        a = r;\r\n    } else if (render.alphaMode == 2u) {\r\n        a = 1.0 - r;\r\n    }\r\n\r\n    if (thr.basis < 2.0) {\r\n        let inside = (r >= thr.lowT) && (r <= thr.highT);\r\n        if (thr.basis == 0.0 && !inside) {\r\n            res.passed = false;\r\n            res.alpha  = a;\r\n            return res;\r\n        } else if (thr.basis == 1.0 && inside) {\r\n            res.passed = false;\r\n            res.alpha  = a;\r\n            return res;\r\n        }\r\n    } else {\r\n        let hC = s_r;\r\n        if (hC < thr.lowT || hC > thr.highT) {\r\n            res.passed = false;\r\n            res.alpha  = a;\r\n            return res;\r\n        }\r\n    }\r\n\r\n    if (render.dispLimitOn != 0u && flagVal != 0u) {\r\n        res.passed = false;\r\n        res.alpha  = a;\r\n        return res;\r\n    }\r\n\r\n    if (a < 0.01) {\r\n        res.passed = false;\r\n        res.alpha  = a;\r\n        return res;\r\n    }\r\n\r\n    res.passed = true;\r\n    res.alpha  = a;\r\n    return res;\r\n}\r\n\r\n@fragment\r\nfn fs_blit(input : VSOut) -> @location(0) vec4<f32> {\r\n    let texel = textureSample(myTex, mySamp, input.uv, i32(render.layerIndex));\r\n    let r     = texel.r;\r\n    let a_in  = texel.a;\r\n\r\n    let g = shouldPassAndComputeAlpha(r, a_in, input.s.r, input.flag);\r\n    if (!g.passed) {\r\n        discard;\r\n    }\r\n    var a = g.alpha;\r\n\r\n    var H : f32;\r\n    var L : f32;\r\n\r\n    switch (render.scheme) {\r\n        case 0u:  { H = (260.0 - 260.0 * pow(r, 0.9)) / 360.0; L = (10.0  + 65.0  * pow(r, 1.2)) / 100.0; }\r\n        case 1u:  { H = (0.0   + 60.0 * r) / 360.0;           L = 0.50 + 0.50 * r; }\r\n        case 2u:  { H = (200.0 - 100.0 * r) / 360.0;          L = 0.30 + 0.70 * r; }\r\n        case 3u:  { H = (30.0  + 270.0 * r) / 360.0;          L = 0.30 + 0.40 * r; }\r\n        case 4u:  { H = (120.0 -  90.0 * r) / 360.0;          L = 0.20 + 0.50 * r; }\r\n        case 5u:  { H = (300.0 - 240.0 * r) / 360.0;          L = 0.55 + 0.20 * sin(r * 3.14159); }\r\n        case 6u:  { return vec4<f32>(vec3<f32>(r), a); }\r\n        case 7u:  { H = (10.0  + 60.0 * pow(r, 1.2)) / 360.0; L = 0.15 + 0.75 * pow(r, 1.5); }\r\n        case 8u:  { H = r;                                    L = 0.45 + 0.25 * (1.0 - r); }\r\n        case 9u:  { H = fract(2.0 * r);                       L = 0.50; }\r\n        case 10u: { H = fract(3.0 * r + 0.1);                 L = 0.65; }\r\n        case 11u: { H = 0.75 - 0.55 * r;                      L = 0.25 + 0.55 * r * r; }\r\n        case 12u: { H = (5.0  + 70.0 * r) / 360.0;            L = 0.10 + 0.80 * pow(r, 1.4); }\r\n        case 13u: { H = (260.0 - 260.0 * r) / 360.0;          L = 0.30 + 0.60 * pow(r, 0.8); }\r\n        case 14u: { H = (230.0 - 160.0 * r) / 360.0;          L = 0.25 + 0.60 * r; }\r\n        case 15u: { H = (200.0 + 40.0 * r) / 360.0;           L = 0.20 + 0.50 * r; }\r\n        case 16u: { H = 0.60;                                L = 0.15 + 0.35 * r; }\r\n        case 17u: {\r\n            if (r < 0.5) {\r\n                H = 0.55 + (0.75 - 0.55) * (r * 2.0);\r\n            } else {\r\n                H = 0.02 + (0.11 - 0.02) * ((r - 0.5) * 2.0);\r\n            }\r\n            L = 0.25 + 0.55 * abs(r - 0.5);\r\n        }\r\n        case 18u: { H = fract(3.0 * r);                      L = 0.50 + 0.25 * (1.0 - r); }\r\n        case 19u: { H = fract(4.0 * r);                      L = 0.50; }\r\n        case 20u: { H = fract(5.0 * r + 0.2);                L = 0.65; }\r\n        case 21u: { H = (240.0 - 240.0 * r) / 360.0;         L = 0.30 + 0.40 * r; }\r\n        case 22u: { H = fract(r * 6.0 + sin(r * 10.0));      L = 0.40 + 0.30 * sin(r * 20.0); }\r\n        case 23u: { H = (30.0 + 50.0 * r) / 360.0;           L = 0.45 + 0.30 * r; }\r\n        case 24u: { H = (90.0 - 80.0 * r) / 360.0;           L = 0.50 + 0.40 * r; }\r\n        case 25u: { H = (100.0 - 100.0 * r) / 360.0;         L = 0.40 + 0.50 * r; }\r\n        case 26u: {\r\n            let loopVal = fract(r * 10.0);\r\n            let Lmono   = loopVal * 0.8;\r\n            return vec4<f32>(vec3<f32>(Lmono), a);\r\n        }\r\n        case 27u: {\r\n            if (r < 0.5) {\r\n                H = 0.80 + (0.40 - 0.80) * (r * 2.0);\r\n            } else {\r\n                H = 0.10 + (0.00 - 0.10) * ((r - 0.5) * 2.0);\r\n            }\r\n            L = 0.20 + 0.60 * abs(r - 0.5);\r\n        }\r\n        case 28u: { H = fract(sin(r * 6.28318) * 0.5 + 0.5); L = 0.50; }\r\n        case 29u: { H = fract(r * 3.0);                      L = fract(r * 3.0); }\r\n        case 30u: { H = fract(r * 6.0);                      L = 0.45 + 0.40 * abs(sin(r * 6.0 * 3.14159)); }\r\n        case 31u: {\r\n            let t = fract(r * 8.0);\r\n            if (t < 0.5) {\r\n                H = t * 2.0;\r\n            } else {\r\n                H = (1.0 - t) * 2.0;\r\n            }\r\n            L = 0.60 - 0.30 * abs(t - 0.5);\r\n        }\r\n        case 32u: { H = fract(pow(r, 0.7) * 12.0);           L = 0.50 + 0.30 * pow(r, 1.2); }\r\n        case 33u: { H = fract(r * 10.0 + 0.3);               L = 0.40 + 0.50 * r; }\r\n        default:  { H = (40.0 + 310.0 * pow(r, 1.3)) / 360.0; L = 0.20 + 0.50 * pow(r, 0.8); }\r\n    }\r\n\r\n    H = fract(H + render.hueOffset);\r\n    var rgb = hsl2rgb(vec3<f32>(H, 1.0, L));\r\n\r\n    if (render.lightingOn != 0u) {\r\n        let n       = normalize(input.s.gba);\r\n        let lightWS = render.lightPos * render.quadScale;\r\n        let Ldir    = normalize(lightWS - input.wPos);\r\n        let Vdir    = normalize(-input.wPos);\r\n        let hVec    = normalize(Ldir + Vdir);\r\n\r\n        let diff    = max(dot(n, Ldir), 0.0);\r\n        var spec    = pow(max(dot(n, hVec), 0.0), render.specPower)\r\n                      * smoothstep(0.0, 0.1, diff);\r\n\r\n        let ambient    = 0.15;\r\n        let diffWeight = 1.0;\r\n        let specWeight = 1.25;\r\n\r\n        rgb = clamp(\r\n            rgb * (ambient + diffWeight * diff) +\r\n            specWeight * spec,\r\n            vec3<f32>(0.0, 0.0, 0.0),\r\n            vec3<f32>(1.0, 1.0, 1.0),\r\n        );\r\n    }\r\n\r\n    return vec4<f32>(rgb, a);\r\n}\r\n";
+  var fBlitFragment_default = "// shaders/fBlitFragment.wgsl\r\n\r\nstruct RenderParams {\r\n  layerIndex      : u32,\r\n  scheme          : u32,\r\n  useHueGradient  : u32,\r\n  dispMode        : u32,\r\n\r\n  bowlOn          : u32,\r\n  lightingOn      : u32,\r\n  dispLimitOn     : u32,\r\n  alphaMode       : u32,\r\n\r\n  hueOffset       : f32,\r\n  dispAmp         : f32,\r\n  dispCurve       : f32,\r\n  bowlDepth       : f32,\r\n\r\n  quadScale       : f32,\r\n  gridSize        : f32,\r\n  slopeLimit      : f32,\r\n  wallJump        : f32,\r\n\r\n  lightPos        : vec3<f32>,\r\n  specPower       : f32,\r\n\r\n  worldOffset     : f32,\r\n  worldStart      : f32,\r\n  _pad0           : vec2<f32>,\r\n};\r\n@group(0) @binding(2) var<uniform> render : RenderParams;\r\n\r\nstruct Threshold {\r\n  lowT   : f32,\r\n  highT  : f32,\r\n  basis  : f32,\r\n  _pad0  : f32,\r\n};\r\n@group(0) @binding(4) var<uniform> thr : Threshold;\r\n\r\n@group(0) @binding(0) var myTex : texture_2d_array<f32>;\r\n@group(0) @binding(1) var mySamp : sampler;\r\n\r\n@group(0) @binding(5) var gradTex : texture_2d<f32>;\r\n\r\nstruct Model {\r\n  world         : mat4x4<f32>,\r\n  uvOffsetScale : vec4<f32>,\r\n};\r\n@group(1) @binding(0) var<uniform> model : Model;\r\n\r\n@group(1) @binding(1) var sdfTex : texture_2d_array<f32>;\r\n@group(1) @binding(2) var flagTex : texture_2d_array<u32>;\r\n@group(1) @binding(3) var samp : sampler;\r\n\r\nstruct VSOut {\r\n  @builtin(position)              pos  : vec4<f32>,\r\n  @location(0)                    uv   : vec2<f32>,\r\n  @location(1)                    wPos : vec3<f32>,\r\n  @location(2)                    s    : vec4<f32>,\r\n  @location(3) @interpolate(flat) flag : u32,\r\n};\r\n\r\nfn hsl2rgb(hsl : vec3<f32>) -> vec3<f32> {\r\n  let H = fract(hsl.x);\r\n  let S = clamp(hsl.y, 0.0, 1.0);\r\n  let L = clamp(hsl.z, 0.0, 1.0);\r\n\r\n  let C  = (1.0 - abs(2.0 * L - 1.0)) * S;\r\n  let Hp = H * 6.0;\r\n\r\n  let t  = Hp - 2.0 * floor(Hp * 0.5);\r\n  let X  = C * (1.0 - abs(t - 1.0));\r\n\r\n  var rgb = vec3<f32>(0.0);\r\n\r\n  if      (Hp < 1.0) { rgb = vec3<f32>(C, X, 0.0); }\r\n  else if (Hp < 2.0) { rgb = vec3<f32>(X, C, 0.0); }\r\n  else if (Hp < 3.0) { rgb = vec3<f32>(0.0, C, X); }\r\n  else if (Hp < 4.0) { rgb = vec3<f32>(0.0, X, C); }\r\n  else if (Hp < 5.0) { rgb = vec3<f32>(X, 0.0, C); }\r\n  else               { rgb = vec3<f32>(C, 0.0, X); }\r\n\r\n  let m = L - 0.5 * C;\r\n  return rgb + vec3<f32>(m, m, m);\r\n}\r\n\r\nfn sampleGradientRGB(t: f32) -> vec3<f32> {\r\n  let u = clamp(t, 0.0, 1.0);\r\n  let c = textureSampleLevel(gradTex, mySamp, vec2<f32>(u, 0.5), 0.0);\r\n  return clamp(c.rgb, vec3<f32>(0.0), vec3<f32>(1.0));\r\n}\r\n\r\nstruct GateResult {\r\n  passed : bool,\r\n  alpha  : f32,\r\n};\r\n\r\nfn shouldPassAndComputeAlpha(r: f32, a_in: f32, s_r: f32, flagVal: u32) -> GateResult {\r\n  var res : GateResult;\r\n  var a = a_in;\r\n\r\n  if (render.alphaMode == 1u) {\r\n    a = r;\r\n  } else if (render.alphaMode == 2u) {\r\n    a = 1.0 - r;\r\n  }\r\n\r\n  if (thr.basis < 2.0) {\r\n    let inside = (r >= thr.lowT) && (r <= thr.highT);\r\n    if (thr.basis == 0.0 && !inside) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    } else if (thr.basis == 1.0 && inside) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    }\r\n  } else {\r\n    let hC = s_r;\r\n    if (hC < thr.lowT || hC > thr.highT) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    }\r\n  }\r\n\r\n  if (render.dispLimitOn != 0u && flagVal != 0u) {\r\n    res.passed = false;\r\n    res.alpha = a;\r\n    return res;\r\n  }\r\n\r\n  if (a < 0.01) {\r\n    res.passed = false;\r\n    res.alpha = a;\r\n    return res;\r\n  }\r\n\r\n  res.passed = true;\r\n  res.alpha = a;\r\n  return res;\r\n}\r\n\r\nfn effectiveArrayLayerIndex() -> i32 {\r\n  let nl = max(1u, textureNumLayers(myTex));\r\n  return i32(render.layerIndex % nl);\r\n}\r\n\r\n@fragment\r\nfn fs_blit(input : VSOut) -> @location(0) vec4<f32> {\r\n  let li = effectiveArrayLayerIndex();\r\n  let texel = textureSample(myTex, mySamp, input.uv, li);\r\n  let r     = texel.r;\r\n  let a_in  = texel.a;\r\n\r\n  let s_r = input.s.r;\r\n  let flagVal = input.flag;\r\n\r\n  let g = shouldPassAndComputeAlpha(r, a_in, s_r, flagVal);\r\n  if (!g.passed) {\r\n    discard;\r\n  }\r\n  let a = g.alpha;\r\n\r\n  var rgb = vec3<f32>(0.0);\r\n\r\n  if (render.useHueGradient != 0u) {\r\n    let u = fract(r + render.hueOffset);\r\n    rgb = sampleGradientRGB(u);\r\n  } else {\r\n    var H : f32 = 0.0;\r\n    var S : f32 = 1.0;\r\n    var L : f32 = 0.5;\r\n\r\n    switch (render.scheme) {\r\n      case 0u: { H = (260.0 - 260.0 * pow(r, 0.9)) / 360.0; L = (10.0  + 65.0  * pow(r, 1.2)) / 100.0; }\r\n      case 1u: { H = (0.0 + 60.0 * r) / 360.0; L = 0.50 + 0.50 * r; }\r\n      case 2u: { H = (200.0 - 100.0 * r) / 360.0; L = 0.30 + 0.70 * r; }\r\n      case 3u: { H = (30.0 + 270.0 * r) / 360.0; L = 0.30 + 0.40 * r; }\r\n      case 4u: { H = (120.0 -  90.0 * r) / 360.0; L = 0.20 + 0.50 * r; }\r\n      case 5u: { H = (300.0 - 240.0 * r) / 360.0; L = 0.55 + 0.20 * sin(r * 3.14159); }\r\n      case 6u: { return vec4<f32>(vec3<f32>(r), a); }\r\n      case 7u: { H = (10.0 + 60.0 * pow(r, 1.2)) / 360.0; L = 0.15 + 0.75 * pow(r, 1.5); }\r\n      case 8u: { H = r; L = 0.45 + 0.25 * (1.0 - r); }\r\n      case 9u: { H = fract(2.0 * r); L = 0.50; }\r\n      case 10u: { H = fract(3.0 * r + 0.1); L = 0.65; }\r\n      case 11u: { H = 0.75 - 0.55 * r; L = 0.25 + 0.55 * r * r; }\r\n      case 12u: { H = (5.0 + 70.0 * r) / 360.0; L = 0.10 + 0.80 * pow(r, 1.4); }\r\n      case 13u: { H = (260.0 - 260.0 * r) / 360.0; L = 0.30 + 0.60 * pow(r, 0.8); }\r\n      case 14u: { H = (230.0 - 160.0 * r) / 360.0; L = 0.25 + 0.60 * r; }\r\n      case 15u: { H = (200.0 + 40.0 * r) / 360.0; L = 0.20 + 0.50 * r; }\r\n      case 16u: { H = 0.60; L = 0.15 + 0.35 * r; }\r\n      case 17u: {\r\n        if (r < 0.5) { H = 0.55 + (0.75 - 0.55) * (r * 2.0); }\r\n        else { H = 0.02 + (0.11 - 0.02) * ((r - 0.5) * 2.0); }\r\n        L = 0.25 + 0.55 * abs(r - 0.5);\r\n      }\r\n      case 18u: { H = fract(3.0 * r); L = 0.50 + 0.25 * (1.0 - r); }\r\n      case 19u: { H = fract(4.0 * r); L = 0.50; }\r\n      case 20u: { H = fract(5.0 * r + 0.2); L = 0.65; }\r\n      case 21u: { H = (240.0 - 240.0 * r) / 360.0; L = 0.30 + 0.40 * r; }\r\n      case 22u: { H = fract(r * 6.0 + sin(r * 10.0)); L = 0.40 + 0.30 * sin(r * 20.0); }\r\n      case 23u: { H = (30.0 + 50.0 * r) / 360.0; L = 0.45 + 0.30 * r; }\r\n      case 24u: { H = (90.0 - 80.0 * r) / 360.0; L = 0.50 + 0.40 * r; }\r\n      case 25u: { H = (100.0 - 100.0 * r) / 360.0; L = 0.40 + 0.50 * r; }\r\n      case 26u: {\r\n        let loopVal = fract(r * 10.0);\r\n        let Lmono   = loopVal * 0.8;\r\n        return vec4<f32>(vec3<f32>(Lmono), a);\r\n      }\r\n      case 27u: {\r\n        if (r < 0.5) { H = 0.80 + (0.40 - 0.80) * (r * 2.0); }\r\n        else { H = 0.10 + (0.00 - 0.10) * ((r - 0.5) * 2.0); }\r\n        L = 0.20 + 0.60 * abs(r - 0.5);\r\n      }\r\n      case 28u: { H = fract(sin(r * 6.28318) * 0.5 + 0.5); L = 0.50; }\r\n      case 29u: { H = fract(r * 3.0); L = fract(r * 3.0); }\r\n      case 30u: { H = fract(r * 6.0); L = 0.45 + 0.40 * abs(sin(r * 6.0 * 3.14159)); }\r\n      case 31u: {\r\n        let t = fract(r * 8.0);\r\n        if (t < 0.5) { H = t * 2.0; } else { H = (1.0 - t) * 2.0; }\r\n        L = 0.60 - 0.30 * abs(t - 0.5);\r\n      }\r\n      case 32u: { H = fract(pow(r, 0.7) * 12.0); L = 0.50 + 0.30 * pow(r, 1.2); }\r\n      case 33u: { H = fract(r * 10.0 + 0.3); L = 0.40 + 0.50 * r; }\r\n      default: { H = (40.0 + 310.0 * pow(r, 1.3)) / 360.0; L = 0.20 + 0.50 * pow(r, 0.8); }\r\n    }\r\n\r\n    H = fract(H + render.hueOffset);\r\n    rgb = hsl2rgb(vec3<f32>(H, S, L));\r\n  }\r\n\r\n  if (render.lightingOn != 0u) {\r\n    let n       = normalize(input.s.gba);\r\n    let lightWS = render.lightPos * render.quadScale;\r\n    let Ldir    = normalize(lightWS - input.wPos);\r\n    let Vdir    = normalize(-input.wPos);\r\n    let hVec    = normalize(Ldir + Vdir);\r\n\r\n    let diff = max(dot(n, Ldir), 0.0);\r\n    let spec = pow(max(dot(n, hVec), 0.0), render.specPower) * smoothstep(0.0, 0.1, diff);\r\n\r\n    let ambient    = 0.15;\r\n    let diffWeight = 1.0;\r\n    let specWeight = 1.25;\r\n\r\n    rgb = clamp(\r\n      rgb * (ambient + diffWeight * diff) + specWeight * spec,\r\n      vec3<f32>(0.0),\r\n      vec3<f32>(1.0)\r\n    );\r\n  }\r\n\r\n  return vec4<f32>(rgb, a);\r\n}\r\n";
 
   // shaders/fBlitVertex.wgsl
-  var fBlitVertex_default = "// fBlitVertex.wgsl\r\n\r\nstruct Model {\r\n    world         : mat4x4<f32>,\r\n    uvOffsetScale : vec4<f32>,\r\n};\r\n\r\n@group(1) @binding(0) var<uniform> model : Model;\r\n\r\nstruct VSIn {\r\n    @location(0) position : vec3<f32>,\r\n    @location(1) uv       : vec2<f32>,\r\n};\r\n\r\nstruct VSOut {\r\n    @builtin(position)              pos  : vec4<f32>,\r\n    @location(0)                    uv   : vec2<f32>,\r\n    @location(1)                    wPos : vec3<f32>,\r\n    @location(2)                    s    : vec4<f32>,\r\n    @location(3) @interpolate(flat) flag : u32,\r\n};\r\n\r\n@vertex\r\nfn vs_blit(input : VSIn) -> VSOut {\r\n    var out : VSOut;\r\n\r\n    let globalUV = model.uvOffsetScale.xy + input.uv * model.uvOffsetScale.zw;\r\n\r\n    let clipX = globalUV.x * 2.0 - 1.0;\r\n    let clipY = 1.0 - globalUV.y * 2.0;\r\n\r\n    out.pos  = vec4<f32>(clipX, clipY, 0.0, 1.0);\r\n    out.uv   = globalUV;\r\n\r\n    out.wPos = vec3<f32>(clipX, clipY, 0.0);\r\n    out.s    = vec4<f32>(0.0, 0.0, 0.0, 1.0);\r\n    out.flag = 0u;\r\n\r\n    return out;\r\n}\r\n";
+  var fBlitVertex_default = "// shaders/fBlitVertex.wgsl\r\n\r\nstruct RenderParams {\r\n  layerIndex      : u32,\r\n  scheme          : u32,\r\n  useHueGradient  : u32,\r\n  dispMode        : u32,\r\n\r\n  bowlOn          : u32,\r\n  lightingOn      : u32,\r\n  dispLimitOn     : u32,\r\n  alphaMode       : u32,\r\n\r\n  hueOffset       : f32,\r\n  dispAmp         : f32,\r\n  dispCurve       : f32,\r\n  bowlDepth       : f32,\r\n\r\n  quadScale       : f32,\r\n  gridSize        : f32,\r\n  slopeLimit      : f32,\r\n  wallJump        : f32,\r\n\r\n  lightPos        : vec3<f32>,\r\n  specPower       : f32,\r\n\r\n  worldOffset     : f32,\r\n  worldStart      : f32,\r\n  _pad0           : vec2<f32>,\r\n};\r\n@group(0) @binding(2) var<uniform> render : RenderParams;\r\n\r\nstruct Model {\r\n  world         : mat4x4<f32>,\r\n  uvOffsetScale : vec4<f32>,\r\n};\r\n@group(1) @binding(0) var<uniform> model : Model;\r\n\r\n@group(1) @binding(1) var sdfTex : texture_2d_array<f32>;\r\n@group(1) @binding(2) var flagTex : texture_2d_array<u32>;\r\n@group(1) @binding(3) var samp : sampler;\r\n\r\nstruct VSIn {\r\n  @location(0) position : vec3<f32>,\r\n  @location(1) uv       : vec2<f32>,\r\n};\r\n\r\nstruct VSOut {\r\n  @builtin(position)              pos  : vec4<f32>,\r\n  @location(0)                    uv   : vec2<f32>,\r\n  @location(1)                    wPos : vec3<f32>,\r\n  @location(2)                    s    : vec4<f32>,\r\n  @location(3) @interpolate(flat) flag : u32,\r\n};\r\n\r\nfn texelIJ(tileUV : vec2<f32>) -> vec2<i32> {\r\n  let dims = vec2<i32>(textureDimensions(sdfTex).xy);\r\n  let ix = clamp(i32(tileUV.x * f32(dims.x)), 0, dims.x - 1);\r\n  let iy = clamp(i32(tileUV.y * f32(dims.y)), 0, dims.y - 1);\r\n  return vec2<i32>(ix, iy);\r\n}\r\n\r\n@vertex\r\nfn vs_blit(input : VSIn) -> VSOut {\r\n  var out : VSOut;\r\n\r\n  let globalUV = model.uvOffsetScale.xy + input.uv * model.uvOffsetScale.zw;\r\n\r\n  let clipX = globalUV.x * 2.0 - 1.0;\r\n  let clipY = 1.0 - globalUV.y * 2.0;\r\n\r\n  var s : vec4<f32> = vec4<f32>(0.0);\r\n  var maskVal : u32 = 0u;\r\n\r\n  if (render.dispMode != 0u || render.lightingOn != 0u || render.dispLimitOn != 0u) {\r\n    let ij = texelIJ(input.uv);\r\n\r\n    let sdfL = max(1u, textureNumLayers(sdfTex));\r\n    let li = i32(render.layerIndex % sdfL);\r\n    s = textureLoad(sdfTex, ij, li, 0);\r\n\r\n    let flagL = max(1u, textureNumLayers(flagTex));\r\n    let liF = i32(render.layerIndex % flagL);\r\n    maskVal = textureLoad(flagTex, ij, liF, 0).r;\r\n  }\r\n\r\n  var wz = render.worldStart + render.worldOffset * f32(render.layerIndex);\r\n\r\n  if (render.bowlOn != 0u && render.bowlDepth > 0.00001) {\r\n    let offset = globalUV - vec2<f32>(0.5, 0.5);\r\n    let r2 = dot(offset, offset);\r\n    let maxR2 = 0.5;\r\n    let t = 1.0 - clamp(r2 / maxR2, 0.0, 1.0);\r\n    wz += -render.bowlDepth * t * render.quadScale;\r\n  }\r\n\r\n  if (render.dispMode != 0u && render.dispAmp != 0.0) {\r\n    let h0 = s.r;\r\n    let curve = max(render.dispCurve, 0.0001);\r\n    let h = sign(h0) * pow(abs(h0), curve) * render.dispAmp;\r\n    wz += h;\r\n  }\r\n\r\n  out.pos  = vec4<f32>(clipX, clipY, 0.0, 1.0);\r\n  out.uv   = input.uv;\r\n  out.wPos = vec3<f32>(clipX * render.quadScale, clipY * render.quadScale, wz);\r\n  out.s    = s;\r\n  out.flag = maskVal;\r\n  return out;\r\n}\r\n";
 
   // shaders/fractalRender.js
   function _clamp01(x) {
@@ -2680,148 +2676,97 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
   function _isFiniteNum(x) {
     return typeof x === "number" && Number.isFinite(x);
   }
-  function _hexToRGBA01(hex) {
-    const s = String(hex || "").trim();
-    const h = s.startsWith("#") ? s.slice(1) : s;
-    if (!(h.length === 3 || h.length === 4 || h.length === 6 || h.length === 8))
-      return null;
-    const toNib = (c) => {
-      const v = parseInt(c, 16);
-      return Number.isFinite(v) ? v : null;
-    };
-    const toByte2 = (a2, b2) => {
-      const v = parseInt(a2 + b2, 16);
-      return Number.isFinite(v) ? v : null;
-    };
-    let r = 255, g = 255, b = 255, a = 255;
-    if (h.length === 3 || h.length === 4) {
-      const r0 = toNib(h[0]);
-      const g0 = toNib(h[1]);
-      const b0 = toNib(h[2]);
-      const a0 = h.length === 4 ? toNib(h[3]) : 15;
-      if (r0 == null || g0 == null || b0 == null || a0 == null) return null;
-      r = r0 * 17;
-      g = g0 * 17;
-      b = b0 * 17;
-      a = a0 * 17;
-    } else {
-      const r0 = toByte2(h[0], h[1]);
-      const g0 = toByte2(h[2], h[3]);
-      const b0 = toByte2(h[4], h[5]);
-      const a0 = h.length === 8 ? toByte2(h[6], h[7]) : 255;
-      if (r0 == null || g0 == null || b0 == null || a0 == null) return null;
-      r = r0;
-      g = g0;
-      b = b0;
-      a = a0;
-    }
-    return [r / 255, g / 255, b / 255, a / 255];
+  function _u32(v, d) {
+    const n = v == null ? d : v;
+    return n >>> 0 | 0;
   }
-  function _parseColorStop(c) {
-    if (c == null) return [1, 1, 1, 1];
-    if (typeof c === "string") {
-      const x = _hexToRGBA01(c);
-      return x || [1, 1, 1, 1];
-    }
-    if (Array.isArray(c)) {
-      const r0 = +c[0];
-      const g0 = +c[1];
-      const b0 = +c[2];
-      const a0 = c.length > 3 ? +c[3] : 1;
-      const maxv = Math.max(r0, g0, b0, a0);
-      const scale = maxv > 1.5 ? 1 / 255 : 1;
-      return [
-        _clamp01(r0 * scale),
-        _clamp01(g0 * scale),
-        _clamp01(b0 * scale),
-        _clamp01(a0 * scale)
-      ];
-    }
-    if (typeof c === "object") {
-      const r0 = +c.r;
-      const g0 = +c.g;
-      const b0 = +c.b;
-      const a0 = "a" in c ? +c.a : 1;
-      const maxv = Math.max(r0, g0, b0, a0);
-      const scale = maxv > 1.5 ? 1 / 255 : 1;
-      return [
-        _clamp01(r0 * scale),
-        _clamp01(g0 * scale),
-        _clamp01(b0 * scale),
-        _clamp01(a0 * scale)
-      ];
-    }
-    return [1, 1, 1, 1];
+  function _f32(v, d) {
+    const n = v == null ? d : v;
+    const x = +n;
+    return Number.isFinite(x) ? x : d;
   }
-  function _rgbToHsv(r, g, b) {
-    const mx = Math.max(r, g, b);
-    const mn = Math.min(r, g, b);
-    const d = mx - mn;
-    let h = 0;
-    if (d > 1e-12) {
-      if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
-      else if (mx === g) h = (b - r) / d + 2;
-      else h = (r - g) / d + 4;
-      h /= 6;
-    }
-    const s = mx <= 1e-12 ? 0 : d / mx;
-    const v = mx;
-    return [h, s, v];
+  function _v3(a, d0, d1, d2) {
+    if (!Array.isArray(a)) return [d0, d1, d2];
+    return [
+      Number.isFinite(+a[0]) ? +a[0] : d0,
+      Number.isFinite(+a[1]) ? +a[1] : d1,
+      Number.isFinite(+a[2]) ? +a[2] : d2
+    ];
   }
-  function _hsvToRgb(h, s, v) {
-    h = (h % 1 + 1) % 1;
-    s = _clamp01(s);
-    v = _clamp01(v);
-    const i = Math.floor(h * 6);
-    const f = h * 6 - i;
-    const p = v * (1 - s);
-    const q = v * (1 - f * s);
-    const t = v * (1 - (1 - f) * s);
-    switch (i % 6) {
-      case 0:
-        return [v, t, p];
-      case 1:
-        return [q, v, p];
-      case 2:
-        return [p, v, t];
-      case 3:
-        return [p, q, v];
-      case 4:
-        return [t, p, v];
-      default:
-        return [v, p, q];
-    }
-  }
-  function _lerp(a, b, t) {
-    return a + (b - a) * t;
-  }
+  var _OIT_COMPOSITE_WGSL = `
+// group(0): accum/reveal + sampler
+@group(0) @binding(0) var accumTex : texture_2d<f32>;
+@group(0) @binding(1) var revealTex : texture_2d<f32>;
+@group(0) @binding(2) var samp : sampler;
+
+struct VSOut {
+  @builtin(position) pos : vec4<f32>,
+  @location(0) uv : vec2<f32>,
+};
+
+@vertex
+fn vs_fullscreen(@builtin(vertex_index) vi : u32) -> VSOut {
+  var pos = array<vec2<f32>, 3>(
+    vec2<f32>(-1.0, -1.0),
+    vec2<f32>( 3.0, -1.0),
+    vec2<f32>(-1.0,  3.0)
+  );
+  var uv = array<vec2<f32>, 3>(
+    vec2<f32>(0.0, 0.0),
+    vec2<f32>(2.0, 0.0),
+    vec2<f32>(0.0, 2.0)
+  );
+
+  var o : VSOut;
+  o.pos = vec4<f32>(pos[vi], 0.0, 1.0);
+  o.uv = uv[vi];
+  return o;
+}
+
+fn safeDiv(a: vec3<f32>, b: f32) -> vec3<f32> {
+  let d = max(b, 1e-6);
+  return a / d;
+}
+
+@fragment
+fn fs_composite_premul(i: VSOut) -> @location(0) vec4<f32> {
+  let acc = textureSampleLevel(accumTex, samp, i.uv, 0.0);
+  let rev = textureSampleLevel(revealTex, samp, i.uv, 0.0);
+
+  let rgb = safeDiv(acc.rgb, acc.a);
+  let revealage = clamp(rev.a, 0.0, 1.0);
+  let a = clamp(1.0 - revealage, 0.0, 1.0);
+
+  return vec4<f32>(rgb * a, a);
+}
+
+@fragment
+fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
+  let acc = textureSampleLevel(accumTex, samp, i.uv, 0.0);
+  let rgb = safeDiv(acc.rgb, acc.a);
+  return vec4<f32>(rgb, 1.0);
+}
+`;
   var RenderPipelineGPU = class _RenderPipelineGPU {
-    /**
-     * opts:
-     *  - renderUniformStride (default 256)
-     *  - initialGridDivs (default 256)
-     *  - quadScale (default 1.0)
-     *  - canvasAlphaMode (default "premultiplied") -> used by resize()
-     *  - gradientSize (default 512)
-     */
     constructor(device, context, vsCode = fractalVertex_default, fsCode = fractalFragment_default, opts = {}) {
       this.device = device;
       this.context = context;
       this.vsCode = vsCode;
       this.fsCode = fsCode;
-      this.renderUniformStride = opts.renderUniformStride ?? 256;
+      this.renderUniformStride = _alignUp(opts.renderUniformStride ?? 256, 256);
       this.gridDivs = opts.initialGridDivs ?? 256;
       this.quadScale = opts.quadScale ?? 1;
       this.canvasAlphaMode = opts.canvasAlphaMode ?? "premultiplied";
+      this.invertCameraY = opts.invertCameraY != null ? !!opts.invertCameraY : true;
       this.format = navigator.gpu.getPreferredCanvasFormat();
-      this._gradientSize = Math.max(2, Math.min(4096, (opts.gradientSize ?? 512) | 0));
+      this._gradientSize = Math.max(
+        2,
+        Math.min(4096, (opts.gradientSize ?? 512) | 0)
+      );
       this._gradientTex = null;
       this._gradientView = null;
       this._fallbackGradTex = null;
       this._fallbackGradView = null;
-      this._createSharedLayouts();
-      this._createRenderPipelines();
-      this._createBlitPipelines();
       this.sampler = device.createSampler({
         magFilter: "linear",
         minFilter: "linear",
@@ -2830,7 +2775,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       });
       this._renderUBOCapLayers = 0;
       this.renderUniformBuffer = null;
-      this._ensureRenderUniformCapacity(1);
+      this._renderUBOTmp = new ArrayBuffer(96);
+      this._renderUBODV = new DataView(this._renderUBOTmp);
+      this._threshTmp = new Float32Array(4);
       this.threshBuf = device.createBuffer({
         size: 16,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
@@ -2842,85 +2789,104 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       this.gridStripes = null;
       this.chunks = [];
       this.modelBuffers = [];
+      this._depthView = null;
       this.depthTexture = null;
+      this._lastCanvasSize = [0, 0];
+      this._fallbackSdfTex = null;
+      this._fallbackSdfView = null;
+      this._fallbackFlagTex = null;
+      this._fallbackFlagView = null;
+      this._oitAccumTex = null;
+      this._oitAccumView = null;
+      this._oitRevealTex = null;
+      this._oitRevealView = null;
+      this._oitW = 0;
+      this._oitH = 0;
+      this._oitBg = null;
+      this._modelKey = "";
+      this._lastSetChunksState = {
+        chunksRef: null,
+        layersCount: 0,
+        requireSdf: false
+      };
+      this._tmpLookTarget = [0, 0, 0];
+      this._rpDescOpaque = {
+        colorAttachments: [
+          {
+            view: null,
+            loadOp: "clear",
+            storeOp: "store",
+            clearValue: { r: 0, g: 0, b: 0, a: 1 }
+          }
+        ],
+        depthStencilAttachment: {
+          view: null,
+          depthLoadOp: "clear",
+          depthStoreOp: "store",
+          depthClearValue: 1
+        }
+      };
+      this._rpDescOIT = {
+        colorAttachments: [
+          {
+            view: null,
+            loadOp: "clear",
+            storeOp: "store",
+            clearValue: { r: 0, g: 0, b: 0, a: 0 }
+          },
+          {
+            view: null,
+            loadOp: "clear",
+            storeOp: "store",
+            clearValue: { r: 0, g: 0, b: 0, a: 1 }
+          }
+        ]
+      };
+      this._rpDescCompositePremul = {
+        colorAttachments: [
+          {
+            view: null,
+            loadOp: "clear",
+            storeOp: "store",
+            clearValue: { r: 0, g: 0, b: 0, a: 0 }
+          }
+        ]
+      };
+      this._rpDescCompositeOpaque = {
+        colorAttachments: [
+          {
+            view: null,
+            loadOp: "clear",
+            storeOp: "store",
+            clearValue: { r: 0, g: 0, b: 0, a: 1 }
+          }
+        ]
+      };
+      this._rpDescBlitOpaque = {
+        colorAttachments: [
+          {
+            view: null,
+            loadOp: "clear",
+            storeOp: "store",
+            clearValue: { r: 0, g: 0, b: 0, a: 1 }
+          }
+        ]
+      };
       this._createFallbackTextures();
       this._ensureGradientTexture(this._gradientSize);
       this.setHueGradientWheel({ count: this._gradientSize });
-      this._lastCanvasSize = [0, 0];
-      this._modelKey = "";
-      this._depthView = null;
-      this._lastSetChunks = { layersCount: 1, requireSdf: false };
+      this._createSharedLayouts();
+      this._createRenderPipelines();
+      this._createOITCompositePipeline();
+      this._createBlitPipelines();
+      this._ensureRenderUniformCapacity(1);
       this.writeThresholdUniform = (p) => this.writeThreshUniform(p);
       this.renderFrame = (p, c) => this.render(p, c);
       this.draw = (p, c) => this.render(p, c);
       this.blitToView = (p, v) => this.renderBlitToView(p, v);
     }
-    static generateGradientRGBA8(stops, count = 512, opts = {}) {
-      const n = Array.isArray(stops) ? stops.length : 0;
-      const K = Math.max(2, Math.min(4096, count | 0));
-      if (n < 2) {
-        const out2 = new Uint8Array(K * 4);
-        for (let i = 0; i < K; ++i) {
-          out2[i * 4 + 0] = 255;
-          out2[i * 4 + 1] = 255;
-          out2[i * 4 + 2] = 255;
-          out2[i * 4 + 3] = 255;
-        }
-        return out2;
-      }
-      const space = String(opts.space || "rgb").toLowerCase();
-      const cols = new Array(n);
-      for (let i = 0; i < n; ++i) cols[i] = _parseColorStop(stops[i]);
-      let colsHSV = null;
-      if (space === "hsv") {
-        colsHSV = new Array(n);
-        for (let i = 0; i < n; ++i) {
-          const c = cols[i];
-          const hsv = _rgbToHsv(c[0], c[1], c[2]);
-          colsHSV[i] = [hsv[0], hsv[1], hsv[2], c[3]];
-        }
-      }
-      const out = new Uint8Array(K * 4);
-      const denom = K === 1 ? 1 : K - 1;
-      for (let i = 0; i < K; ++i) {
-        const u = denom ? i / denom : 0;
-        const s = u * (n - 1);
-        let j = Math.floor(s);
-        if (j < 0) j = 0;
-        if (j > n - 2) j = n - 2;
-        const t = s - j;
-        let r = 1, g = 1, b = 1, a = 1;
-        if (colsHSV) {
-          const c0 = colsHSV[j];
-          const c1 = colsHSV[j + 1];
-          let h0 = c0[0];
-          let h1 = c1[0];
-          let dh = h1 - h0;
-          if (dh > 0.5) dh -= 1;
-          else if (dh < -0.5) dh += 1;
-          const h = h0 + dh * t;
-          const s2 = _lerp(c0[1], c1[1], t);
-          const v2 = _lerp(c0[2], c1[2], t);
-          const rgb = _hsvToRgb(h, s2, v2);
-          r = rgb[0];
-          g = rgb[1];
-          b = rgb[2];
-          a = _lerp(c0[3], c1[3], t);
-        } else {
-          const c0 = cols[j];
-          const c1 = cols[j + 1];
-          r = _lerp(c0[0], c1[0], t);
-          g = _lerp(c0[1], c1[1], t);
-          b = _lerp(c0[2], c1[2], t);
-          a = _lerp(c0[3], c1[3], t);
-        }
-        const o = i * 4;
-        out[o + 0] = Math.max(0, Math.min(1, r)) * 255 + 0.5 | 0;
-        out[o + 1] = Math.max(0, Math.min(1, g)) * 255 + 0.5 | 0;
-        out[o + 2] = Math.max(0, Math.min(1, b)) * 255 + 0.5 | 0;
-        out[o + 3] = Math.max(0, Math.min(1, a)) * 255 + 0.5 | 0;
-      }
-      return out;
+    setInvertCameraY(v) {
+      this.invertCameraY = !!v;
     }
     static generateHueWheelRGBA8(count = 512, opts = {}) {
       const K = Math.max(2, Math.min(4096, count | 0));
@@ -2934,11 +2900,49 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       for (let i = 0; i < K; ++i) {
         const u = denom ? i / denom : 0;
         const h = hueOffset + u * cycles;
-        const rgb = _hsvToRgb(h, s, v);
+        const hh = (h % 1 + 1) % 1;
+        const ii = Math.floor(hh * 6);
+        const ff = hh * 6 - ii;
+        const p = v * (1 - s);
+        const q = v * (1 - ff * s);
+        const t = v * (1 - (1 - ff) * s);
+        let r = v, g = t, b = p;
+        switch (ii % 6) {
+          case 0:
+            r = v;
+            g = t;
+            b = p;
+            break;
+          case 1:
+            r = q;
+            g = v;
+            b = p;
+            break;
+          case 2:
+            r = p;
+            g = v;
+            b = t;
+            break;
+          case 3:
+            r = p;
+            g = q;
+            b = v;
+            break;
+          case 4:
+            r = t;
+            g = p;
+            b = v;
+            break;
+          default:
+            r = v;
+            g = p;
+            b = q;
+            break;
+        }
         const o = i * 4;
-        out[o + 0] = rgb[0] * 255 + 0.5 | 0;
-        out[o + 1] = rgb[1] * 255 + 0.5 | 0;
-        out[o + 2] = rgb[2] * 255 + 0.5 | 0;
+        out[o + 0] = r * 255 + 0.5 | 0;
+        out[o + 1] = g * 255 + 0.5 | 0;
+        out[o + 2] = b * 255 + 0.5 | 0;
         out[o + 3] = _clamp01(a) * 255 + 0.5 | 0;
       }
       return out;
@@ -2980,7 +2984,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     }
     _ensureGradientTexture(count) {
       const W = Math.max(2, Math.min(4096, count | 0));
-      if (this._gradientTex && this._gradientSize === W && this._gradientView) return true;
+      if (this._gradientTex && this._gradientSize === W && this._gradientView)
+        return true;
       try {
         if (this._gradientTex) this._gradientTex.destroy();
       } catch {
@@ -3031,22 +3036,52 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
         return false;
       }
     }
-    setHueGradientOverride(stops, count = 512, opts = {}) {
-      const n = Array.isArray(stops) ? stops.length : 0;
-      const k = Math.max(2, Math.min(10, n | 0));
-      if (k < 2) return false;
-      const W = Math.max(2, Math.min(4096, count | 0 || 512));
-      const rgba = _RenderPipelineGPU.generateGradientRGBA8(stops.slice(0, k), W, opts);
-      const ok = this._uploadGradientRGBA8(rgba, W);
-      if (ok) this._rebuildBg0ForGradientIfNeeded();
-      return ok;
-    }
     setHueGradientWheel(opts = {}) {
-      const W = Math.max(2, Math.min(4096, opts.count | 0 || this._gradientSize || 512));
+      const W = Math.max(
+        2,
+        Math.min(4096, opts.count | 0 || this._gradientSize || 512)
+      );
       const rgba = _RenderPipelineGPU.generateHueWheelRGBA8(W, opts);
       const ok = this._uploadGradientRGBA8(rgba, W);
       if (ok) this._rebuildBg0ForGradientIfNeeded();
       return ok;
+    }
+    _ensureFallbackGradientTexture() {
+      if (this._fallbackGradTex && this._fallbackGradView) return true;
+      try {
+        if (this._fallbackGradTex) this._fallbackGradTex.destroy();
+      } catch {
+      }
+      this._fallbackGradTex = null;
+      this._fallbackGradView = null;
+      try {
+        this._fallbackGradTex = this.device.createTexture({
+          size: [1, 1, 1],
+          format: "rgba8unorm",
+          usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+        });
+        this._fallbackGradView = this._fallbackGradTex.createView({
+          dimension: "2d"
+        });
+        this.device.queue.writeTexture(
+          { texture: this._fallbackGradTex },
+          new Uint8Array([255, 255, 255, 255]),
+          { bytesPerRow: 256, rowsPerImage: 1 },
+          { width: 1, height: 1, depthOrArrayLayers: 1 }
+        );
+        return true;
+      } catch (e) {
+        this._fallbackGradTex = null;
+        this._fallbackGradView = null;
+        console.warn("Could not create fallback Gradient texture:", e);
+        return false;
+      }
+    }
+    _getGradientView() {
+      if (this._gradientView) return this._gradientView;
+      if (this._fallbackGradView) return this._fallbackGradView;
+      if (this._ensureFallbackGradientTexture()) return this._fallbackGradView;
+      return null;
     }
     _ensureArrayViewFromTexture(tex, layersCount) {
       if (!tex || typeof tex.createView !== "function") return null;
@@ -3062,13 +3097,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       try {
         return tex.createView({ dimension: "2d-array" });
       } catch {
-      }
-      return null;
-    }
-    _pickChunkTex(info, names) {
-      for (const n of names) {
-        const v = info[n];
-        if (v && typeof v.createView === "function") return v;
       }
       return null;
     }
@@ -3120,7 +3148,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     }
     _ensureRenderUniformCapacity(layers) {
       const need = Math.max(1, layers | 0);
-      if (this.renderUniformBuffer && (this._renderUBOCapLayers | 0) >= need) return;
+      if (this.renderUniformBuffer && (this._renderUBOCapLayers | 0) >= need)
+        return;
       let cap = 1;
       while (cap < need) cap <<= 1;
       try {
@@ -3218,21 +3247,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
           }
         ]
       };
-      this.renderPipelineDepth = this.device.createRenderPipeline({
-        layout: this._pipelineLayout,
-        vertex: vstate,
-        fragment: {
-          module: fsModule,
-          entryPoint: "fs_prepass",
-          targets: [{ format: this.format, writeMask: 0 }]
-        },
-        primitive: { topology: "triangle-list" },
-        depthStencil: {
-          format: "depth24plus",
-          depthWriteEnabled: true,
-          depthCompare: "less"
-        }
-      });
       this.renderPipelineOpaque = this.device.createRenderPipeline({
         layout: this._pipelineLayout,
         vertex: vstate,
@@ -3248,50 +3262,109 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
           depthCompare: "less"
         }
       });
-      this.renderPipelineTransparent = this.device.createRenderPipeline({
+      this._oitAccumFormat = "rgba16float";
+      this._oitRevealFormat = "rgba16float";
+      this.renderPipelineOIT = this.device.createRenderPipeline({
         layout: this._pipelineLayout,
         vertex: vstate,
         fragment: {
           module: fsModule,
-          entryPoint: "fs_main",
+          entryPoint: "fs_oit",
           targets: [
             {
-              format: this.format,
+              format: this._oitAccumFormat,
               blend: {
-                color: { srcFactor: "src-alpha", dstFactor: "one-minus-src-alpha", operation: "add" },
-                alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" }
+                color: { srcFactor: "one", dstFactor: "one", operation: "add" },
+                alpha: { srcFactor: "one", dstFactor: "one", operation: "add" }
               },
               writeMask: GPUColorWrite.ALL
+            },
+            {
+              format: this._oitRevealFormat,
+              blend: {
+                color: {
+                  srcFactor: "zero",
+                  dstFactor: "one-minus-src-alpha",
+                  operation: "add"
+                },
+                alpha: {
+                  srcFactor: "zero",
+                  dstFactor: "one-minus-src-alpha",
+                  operation: "add"
+                }
+              },
+              writeMask: GPUColorWrite.ALPHA
             }
           ]
         },
-        primitive: { topology: "triangle-list" },
-        depthStencil: {
-          format: "depth24plus",
-          depthWriteEnabled: false,
-          depthCompare: "less-equal"
-        }
+        primitive: { topology: "triangle-list" }
+      });
+    }
+    _createOITCompositePipeline() {
+      this._oitCompositeLayout = this.device.createBindGroupLayout({
+        entries: [
+          {
+            binding: 0,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: { sampleType: "float", viewDimension: "2d" }
+          },
+          {
+            binding: 1,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: { sampleType: "float", viewDimension: "2d" }
+          },
+          {
+            binding: 2,
+            visibility: GPUShaderStage.FRAGMENT,
+            sampler: { type: "filtering" }
+          }
+        ]
+      });
+      this._oitCompositePipelineLayout = this.device.createPipelineLayout({
+        bindGroupLayouts: [this._oitCompositeLayout]
+      });
+      const mod = this.device.createShaderModule({ code: _OIT_COMPOSITE_WGSL });
+      this._oitCompositePipelinePremul = this.device.createRenderPipeline({
+        layout: this._oitCompositePipelineLayout,
+        vertex: { module: mod, entryPoint: "vs_fullscreen" },
+        fragment: {
+          module: mod,
+          entryPoint: "fs_composite_premul",
+          targets: [{ format: this.format, writeMask: GPUColorWrite.ALL }]
+        },
+        primitive: { topology: "triangle-list" }
+      });
+      this._oitCompositePipelineOpaque = this.device.createRenderPipeline({
+        layout: this._oitCompositePipelineLayout,
+        vertex: { module: mod, entryPoint: "vs_fullscreen" },
+        fragment: {
+          module: mod,
+          entryPoint: "fs_composite_opaque",
+          targets: [{ format: this.format, writeMask: GPUColorWrite.ALL }]
+        },
+        primitive: { topology: "triangle-list" }
       });
     }
     _createBlitPipelines() {
       const vsBlitModule = this.device.createShaderModule({ code: fBlitVertex_default });
       const fsBlitModule = this.device.createShaderModule({ code: fBlitFragment_default });
+      const vstate = {
+        module: vsBlitModule,
+        entryPoint: "vs_blit",
+        buffers: [
+          {
+            arrayStride: 5 * 4,
+            stepMode: "vertex",
+            attributes: [
+              { shaderLocation: 0, offset: 0, format: "float32x3" },
+              { shaderLocation: 1, offset: 3 * 4, format: "float32x2" }
+            ]
+          }
+        ]
+      };
       this.renderPipelineBlitOpaque = this.device.createRenderPipeline({
         layout: this._pipelineLayout,
-        vertex: {
-          module: vsBlitModule,
-          entryPoint: "vs_blit",
-          buffers: [
-            {
-              arrayStride: 5 * 4,
-              stepMode: "vertex",
-              attributes: [
-                { shaderLocation: 0, offset: 0, format: "float32x3" },
-                { shaderLocation: 1, offset: 3 * 4, format: "float32x2" }
-              ]
-            }
-          ]
-        },
+        vertex: vstate,
         fragment: {
           module: fsBlitModule,
           entryPoint: "fs_blit",
@@ -3300,15 +3373,118 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
         primitive: { topology: "triangle-list" },
         depthStencil: void 0
       });
+      this.renderPipelineBlitTransparent = this.device.createRenderPipeline({
+        layout: this._pipelineLayout,
+        vertex: vstate,
+        fragment: {
+          module: fsBlitModule,
+          entryPoint: "fs_blit",
+          targets: [
+            {
+              format: this.format,
+              blend: {
+                color: {
+                  srcFactor: "src-alpha",
+                  dstFactor: "one-minus-src-alpha",
+                  operation: "add"
+                },
+                alpha: {
+                  srcFactor: "one",
+                  dstFactor: "one-minus-src-alpha",
+                  operation: "add"
+                }
+              },
+              writeMask: GPUColorWrite.ALL
+            }
+          ]
+        },
+        primitive: { topology: "triangle-list" },
+        depthStencil: void 0
+      });
+    }
+    _destroyOITTargets() {
+      try {
+        if (this._oitAccumTex) this._oitAccumTex.destroy();
+      } catch {
+      }
+      try {
+        if (this._oitRevealTex) this._oitRevealTex.destroy();
+      } catch {
+      }
+      this._oitAccumTex = null;
+      this._oitAccumView = null;
+      this._oitRevealTex = null;
+      this._oitRevealView = null;
+      this._oitBg = null;
+      this._oitW = 0;
+      this._oitH = 0;
+    }
+    _ensureOITTargets(w, h) {
+      const W = Math.max(1, w | 0);
+      const H = Math.max(1, h | 0);
+      if (this._oitAccumTex && this._oitRevealTex && this._oitW === W && this._oitH === H) {
+        if (this._oitBg) return true;
+        if (this._oitAccumView && this._oitRevealView) {
+          try {
+            this._oitBg = this.device.createBindGroup({
+              layout: this._oitCompositeLayout,
+              entries: [
+                { binding: 0, resource: this._oitAccumView },
+                { binding: 1, resource: this._oitRevealView },
+                { binding: 2, resource: this.sampler }
+              ]
+            });
+            return true;
+          } catch {
+            this._oitBg = null;
+            return false;
+          }
+        }
+      }
+      this._destroyOITTargets();
+      try {
+        this._oitAccumTex = this.device.createTexture({
+          size: [W, H, 1],
+          format: this._oitAccumFormat,
+          usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+        });
+        this._oitAccumView = this._oitAccumTex.createView({ dimension: "2d" });
+        this._oitRevealTex = this.device.createTexture({
+          size: [W, H, 1],
+          format: this._oitRevealFormat,
+          usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+        });
+        this._oitRevealView = this._oitRevealTex.createView({ dimension: "2d" });
+        this._oitBg = this.device.createBindGroup({
+          layout: this._oitCompositeLayout,
+          entries: [
+            { binding: 0, resource: this._oitAccumView },
+            { binding: 1, resource: this._oitRevealView },
+            { binding: 2, resource: this.sampler }
+          ]
+        });
+        this._oitW = W;
+        this._oitH = H;
+        return true;
+      } catch (e) {
+        console.warn("Could not create OIT targets:", e);
+        this._destroyOITTargets();
+        return false;
+      }
     }
     resize(clientWidth, clientHeight) {
-      const pw = Math.floor(clientWidth * (window.devicePixelRatio || 1));
-      const ph = Math.floor(clientHeight * (window.devicePixelRatio || 1));
+      const dpr = window.devicePixelRatio || 1;
+      const pw = Math.floor(clientWidth * dpr);
+      const ph = Math.floor(clientHeight * dpr);
+      const lastW = this._lastCanvasSize[0] | 0;
+      const lastH = this._lastCanvasSize[1] | 0;
+      if (pw === lastW && ph === lastH && pw > 0 && ph > 0) return;
       this.context.configure({
         device: this.device,
         format: this.format,
         alphaMode: this.canvasAlphaMode,
-        size: [pw, ph]
+        size: [pw, ph],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
       });
       try {
         if (this.depthTexture) this.depthTexture.destroy();
@@ -3322,78 +3498,57 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       this._depthView = null;
       this._lastCanvasSize = [pw, ph];
       this.gridStripes = null;
-    }
-    _ensureFallbackGradientTexture() {
-      if (this._fallbackGradTex && this._fallbackGradView) return true;
-      try {
-        if (this._fallbackGradTex) this._fallbackGradTex.destroy();
-      } catch {
-      }
-      this._fallbackGradTex = null;
-      this._fallbackGradView = null;
-      try {
-        this._fallbackGradTex = this.device.createTexture({
-          size: [1, 1, 1],
-          format: "rgba8unorm",
-          usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
-        });
-        this._fallbackGradView = this._fallbackGradTex.createView({ dimension: "2d" });
-        this.device.queue.writeTexture(
-          { texture: this._fallbackGradTex },
-          new Uint8Array([255, 255, 255, 255]),
-          { bytesPerRow: 256, rowsPerImage: 1 },
-          { width: 1, height: 1, depthOrArrayLayers: 1 }
-        );
-        return true;
-      } catch (e) {
-        this._fallbackGradTex = null;
-        this._fallbackGradView = null;
-        console.warn("Could not create fallback Gradient texture:", e);
-        return false;
-      }
-    }
-    _getGradientView() {
-      if (this._gradientView) return this._gradientView;
-      if (this._fallbackGradView) return this._fallbackGradView;
-      if (this._ensureFallbackGradientTexture()) return this._fallbackGradView;
-      return null;
+      this._destroyOITTargets();
     }
     async setChunks(chunks = [], layers = 1, opts = {}) {
-      const { requireSdf = false } = opts;
-      for (const c of this.chunks) {
-        delete c._renderBg0;
-        delete c._renderBg1;
-        delete c._modelBufIdx;
-        delete c._modelData;
-        delete c._fractalArrayView;
-        delete c._sdfArrayView;
-        delete c._flagArrayView;
-      }
-      this.chunks = chunks || [];
-      for (const b of this.modelBuffers) {
-        try {
-          b.destroy();
-        } catch {
-        }
-      }
-      this.modelBuffers = this.chunks.map(
-        () => this.device.createBuffer({ size: 4 * 20, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
-      );
-      const bgLayout0 = this._bgLayout0;
-      const bgLayout1 = this._bgLayout1;
       const layersCount = Math.max(1, Math.floor(layers || 1));
-      this._lastSetChunks = { layersCount, requireSdf: !!requireSdf };
+      const requireSdf = !!opts.requireSdf;
+      if (this._lastSetChunksState.chunksRef === chunks && this._lastSetChunksState.layersCount === layersCount && this._lastSetChunksState.requireSdf === requireSdf) {
+        return;
+      }
+      this._ensureRenderUniformCapacity(layersCount);
       const gradView = this._getGradientView();
       if (!gradView) {
-        throw new Error("RenderPipelineGPU.setChunks: missing gradient view for binding(0,5).");
+        throw new Error(
+          "RenderPipelineGPU.setChunks: missing gradient view for binding(0,5)."
+        );
       }
-      for (let i = 0; i < this.chunks.length; ++i) {
-        const info = this.chunks[i];
-        info._modelData = new Float32Array(20);
+      const nextChunks = chunks || [];
+      const nextCount = nextChunks.length | 0;
+      if (this.chunks !== nextChunks) this.chunks = nextChunks;
+      if (this.modelBuffers.length !== nextCount) {
+        const old = this.modelBuffers;
+        for (let i = nextCount; i < old.length; ++i) {
+          try {
+            old[i].destroy();
+          } catch {
+          }
+        }
+        old.length = nextCount;
+        for (let i = 0; i < nextCount; ++i) {
+          if (!old[i]) {
+            old[i] = this.device.createBuffer({
+              size: 4 * 20,
+              usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+            });
+          }
+        }
+        this.modelBuffers = old;
+      }
+      const bgLayout0 = this._bgLayout0;
+      const bgLayout1 = this._bgLayout1;
+      for (let i = 0; i < nextCount; ++i) {
+        const info = nextChunks[i];
+        if (!info) continue;
+        if (!info._modelData) info._modelData = new Float32Array(20);
         const fractalTex = info.fractalTex || info.fractalTexture || info.fractal || null;
         const sdfTex = info.sdfTex || info.sdfTexture || info.sdf || null;
         const flagTex = info.flagTex || info.flagTexture || info.flag || null;
-        const fractalArrayView = this._ensureArrayViewFromTexture(fractalTex, layersCount) || info.storageView || info.fractalView || this._pickChunkArrayView(info, ["fractalViews", "fractalLayerViews", "layerViews"]);
+        const fractalArrayView = this._ensureArrayViewFromTexture(fractalTex, layersCount) || info.storageView || info.fractalView || this._pickChunkArrayView(info, [
+          "fractalViews",
+          "fractalLayerViews",
+          "layerViews"
+        ]);
         if (!fractalArrayView) {
           const keys = Object.keys(info);
           const msg = `RenderPipelineGPU.setChunks: chunk[${i}] missing fractal array view. chunk keys: ${keys.join(",")}`;
@@ -3403,113 +3558,139 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
         const sdfArrayView = this._ensureArrayViewFromTexture(sdfTex, layersCount) || info.sdfView || this._fallbackSdfView;
         const flagArrayView = this._ensureArrayViewFromTexture(flagTex, layersCount) || info.flagView || this._fallbackFlagView;
         if (requireSdf && (!sdfArrayView || !flagArrayView)) {
-          throw new Error(`RenderPipelineGPU.setChunks: chunk[${i}] missing SDF or flag view and requireSdf=true.`);
+          throw new Error(
+            `RenderPipelineGPU.setChunks: chunk[${i}] missing SDF or flag view and requireSdf=true.`
+          );
         }
+        const key = `${layersCount}|${requireSdf ? 1 : 0}`;
+        const prevKey = info._bindKey || "";
         info._fractalArrayView = fractalArrayView;
         info._sdfArrayView = sdfArrayView;
         info._flagArrayView = flagArrayView;
-        info._renderBg0 = this.device.createBindGroup({
-          layout: bgLayout0,
-          entries: [
-            { binding: 0, resource: fractalArrayView },
-            { binding: 1, resource: this.sampler },
-            {
-              binding: 2,
-              resource: {
-                buffer: this.renderUniformBuffer,
-                offset: 0,
-                size: this.renderUniformStride
-              }
-            },
-            { binding: 3, resource: { buffer: this.cameraBuffer } },
-            { binding: 4, resource: { buffer: this.threshBuf } },
-            { binding: 5, resource: gradView }
-          ]
-        });
-        try {
-          info._renderBg1 = this.device.createBindGroup({
-            layout: bgLayout1,
+        if (prevKey !== key || !info._renderBg0) {
+          info._renderBg0 = this.device.createBindGroup({
+            layout: bgLayout0,
             entries: [
-              { binding: 0, resource: { buffer: this.modelBuffers[i] } },
-              { binding: 1, resource: sdfArrayView },
-              { binding: 2, resource: flagArrayView },
-              { binding: 3, resource: this.sampler }
+              { binding: 0, resource: fractalArrayView },
+              { binding: 1, resource: this.sampler },
+              {
+                binding: 2,
+                resource: {
+                  buffer: this.renderUniformBuffer,
+                  offset: 0,
+                  size: this.renderUniformStride
+                }
+              },
+              { binding: 3, resource: { buffer: this.cameraBuffer } },
+              { binding: 4, resource: { buffer: this.threshBuf } },
+              { binding: 5, resource: gradView }
             ]
           });
-        } catch (e) {
-          console.error("setChunks: createBindGroup(bg1) failed for chunk", i, e);
-          info._renderBg1 = null;
+          try {
+            info._renderBg1 = this.device.createBindGroup({
+              layout: bgLayout1,
+              entries: [
+                { binding: 0, resource: { buffer: this.modelBuffers[i] } },
+                { binding: 1, resource: sdfArrayView },
+                { binding: 2, resource: flagArrayView },
+                { binding: 3, resource: this.sampler }
+              ]
+            });
+          } catch (e) {
+            console.error("setChunks: createBindGroup(bg1) failed for chunk", i, e);
+            info._renderBg1 = null;
+          }
+          info._modelBufIdx = i;
+          info._bindKey = key;
+        } else {
+          info._modelBufIdx = i;
         }
-        info._modelBufIdx = i;
       }
       this._modelKey = "";
+      this._lastSetChunksState = { chunksRef: chunks, layersCount, requireSdf };
     }
     updateCamera(cam, aspect) {
       const proj = perspective(cam.fov, aspect, 0.01, 1e4);
-      const view = lookAt(cam.cameraPos, cam.lookTarget, cam.upDir);
+      let target = cam.lookTarget;
+      if (this.invertCameraY && target && cam.cameraPos) {
+        const cp = cam.cameraPos;
+        const cx = +cp[0], cy = +cp[1], cz = +cp[2];
+        const tx = +target[0], ty = +target[1], tz = +target[2];
+        const dy = ty - cy;
+        const tmp = this._tmpLookTarget;
+        tmp[0] = tx;
+        tmp[1] = cy - dy;
+        tmp[2] = tz;
+        target = tmp;
+      }
+      const view = lookAt(cam.cameraPos, target, cam.upDir);
       const viewProj = mulMat(proj, view);
       this.device.queue.writeBuffer(this.cameraBuffer, 0, viewProj);
     }
     writeRenderUniform(paramsState = {}, dstByteOffset = 0) {
-      const defaults = {
-        layerIndex: 0,
-        scheme: 0,
-        useHueGradient: false,
-        dispMode: 0,
-        bowlOn: false,
-        lightingOn: false,
-        dispLimitOn: false,
-        alphaMode: 0,
-        hueOffset: 0,
-        dispAmp: 0.15,
-        dispCurve: 3,
-        bowlDepth: 0.25,
-        quadScale: 1,
-        gridSize: 512,
-        slopeLimit: 0.5,
-        wallJump: 0.05,
-        lightPos: [0, 0, 5],
-        specPower: 32,
-        worldOffset: 0,
-        worldStart: 0
-      };
-      const p = Object.assign({}, defaults, paramsState);
-      const lp = Array.isArray(p.lightPos) ? p.lightPos : defaults.lightPos;
-      const useHueGradient = p.useHueGradient != null ? !!p.useHueGradient : p.hueGradientOn != null ? !!p.hueGradientOn : p.hueGradient != null ? !!p.hueGradient : false;
-      const worldOffset = p.worldOffset != null ? +p.worldOffset : p.layerSeparation != null ? +p.layerSeparation : p.layerSpacing != null ? +p.layerSpacing : p.layerStep != null ? +p.layerStep : p.layerOffset != null ? +p.layerOffset : 0;
-      const worldStart = p.worldStart != null ? +p.worldStart : p.layerStart != null ? +p.layerStart : p.layerBase != null ? +p.layerBase : 0;
-      const buf = new ArrayBuffer(96);
-      const dv = new DataView(buf);
-      dv.setUint32(0, p.layerIndex >>> 0, true);
-      dv.setUint32(4, p.scheme >>> 0, true);
+      const dv = this._renderUBODV;
+      const layerIndex = _u32(paramsState.layerIndex, 0);
+      const scheme = _u32(paramsState.scheme, 0);
+      const useHueGradient = paramsState.useHueGradient != null ? !!paramsState.useHueGradient : paramsState.hueGradientOn != null ? !!paramsState.hueGradientOn : paramsState.hueGradient != null ? !!paramsState.hueGradient : false;
+      const dispMode = _u32(paramsState.dispMode, 0);
+      const bowlOn = !!paramsState.bowlOn;
+      const lightingOn = !!paramsState.lightingOn;
+      const dispLimitOn = !!paramsState.dispLimitOn;
+      const alphaMode = _u32(paramsState.alphaMode, 0);
+      const hueOffset = _f32(paramsState.hueOffset, 0);
+      const dispAmp = _f32(paramsState.dispAmp, 0.15);
+      const dispCurve = _f32(paramsState.dispCurve, 3);
+      const bowlDepth = _f32(paramsState.bowlDepth, 0.25);
+      const quadScale = _f32(
+        paramsState.quadScale,
+        _isFiniteNum(this.quadScale) ? +this.quadScale : 1
+      );
+      const gridSize = _f32(paramsState.gridSize, 512);
+      const slopeLimit = _f32(paramsState.slopeLimit, 0.5);
+      const wallJump = _f32(paramsState.wallJump, 0.05);
+      const lp = _v3(paramsState.lightPos, 0, 0, 5);
+      const specPower = _f32(paramsState.specPower, 32);
+      const worldOffset = paramsState.worldOffset != null ? _f32(paramsState.worldOffset, 0) : paramsState.layerSeparation != null ? _f32(paramsState.layerSeparation, 0) : paramsState.layerSpacing != null ? _f32(paramsState.layerSpacing, 0) : paramsState.layerStep != null ? _f32(paramsState.layerStep, 0) : paramsState.layerOffset != null ? _f32(paramsState.layerOffset, 0) : 0;
+      const worldStart = paramsState.worldStart != null ? _f32(paramsState.worldStart, 0) : paramsState.layerStart != null ? _f32(paramsState.layerStart, 0) : paramsState.layerBase != null ? _f32(paramsState.layerBase, 0) : 0;
+      dv.setUint32(0, layerIndex >>> 0, true);
+      dv.setUint32(4, scheme >>> 0, true);
       dv.setUint32(8, useHueGradient ? 1 : 0, true);
-      dv.setUint32(12, p.dispMode >>> 0, true);
-      dv.setUint32(16, p.bowlOn ? 1 : 0, true);
-      dv.setUint32(20, p.lightingOn ? 1 : 0, true);
-      dv.setUint32(24, p.dispLimitOn ? 1 : 0, true);
-      dv.setUint32(28, p.alphaMode >>> 0, true);
-      dv.setFloat32(32, +p.hueOffset || 0, true);
-      dv.setFloat32(36, +p.dispAmp || 0, true);
-      dv.setFloat32(40, +p.dispCurve || 0, true);
-      dv.setFloat32(44, +p.bowlDepth || 0, true);
-      dv.setFloat32(48, +p.quadScale || 0, true);
-      dv.setFloat32(52, +p.gridSize || 0, true);
-      dv.setFloat32(56, +p.slopeLimit || 0, true);
-      dv.setFloat32(60, +p.wallJump || 0, true);
-      dv.setFloat32(64, +(lp[0] ?? 0), true);
-      dv.setFloat32(68, +(lp[1] ?? 0), true);
-      dv.setFloat32(72, +(lp[2] ?? 0), true);
-      dv.setFloat32(76, +p.specPower || 0, true);
-      dv.setFloat32(80, Number.isFinite(worldOffset) ? worldOffset : 0, true);
-      dv.setFloat32(84, Number.isFinite(worldStart) ? worldStart : 0, true);
+      dv.setUint32(12, dispMode >>> 0, true);
+      dv.setUint32(16, bowlOn ? 1 : 0, true);
+      dv.setUint32(20, lightingOn ? 1 : 0, true);
+      dv.setUint32(24, dispLimitOn ? 1 : 0, true);
+      dv.setUint32(28, alphaMode >>> 0, true);
+      dv.setFloat32(32, hueOffset, true);
+      dv.setFloat32(36, dispAmp, true);
+      dv.setFloat32(40, dispCurve, true);
+      dv.setFloat32(44, bowlDepth, true);
+      dv.setFloat32(48, quadScale, true);
+      dv.setFloat32(52, gridSize, true);
+      dv.setFloat32(56, slopeLimit, true);
+      dv.setFloat32(60, wallJump, true);
+      dv.setFloat32(64, lp[0], true);
+      dv.setFloat32(68, lp[1], true);
+      dv.setFloat32(72, lp[2], true);
+      dv.setFloat32(76, specPower, true);
+      dv.setFloat32(80, worldOffset, true);
+      dv.setFloat32(84, worldStart, true);
       dv.setFloat32(88, 0, true);
       dv.setFloat32(92, 0, true);
-      this.device.queue.writeBuffer(this.renderUniformBuffer, dstByteOffset >>> 0, buf);
+      this.device.queue.writeBuffer(
+        this.renderUniformBuffer,
+        dstByteOffset >>> 0,
+        this._renderUBOTmp
+      );
     }
     writeThreshUniform(paramsState = {}) {
-      const defaults = { lowT: 0, highT: 1, basis: 0 };
-      const p = Object.assign({}, defaults, paramsState);
-      this.device.queue.writeBuffer(this.threshBuf, 0, new Float32Array([p.lowT, p.highT, p.basis, 0]));
+      const lowT = _f32(paramsState.lowT, 0);
+      const highT = _f32(paramsState.highT, 1);
+      const basis = _f32(paramsState.basis, 0);
+      this._threshTmp[0] = lowT;
+      this._threshTmp[1] = highT;
+      this._threshTmp[2] = basis;
+      this._threshTmp[3] = 0;
+      this.device.queue.writeBuffer(this.threshBuf, 0, this._threshTmp);
     }
     _updateModelBuffersIfNeeded(paramsState) {
       const gridSize = _isFiniteNum(paramsState.gridSize) ? +paramsState.gridSize : 512;
@@ -3553,111 +3734,139 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       }
       this._modelKey = key;
     }
-    async render(paramsState, camState) {
-      const aspect = this._lastCanvasSize[0] && this._lastCanvasSize[1] ? this._lastCanvasSize[0] / this._lastCanvasSize[1] : 1;
-      this.updateCamera(camState, aspect);
-      const nLayers = Math.max(1, Math.floor(paramsState.nLayers ?? paramsState.layers ?? 1));
-      const alphaMode = paramsState.alphaMode ?? 0;
-      this._ensureRenderUniformCapacity(nLayers);
-      this.writeThreshUniform(paramsState);
-      if (!this.gridStripes) {
-        this.gridStripes = await buildPlaneGridChunks(this.device, this.gridDivs);
-      }
-      this._updateModelBuffersIfNeeded(paramsState);
-      const encoder = this.device.createCommandEncoder();
-      const viewTex = this.context.getCurrentTexture().createView();
-      if (!this._depthView) this._depthView = this.depthTexture.createView();
-      const useTransparent = alphaMode === 1 || alphaMode === 2;
-      const pass = encoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view: viewTex,
-            loadOp: "clear",
-            storeOp: "store",
-            clearValue: { r: 0, g: 0, b: 0, a: 1 }
-          }
-        ],
-        depthStencilAttachment: {
-          view: this._depthView,
-          depthLoadOp: "clear",
-          depthStoreOp: "store",
-          depthClearValue: 1
-        }
-      });
-      pass.setPipeline(useTransparent ? this.renderPipelineTransparent : this.renderPipelineOpaque);
-      for (let layer = nLayers - 1; layer >= 0; --layer) {
-        const dyn = layer * this.renderUniformStride >>> 0;
-        this.writeRenderUniform(Object.assign({}, paramsState, { layerIndex: layer }), dyn);
-        for (let i = 0; i < this.chunks.length; ++i) {
-          const info = this.chunks[i];
-          const bg0 = info._renderBg0;
-          if (!bg0) continue;
-          pass.setBindGroup(0, bg0, [dyn]);
-          const bg1 = info._renderBg1;
-          if (!bg1) continue;
-          pass.setBindGroup(1, bg1);
-          for (const stripe of this.gridStripes) {
-            pass.setVertexBuffer(0, stripe.vbuf);
-            pass.setIndexBuffer(stripe.ibuf, "uint32");
+    _drawAll(pass, paramsState, nLayers) {
+      const chunks = this.chunks;
+      const stripes = this.gridStripes;
+      const stride = this.renderUniformStride;
+      const chunkCount = chunks.length | 0;
+      const stripeCount = stripes.length | 0;
+      const savedLayer = paramsState.layerIndex;
+      for (let s = 0; s < stripeCount; ++s) {
+        const stripe = stripes[s];
+        pass.setVertexBuffer(0, stripe.vbuf);
+        pass.setIndexBuffer(stripe.ibuf, "uint32");
+        for (let layer = 0; layer < nLayers; ++layer) {
+          const dyn = layer * stride >>> 0;
+          paramsState.layerIndex = layer;
+          this.writeRenderUniform(paramsState, dyn);
+          for (let i = 0; i < chunkCount; ++i) {
+            const info = chunks[i];
+            const bg0 = info && info._renderBg0;
+            const bg1 = info && info._renderBg1;
+            if (!bg0 || !bg1) continue;
+            pass.setBindGroup(0, bg0, [dyn]);
+            pass.setBindGroup(1, bg1);
             pass.drawIndexed(stripe.indexCount, 1, 0, 0, 0);
           }
         }
       }
-      pass.end();
-      this.device.queue.submit([encoder.finish()]);
-      await this.device.queue.onSubmittedWorkDone();
+      paramsState.layerIndex = savedLayer;
     }
-    async renderBlitToView(paramsState, colorView) {
-      this._ensureRenderUniformCapacity(1);
-      this.writeRenderUniform(paramsState, 0);
-      this.writeThreshUniform(paramsState);
+    async _ensureGrid() {
       if (!this.gridStripes) {
         this.gridStripes = await buildPlaneGridChunks(this.device, this.gridDivs);
       }
-      this._updateModelBuffersIfNeeded(paramsState);
+    }
+    async render(paramsState, camState) {
+      const p = paramsState || {};
+      const w = this._lastCanvasSize[0] | 0;
+      const h = this._lastCanvasSize[1] | 0;
+      const aspect = w > 0 && h > 0 ? w / h : 1;
+      this.updateCamera(camState, aspect);
+      const nLayers = Math.max(1, Math.floor(p.nLayers ?? p.layers ?? 1));
+      const alphaMode = _u32(p.alphaMode, 0);
+      const useOIT = alphaMode === 1 || alphaMode === 2;
+      this._ensureRenderUniformCapacity(nLayers);
+      this.writeThreshUniform(p);
+      await this._ensureGrid();
+      this._updateModelBuffersIfNeeded(p);
       const encoder = this.device.createCommandEncoder();
-      const rpass = encoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view: colorView,
-            loadOp: "clear",
-            storeOp: "store",
-            clearValue: { r: 0, g: 0, b: 0, a: 1 }
-          }
-        ]
-      });
-      rpass.setPipeline(this.renderPipelineBlitOpaque);
-      for (let i = 0; i < this.chunks.length; ++i) {
-        const info = this.chunks[i];
-        const bg0 = info._renderBg0;
-        if (!bg0) continue;
-        rpass.setBindGroup(0, bg0, [0]);
-        const bg1 = info._renderBg1;
-        if (!bg1) continue;
-        rpass.setBindGroup(1, bg1);
-        for (const stripe of this.gridStripes) {
-          rpass.setVertexBuffer(0, stripe.vbuf);
-          rpass.setIndexBuffer(stripe.ibuf, "uint32");
-          rpass.drawIndexed(stripe.indexCount, 1, 0, 0, 0);
+      const outView = this.context.getCurrentTexture().createView();
+      if (useOIT) {
+        if (!this._ensureOITTargets(w || 1, h || 1)) return;
+        const oitDesc = this._rpDescOIT;
+        oitDesc.colorAttachments[0].view = this._oitAccumView;
+        oitDesc.colorAttachments[1].view = this._oitRevealView;
+        const oitPass = encoder.beginRenderPass(oitDesc);
+        oitPass.setPipeline(this.renderPipelineOIT);
+        this._drawAll(oitPass, p, nLayers);
+        oitPass.end();
+        const compositePipeline = this.canvasAlphaMode === "opaque" ? this._oitCompositePipelineOpaque : this._oitCompositePipelinePremul;
+        const compDesc = this.canvasAlphaMode === "opaque" ? this._rpDescCompositeOpaque : this._rpDescCompositePremul;
+        compDesc.colorAttachments[0].view = outView;
+        const compPass = encoder.beginRenderPass(compDesc);
+        compPass.setPipeline(compositePipeline);
+        compPass.setBindGroup(0, this._oitBg);
+        compPass.draw(3, 1, 0, 0);
+        compPass.end();
+      } else {
+        if (!this.depthTexture) {
+          this.depthTexture = this.device.createTexture({
+            size: [Math.max(1, w), Math.max(1, h), 1],
+            format: "depth24plus",
+            usage: GPUTextureUsage.RENDER_ATTACHMENT
+          });
+          this._depthView = null;
         }
+        if (!this._depthView) this._depthView = this.depthTexture.createView();
+        const desc = this._rpDescOpaque;
+        desc.colorAttachments[0].view = outView;
+        desc.depthStencilAttachment.view = this._depthView;
+        const pass = encoder.beginRenderPass(desc);
+        pass.setPipeline(this.renderPipelineOpaque);
+        this._drawAll(pass, p, nLayers);
+        pass.end();
       }
-      rpass.end();
       this.device.queue.submit([encoder.finish()]);
-      await this.device.queue.onSubmittedWorkDone();
+      if (p && p.waitGPU) {
+        await this.device.queue.onSubmittedWorkDone();
+      }
+    }
+    async renderBlitToView(paramsState, colorView) {
+      const p = paramsState || {};
+      const w = this._lastCanvasSize[0] | 0;
+      const h = this._lastCanvasSize[1] | 0;
+      const nLayers = Math.max(1, Math.floor(p.nLayers ?? p.layers ?? 1));
+      const alphaMode = _u32(p.alphaMode, 0);
+      const useOIT = alphaMode === 1 || alphaMode === 2;
+      this._ensureRenderUniformCapacity(nLayers);
+      this.writeThreshUniform(p);
+      await this._ensureGrid();
+      this._updateModelBuffersIfNeeded(p);
+      const encoder = this.device.createCommandEncoder();
+      if (useOIT) {
+        if (!this._ensureOITTargets(w || 1, h || 1)) return;
+        const oitDesc = this._rpDescOIT;
+        oitDesc.colorAttachments[0].view = this._oitAccumView;
+        oitDesc.colorAttachments[1].view = this._oitRevealView;
+        const oitPass = encoder.beginRenderPass(oitDesc);
+        oitPass.setPipeline(this.renderPipelineOIT);
+        this._drawAll(oitPass, p, nLayers);
+        oitPass.end();
+        const compositePipeline = this.canvasAlphaMode === "opaque" ? this._oitCompositePipelineOpaque : this._oitCompositePipelinePremul;
+        const compDesc = this.canvasAlphaMode === "opaque" ? this._rpDescCompositeOpaque : this._rpDescCompositePremul;
+        compDesc.colorAttachments[0].view = colorView;
+        const compPass = encoder.beginRenderPass(compDesc);
+        compPass.setPipeline(compositePipeline);
+        compPass.setBindGroup(0, this._oitBg);
+        compPass.draw(3, 1, 0, 0);
+        compPass.end();
+      } else {
+        const desc = this._rpDescBlitOpaque;
+        desc.colorAttachments[0].view = colorView;
+        const rpass = encoder.beginRenderPass(desc);
+        rpass.setPipeline(this.renderPipelineBlitOpaque);
+        this._drawAll(rpass, p, nLayers);
+        rpass.end();
+      }
+      this.device.queue.submit([encoder.finish()]);
+      if (p && p.waitGPU) {
+        await this.device.queue.onSubmittedWorkDone();
+      }
     }
     async renderBlitToTexture(paramsState, targetTexture) {
       const view = targetTexture.createView();
       await this.renderBlitToView(paramsState, view);
-    }
-    idxForWorldX(worldX, paramsState) {
-      const half = paramsState.quadScale;
-      const uGlobal = (worldX + half) / (2 * half);
-      const pixelX = Math.floor(uGlobal * paramsState.gridSize);
-      for (let i = 0; i < this.chunks.length; ++i) {
-        const c = this.chunks[i];
-        if (pixelX >= c.offsetX && pixelX < c.offsetX + c.width) return i;
-      }
-      return 0;
     }
     destroy() {
       for (const b of this.modelBuffers) {
@@ -3716,6 +3925,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       }
       this.renderUniformBuffer = null;
       this._renderUBOCapLayers = 0;
+      this._destroyOITTargets();
     }
   };
   var fractalRender_default = RenderPipelineGPU;
@@ -5196,8 +5406,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
   }
   function needsSdf(params) {
     const p = params || renderGlobals.paramsState;
-    const req = requestedLayersFromParams(p);
-    if (req > 1) return false;
     return !!(p.dispMode && p.dispMode !== 0) || !!p.lightingOn;
   }
   async function initWebGPU() {
@@ -5227,10 +5435,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
   function _assertPipelineApi(renderPipeline) {
     if (!renderPipeline) throw new Error("Render pipeline missing");
     const hasSetChunks = typeof renderPipeline.setChunks === "function";
-    if (!hasSetChunks) throw new TypeError("renderPipeline.setChunks is not a function");
+    if (!hasSetChunks)
+      throw new TypeError("renderPipeline.setChunks is not a function");
     const hasRender = typeof renderPipeline.render === "function" || typeof renderPipeline.renderFrame === "function" || typeof renderPipeline.draw === "function";
     if (!hasRender && typeof renderPipeline.renderBlitToView !== "function") {
-      throw new TypeError("renderPipeline has no render/renderFrame/draw/renderBlitToView");
+      throw new TypeError(
+        "renderPipeline has no render/renderFrame/draw/renderBlitToView"
+      );
     }
   }
   async function initRender() {
@@ -5239,7 +5450,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     const context = canvas.getContext("webgpu");
     const format = navigator.gpu.getPreferredCanvasFormat();
     function parseAlphaModeToNumeric(mode) {
-      if (mode === void 0 || mode === null) return Number(renderGlobals.paramsState.alphaMode || 0);
+      if (mode === void 0 || mode === null)
+        return Number(renderGlobals.paramsState.alphaMode || 0);
       if (typeof mode === "number" && Number.isFinite(mode)) {
         const n = Math.floor(mode);
         if (n === 0) return 0;
@@ -5292,14 +5504,25 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       lookTarget[2] = cameraPos[2] + dz;
       renderGlobals.cameraDirty = true;
     }
-    const fractalCompute = new FractalTileComputeGPU(device, void 0, void 0, uniformStride);
+    const fractalCompute = new FractalTileComputeGPU(
+      device,
+      void 0,
+      void 0,
+      uniformStride
+    );
     const sdfCompute = new SdfComputeGPU(device, uniformStride);
-    const renderPipeline = new RenderPipelineGPU2(device, context, void 0, void 0, {
-      renderUniformStride: 256,
-      initialGridDivs: renderGlobals.paramsState.gridDivs,
-      quadScale: renderGlobals.paramsState.quadScale,
-      canvasAlphaMode: currentAlphaMode
-    });
+    const renderPipeline = new RenderPipelineGPU2(
+      device,
+      context,
+      void 0,
+      void 0,
+      {
+        renderUniformStride: 256,
+        initialGridDivs: renderGlobals.paramsState.gridDivs,
+        quadScale: renderGlobals.paramsState.quadScale,
+        canvasAlphaMode: currentAlphaMode
+      }
+    );
     _assertPipelineApi(renderPipeline);
     const slabPipeline = new fSlabCompute_default(device, context, {
       uniformStride,
@@ -5322,9 +5545,14 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     let exporting = false;
     let _noSdfCacheSrc = null;
     let _noSdfCache = null;
+    let _withSdfCacheSrc = null;
+    let _withSdfCache = null;
+    let _sdfAllocEpoch = 0;
     function invalidateChunkCaches() {
       _noSdfCacheSrc = null;
       _noSdfCache = null;
+      _withSdfCacheSrc = null;
+      _withSdfCache = null;
     }
     function requestedLayers() {
       return requestedLayersFromParams(renderGlobals.paramsState);
@@ -5371,7 +5599,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     function effectiveSplitCount(requestedSplit) {
       const req = Math.max(1, Math.floor(requestedSplit || 0));
       const eff = Math.min(req, MAX_PIXELS_PER_CHUNK);
-      if (eff !== req) console.debug("splitCount clamped: requested=" + req + ", effective=" + eff);
+      if (eff !== req)
+        console.debug(
+          "splitCount clamped: requested=" + req + ", effective=" + eff
+        );
       return eff;
     }
     function normRenderMode(v) {
@@ -5386,7 +5617,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     async function ensureSlabChunks(layersToUse) {
       if (!Array.isArray(chunkInfos) || chunkInfos.length === 0) return;
       layersToUse = Math.max(1, layersToUse | 0);
-      if (_slabSetChunksSrc === chunkInfos && _slabSetChunksLayers === layersToUse) return;
+      if (_slabSetChunksSrc === chunkInfos && _slabSetChunksLayers === layersToUse)
+        return;
       await slabPipeline.setChunks(chunkInfos, layersToUse);
       _slabSetChunksSrc = chunkInfos;
       _slabSetChunksLayers = layersToUse;
@@ -5431,6 +5663,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       });
       _noSdfCacheSrc = chunks;
       _noSdfCache = out;
+      return out;
+    }
+    function chunksWithSdf(chunks = []) {
+      if (_withSdfCacheSrc === chunks && _withSdfCache) return _withSdfCache;
+      const out = (chunks || []).map((c) => Object.assign({}, c));
+      _withSdfCacheSrc = chunks;
+      _withSdfCache = out;
       return out;
     }
     function freeSdfData(chunks = []) {
@@ -5486,10 +5725,14 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
         delete c._usingTmpSdfFallback;
       }
       sdfReady = false;
+      _sdfAllocEpoch = 0;
       invalidateChunkCaches();
     }
     async function computeFractalLayer(layerIndex, aspect = 1) {
-      let requested = Math.max(1, Math.floor(renderGlobals.paramsState.splitCount || 0));
+      let requested = Math.max(
+        1,
+        Math.floor(renderGlobals.paramsState.splitCount || 0)
+      );
       let eff = Math.min(requested, MAX_PIXELS_PER_CHUNK);
       eff = Math.max(eff, MIN_SPLIT);
       while (true) {
@@ -5500,10 +5743,17 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
             layers: 1,
             layerIndex: 0
           });
-          const chunks = await fractalCompute.compute(params, layerIndex, aspect, "main", 1);
+          const chunks = await fractalCompute.compute(
+            params,
+            layerIndex,
+            aspect,
+            "main",
+            1
+          );
           chunkInfos = chunks || [];
           for (const c of chunkInfos) {
-            if (!c.fractalView && c.layerViews && c.layerViews[0]) c.fractalView = c.layerViews[0];
+            if (!c.fractalView && c.layerViews && c.layerViews[0])
+              c.fractalView = c.layerViews[0];
             if (!c.layerViews && c.fractalView) c.layerViews = [c.fractalView];
           }
           sdfReady = false;
@@ -5541,7 +5791,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
                   })
                 }
               ];
-              chunkInfos[0].fractalView = chunkInfos[0].fractalTex.createView({ dimension: "2d" });
+              chunkInfos[0].fractalView = chunkInfos[0].fractalTex.createView({
+                dimension: "2d"
+              });
               chunkInfos[0].layerViews = [chunkInfos[0].fractalView];
             }
             sdfReady = false;
@@ -5580,7 +5832,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
         for (let li = 0; li < count; ++li) {
           const g = gammaForLayerIndex(gammaStart, gammaRange, li, count);
           const paramsLi = g === baseParams.gamma ? baseParams : Object.assign({}, baseParams, { gamma: g });
-          const chunks = await fractalCompute.compute(paramsLi, li, aspect, "main", count);
+          const chunks = await fractalCompute.compute(
+            paramsLi,
+            li,
+            aspect,
+            "main",
+            count
+          );
           for (const c of chunks) {
             const key = `${c.offsetX}|${c.offsetY}|${c.width}|${c.height}`;
             let dst = merged.get(key);
@@ -5618,13 +5876,17 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
           layers: 1,
           layerIndex: 0
         });
+        const wasReady = sdfReady;
         await sdfCompute.compute(chunkInfos, params, layerIndex, aspect);
         await device.queue.onSubmittedWorkDone();
         sdfReady = true;
-        invalidateChunkCaches();
+        const epochNow = (sdfCompute && sdfCompute._allocEpoch) | 0;
+        const realloc = epochNow !== (_sdfAllocEpoch | 0);
+        _sdfAllocEpoch = epochNow;
+        if (!wasReady || realloc) invalidateChunkCaches();
         if (queryCompute._bgCache) queryCompute._bgCache.clear();
         renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-        await renderPipeline.setChunks(sdfReady ? chunkInfos : chunksWithoutSdf(chunkInfos), 1, {
+        await renderPipeline.setChunks(chunksWithSdf(chunkInfos), 1, {
           layerIndex: layerIndex >>> 0,
           requireSdf: true
         });
@@ -5668,7 +5930,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
             c.flagLayerViews[layerIndex] = c.flagView;
             c._usingTmpSdfFallback = true;
           } catch (e2) {
-            console.warn("computeSdfLayer: temporary fallback creation failed for chunk:", c, e2);
+            console.warn(
+              "computeSdfLayer: temporary fallback creation failed for chunk:",
+              c,
+              e2
+            );
           }
         }
         try {
@@ -5678,7 +5944,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
             requireSdf: false
           });
         } catch (ebg) {
-          console.warn("computeSdfLayer: renderPipeline.setChunks failed even with fallbacks:", ebg);
+          console.warn(
+            "computeSdfLayer: renderPipeline.setChunks failed even with fallbacks:",
+            ebg
+          );
         }
         return chunkInfos;
       }
@@ -5697,7 +5966,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
             device,
             format,
             alphaMode: currentAlphaMode,
-            size: [canvas.width, canvas.height]
+            size: [canvas.width, canvas.height],
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
           });
         } catch (e) {
           console.warn("setAlphaMode: context.configure failed:", e);
@@ -5718,22 +5988,37 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       const mode = normRenderMode(ps.renderMode);
       const req = requestedLayers();
       ps.layerIndex = clampLayerIndex(ps.layerIndex, req);
+      const wantSdf = modeNeedsSdf(mode, ps);
+      const sdfSrcLayer = req > 1 ? 0 : ps.layerIndex;
       if (forceFractalRecompute) {
         if (req > 1) {
           await computeFractalLayerSeries(req, aspect);
-          freeSdfData(chunkInfos);
-          sdfReady = false;
           const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
           if (mode === "slab") {
+            freeSdfData(chunkInfos);
+            sdfReady = false;
             await ensureSlabChunks(layersToUse);
             slabWallsDirty = true;
-          } else {
-            renderPipeline.gridDivs = ps.gridDivs;
-            await renderPipeline.setChunks(chunksWithoutSdf(chunkInfos), layersToUse, {
-              layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
-              requireSdf: false
-            });
+            return;
           }
+          if (wantSdf) {
+            freeSdfData(chunkInfos);
+            sdfReady = false;
+            await computeSdfLayer(sdfSrcLayer, aspect);
+          } else {
+            freeSdfData(chunkInfos);
+            sdfReady = false;
+          }
+          renderPipeline.gridDivs = ps.gridDivs;
+          const requireSdf3 = wantSdf && sdfReady;
+          await renderPipeline.setChunks(
+            requireSdf3 ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos),
+            layersToUse,
+            {
+              layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
+              requireSdf: requireSdf3
+            }
+          );
           return;
         }
         await computeFractalLayer(ps.layerIndex, aspect);
@@ -5742,36 +6027,51 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
           sdfReady = false;
           await ensureSlabChunks(1);
           slabWallsDirty = true;
-        } else if (modeNeedsSdf(mode, ps)) {
+          return;
+        }
+        if (wantSdf) {
           await computeSdfLayer(ps.layerIndex, aspect);
         } else {
           freeSdfData(chunkInfos);
           sdfReady = false;
         }
-        if (mode !== "slab") {
-          renderPipeline.gridDivs = ps.gridDivs;
-          const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
-          await renderPipeline.setChunks(requireSdf ? chunkInfos : chunksWithoutSdf(chunkInfos), 1, {
+        renderPipeline.gridDivs = ps.gridDivs;
+        const requireSdf2 = wantSdf && sdfReady;
+        await renderPipeline.setChunks(
+          requireSdf2 ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos),
+          1,
+          {
             layerIndex: clampLayerIndex(ps.layerIndex, 1),
-            requireSdf
-          });
-        }
+            requireSdf: requireSdf2
+          }
+        );
         return;
       }
       if (req > 1) {
-        freeSdfData(chunkInfos);
-        sdfReady = false;
         const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
         if (mode === "slab") {
+          freeSdfData(chunkInfos);
+          sdfReady = false;
           await ensureSlabChunks(layersToUse);
           slabWallsDirty = true;
-        } else {
-          renderPipeline.gridDivs = ps.gridDivs;
-          await renderPipeline.setChunks(chunksWithoutSdf(chunkInfos), layersToUse, {
-            layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
-            requireSdf: false
-          });
+          return;
         }
+        if (wantSdf) {
+          await computeSdfLayer(sdfSrcLayer, aspect);
+        } else {
+          freeSdfData(chunkInfos);
+          sdfReady = false;
+        }
+        renderPipeline.gridDivs = ps.gridDivs;
+        const requireSdf2 = wantSdf && sdfReady;
+        await renderPipeline.setChunks(
+          requireSdf2 ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos),
+          layersToUse,
+          {
+            layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
+            requireSdf: requireSdf2
+          }
+        );
         return;
       }
       if (mode === "slab") {
@@ -5779,20 +6079,24 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
         sdfReady = false;
         await ensureSlabChunks(1);
         slabWallsDirty = true;
-      } else if (modeNeedsSdf(mode, ps)) {
+        return;
+      }
+      if (wantSdf) {
         await computeSdfLayer(ps.layerIndex, aspect);
       } else {
         freeSdfData(chunkInfos);
         sdfReady = false;
       }
-      if (mode !== "slab") {
-        renderPipeline.gridDivs = ps.gridDivs;
-        const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
-        await renderPipeline.setChunks(requireSdf ? chunkInfos : chunksWithoutSdf(chunkInfos), 1, {
+      renderPipeline.gridDivs = ps.gridDivs;
+      const requireSdf = wantSdf && sdfReady;
+      await renderPipeline.setChunks(
+        requireSdf ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos),
+        1,
+        {
           layerIndex: clampLayerIndex(ps.layerIndex, 1),
           requireSdf
-        });
-      }
+        }
+      );
     }
     async function renderFrame() {
       const ps = renderGlobals.paramsState;
@@ -5815,7 +6119,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
           layers: layersToUse
         });
         slabWallsDirty = false;
-        await device.queue.onSubmittedWorkDone();
         return;
       }
       const localParams = Object.assign({}, ps, {
@@ -5823,9 +6126,18 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
         layers: layersToUse,
         layerIndex: clampLayerIndex(ps.layerIndex, layersToUse)
       });
-      const writeRenderUniform = _pickFn(renderPipeline, ["writeRenderUniform", "writeRenderUniforms", "writeUniforms"]);
+      const writeRenderUniform = _pickFn(renderPipeline, [
+        "writeRenderUniform",
+        "writeRenderUniforms",
+        "writeUniforms"
+      ]);
       if (writeRenderUniform) writeRenderUniform(localParams);
-      const writeThreshUniform = _pickFn(renderPipeline, ["writeThreshUniform", "writeThresholdUniform", "writeThresh", "writeThreshold"]);
+      const writeThreshUniform = _pickFn(renderPipeline, [
+        "writeThreshUniform",
+        "writeThresholdUniform",
+        "writeThresh",
+        "writeThreshold"
+      ]);
       if (writeThreshUniform) writeThreshUniform(localParams);
       if (renderGlobals.gridDirty) {
         renderPipeline.gridDivs = ps.gridDivs;
@@ -5833,7 +6145,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
         renderGlobals.gridDirty = false;
       }
       const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
-      const chunksToUse = requireSdf ? chunkInfos : chunksWithoutSdf(chunkInfos);
+      const chunksToUse = requireSdf ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos);
       await renderPipeline.setChunks(chunksToUse, layersToUse, {
         layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
         requireSdf
@@ -5849,7 +6161,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
         const viewTex = context.getCurrentTexture().createView();
         await blitFn(localParams, viewTex);
       }
-      await device.queue.onSubmittedWorkDone();
     }
     async function handleResizeImmediate() {
       const cw = canvas.clientWidth;
@@ -5888,7 +6199,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
         resizeTimer = 0;
-        handleResizeImmediate().catch((e) => console.error("debounced resize failed:", e));
+        handleResizeImmediate().catch(
+          (e) => console.error("debounced resize failed:", e)
+        );
       }, 150);
     }
     window.addEventListener("resize", scheduleResizeDebounced);
@@ -5902,7 +6215,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     }
     function onMouseMove(e) {
       yaw += e.movementX * 2e-3;
-      pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch - e.movementY * 2e-3));
+      pitch = Math.max(
+        -Math.PI / 2,
+        Math.min(Math.PI / 2, pitch - e.movementY * 2e-3)
+      );
       updateLookTarget();
     }
     canvas.addEventListener("click", () => {
@@ -6014,13 +6330,19 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       if (!blob) return;
       const url2 = URL.createObjectURL(blob);
       const a = document.createElement("a");
+      a.style.display = "none";
       a.href = url2;
-      a.download = filename;
-      document.body.insertAdjacentHTML("beforeend", "");
+      a.download = filename || "download";
+      a.rel = "noopener";
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url2);
+      setTimeout(() => {
+        try {
+          URL.revokeObjectURL(url2);
+        } catch {
+        }
+      }, 1e3);
     }
     function canvasToPngBlob(canvasEl) {
       return new Promise((resolve, reject) => {
@@ -6034,56 +6356,185 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
         }
       });
     }
-    function copyWebGPUTo2D(canvasEl) {
-      return (async () => {
-        await device.queue.onSubmittedWorkDone();
-        const w = canvasEl.width;
-        const h = canvasEl.height;
-        const tmp = document.createElement("canvas");
-        tmp.width = w;
-        tmp.height = h;
-        const ctx2d = tmp.getContext("2d");
-        if (!ctx2d) throw new Error("2D context unavailable for export");
-        ctx2d.drawImage(canvasEl, 0, 0, w, h);
-        return canvasToPngBlob(tmp);
-      })();
+    function _alignUp2(v, a) {
+      v = v | 0;
+      a = a | 0;
+      return v + (a - 1) & ~(a - 1);
+    }
+    let _exportTex = null;
+    let _exportTexW = 0;
+    let _exportTexH = 0;
+    let _exportTexFormat = "";
+    let _exportReadback = null;
+    let _exportReadbackBytes = 0;
+    let _exportBpr = 0;
+    let _export2dCanvas = null;
+    let _export2dCtx = null;
+    function _ensureExport2dCanvas(w, h) {
+      if (!_export2dCanvas) {
+        _export2dCanvas = document.createElement("canvas");
+        _export2dCtx = _export2dCanvas.getContext("2d");
+        if (!_export2dCtx) throw new Error("2D context unavailable for export");
+      }
+      if (_export2dCanvas.width !== w) _export2dCanvas.width = w;
+      if (_export2dCanvas.height !== h) _export2dCanvas.height = h;
+      return _export2dCtx;
+    }
+    function _ensureExportGpuTargets(w, h) {
+      w = Math.max(1, w | 0);
+      h = Math.max(1, h | 0);
+      const fmt = renderPipeline && renderPipeline.format || navigator.gpu.getPreferredCanvasFormat();
+      const rawBpr = w * 4;
+      const bpr = _alignUp2(rawBpr, 256);
+      const needBytes = bpr * h;
+      if (!_exportTex || _exportTexW !== w || _exportTexH !== h || _exportTexFormat !== fmt) {
+        try {
+          if (_exportTex) _exportTex.destroy();
+        } catch {
+        }
+        _exportTex = device.createTexture({
+          size: [w, h, 1],
+          format: fmt,
+          usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
+        });
+        _exportTexW = w;
+        _exportTexH = h;
+        _exportTexFormat = fmt;
+      }
+      if (!_exportReadback || _exportReadbackBytes < needBytes) {
+        try {
+          if (_exportReadback) _exportReadback.destroy();
+        } catch {
+        }
+        _exportReadback = device.createBuffer({
+          size: needBytes,
+          usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+        });
+        _exportReadbackBytes = needBytes;
+      }
+      _exportBpr = bpr;
+      return { texture: _exportTex, format: fmt, bytesPerRow: bpr };
+    }
+    async function _renderFractalToExportTexture(w, h) {
+      const ps = renderGlobals.paramsState;
+      const req = requestedLayers();
+      ps.layerIndex = clampLayerIndex(ps.layerIndex, req);
+      const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
+      const mode = normRenderMode(ps.renderMode);
+      if (mode === "slab") {
+        throw new Error("Offscreen export not implemented for slab mode.");
+      }
+      const aspect = w > 0 && h > 0 ? w / h : 1;
+      if (renderGlobals.gridDirty) {
+        renderPipeline.gridDivs = ps.gridDivs;
+        renderPipeline.gridStripes = null;
+        renderGlobals.gridDirty = false;
+      }
+      const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
+      const chunksToUse = requireSdf ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos);
+      await renderPipeline.setChunks(chunksToUse, layersToUse, {
+        layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
+        requireSdf
+      });
+      const camState = { cameraPos, lookTarget, upDir, fov };
+      renderPipeline.updateCamera(camState, aspect);
+      const { texture } = _ensureExportGpuTargets(w, h);
+      const view = texture.createView();
+      const localParams = Object.assign({}, ps, {
+        nLayers: layersToUse,
+        layers: layersToUse,
+        layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
+        cameraPos,
+        lookTarget,
+        upDir,
+        fov
+      });
+      const blitFn = _pickFn(renderPipeline, ["renderBlitToView"]);
+      if (!blitFn) throw new Error("renderPipeline.renderBlitToView missing");
+      await blitFn(localParams, view);
+    }
+    async function _exportCurrentExportTextureToPngBlob(w, h) {
+      const { texture, format: format2, bytesPerRow } = _ensureExportGpuTargets(w, h);
+      const encoder = device.createCommandEncoder();
+      encoder.copyTextureToBuffer(
+        { texture },
+        { buffer: _exportReadback, bytesPerRow, rowsPerImage: h },
+        { width: w, height: h, depthOrArrayLayers: 1 }
+      );
+      device.queue.submit([encoder.finish()]);
+      await device.queue.onSubmittedWorkDone();
+      await _exportReadback.mapAsync(GPUMapMode.READ);
+      const src = new Uint8Array(_exportReadback.getMappedRange());
+      const ctx2d = _ensureExport2dCanvas(w, h);
+      const img = ctx2d.createImageData(w, h);
+      const dst = img.data;
+      const isBGRA = String(format2).toLowerCase().startsWith("bgra");
+      let dstOff = 0;
+      let srcRowOff = 0;
+      if (!isBGRA) {
+        for (let y = 0; y < h; y++) {
+          dst.set(src.subarray(srcRowOff, srcRowOff + w * 4), dstOff);
+          srcRowOff += bytesPerRow;
+          dstOff += w * 4;
+        }
+      } else {
+        for (let y = 0; y < h; y++) {
+          let s = srcRowOff;
+          for (let x = 0; x < w; x++) {
+            const b = src[s + 0];
+            const g = src[s + 1];
+            const r = src[s + 2];
+            const a = src[s + 3];
+            dst[dstOff + 0] = r;
+            dst[dstOff + 1] = g;
+            dst[dstOff + 2] = b;
+            dst[dstOff + 3] = a;
+            s += 4;
+            dstOff += 4;
+          }
+          srcRowOff += bytesPerRow;
+        }
+      }
+      _exportReadback.unmap();
+      ctx2d.putImageData(img, 0, 0);
+      return canvasToPngBlob(_export2dCanvas);
     }
     async function exportFractalCanvas() {
+      if (exporting) return;
+      exporting = true;
       try {
-        const canvasEl = document.getElementById("gpu-canvas");
-        if (!canvasEl) return;
-        const blob = await copyWebGPUTo2D(canvasEl);
+        flushPending();
+        const w = canvas.width | 0;
+        const h = canvas.height | 0;
+        const aspect = w > 0 && h > 0 ? w / h : 1;
+        await updateComputeAndDisplacement(aspect);
+        await _renderFractalToExportTexture(w, h);
+        const blob = await _exportCurrentExportTextureToPngBlob(w, h);
         const tag = randomTag();
         downloadBlob(blob, "fractal-canvas-" + tag + ".png");
       } catch (e) {
         console.error("exportFractalCanvas failed:", e);
+      } finally {
+        exporting = false;
+        renderGlobals.cameraDirty = true;
       }
     }
     async function exportFractalFullRes() {
+      if (exporting) return;
+      exporting = true;
       try {
-        exporting = true;
-        await device.queue.onSubmittedWorkDone();
         flushPending();
-        const targetRes = Math.max(64, Math.floor(renderGlobals.paramsState.gridSize || 1024));
-        const dpr = window.devicePixelRatio || 1;
-        const oldW = canvas.width;
-        const oldH = canvas.height;
-        const oldCW = oldW / dpr;
-        const oldCH = oldH / dpr;
-        canvas.width = targetRes;
-        canvas.height = targetRes;
-        slabPipeline.canvasAlphaMode = currentAlphaMode;
-        renderPipeline.canvasAlphaMode = currentAlphaMode;
-        slabPipeline.resize(targetRes / dpr, targetRes / dpr);
-        renderPipeline.resize(targetRes / dpr, targetRes / dpr);
+        const targetRes = Math.max(
+          64,
+          Math.floor(renderGlobals.paramsState.gridSize || 1024)
+        );
         const exportAspect = 1;
         await updateComputeAndDisplacement(exportAspect);
-        await renderFrame();
-        const blob = await copyWebGPUTo2D(canvas);
-        canvas.width = oldW;
-        canvas.height = oldH;
-        slabPipeline.resize(oldCW, oldCH);
-        renderPipeline.resize(oldCW, oldCH);
+        await _renderFractalToExportTexture(targetRes, targetRes);
+        const blob = await _exportCurrentExportTextureToPngBlob(
+          targetRes,
+          targetRes
+        );
         const tag = randomTag();
         downloadBlob(blob, "fractal-" + targetRes + "-" + tag + ".png");
       } catch (e) {
@@ -6120,7 +6571,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     async function frame(now) {
       const dt = (now - lastTime) * 1e-3;
       lastTime = now;
-      await device.queue.onSubmittedWorkDone();
       flushPending();
       if (exporting) {
         frameHandle = requestAnimationFrame(frame);
@@ -6178,6 +6628,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
           renderPipeline.destroy();
         } catch {
         }
+        try {
+          if (_exportTex) _exportTex.destroy();
+        } catch {
+        }
+        _exportTex = null;
+        try {
+          if (_exportReadback) _exportReadback.destroy();
+        } catch {
+        }
+        _exportReadback = null;
         try {
           if (chunkInfos && chunkInfos.forEach) {
             chunkInfos.forEach((c) => {
@@ -6273,7 +6733,12 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       "slopeLimit",
       "wallJump",
       "nLayers",
-      "gridDivs"
+      "gridDivs",
+      "meshStep",
+      "capBias",
+      "gradScale",
+      "thickness",
+      "feather"
     ]);
     const FORMATTERS = {
       epsilon: (v) => Number(v).toExponential(),
@@ -6292,7 +6757,12 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       thresholdBasis: (v) => String(v),
       wallJump: (v) => Number(v).toFixed(3),
       nLayers: (v) => String(Math.round(Number(v))),
-      gridDivs: (v) => String(Math.round(Number(v)))
+      gridDivs: (v) => String(Math.round(Number(v))),
+      meshStep: (v) => String(Math.max(1, Math.round(Number(v)))),
+      capBias: (v) => Number(v).toFixed(3),
+      gradScale: (v) => Number(v).toFixed(3),
+      thickness: (v) => Number(v).toFixed(3),
+      feather: (v) => Number(v).toFixed(3)
     };
     const DEFAULT_FORMATTER = (v) => String(Math.round(Number(v)));
     const ID_TO_PARAM = {
@@ -6350,7 +6820,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       const fmt = FORMATTERS[id] || DEFAULT_FORMATTER;
       try {
         out.value = fmt(value);
-      } catch (e) {
+      } catch {
       }
     }
     function setupSlider(id, onChange) {
@@ -6360,7 +6830,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       if (typeof initVal === "number") {
         try {
           slider.value = String(initVal);
-        } catch (e) {
+        } catch {
         }
         setControlOutput(id, initVal);
       }
@@ -6380,7 +6850,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
           if (Number.isNaN(num)) return;
           try {
             slider.value = String(num);
-          } catch (e) {
+          } catch {
           }
           setControlOutput(id, num);
           onChange(num);
@@ -6398,7 +6868,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       if (initVal !== void 0 && initVal !== null) {
         try {
           sel.value = String(initVal);
-        } catch (e) {
+        } catch {
         }
       }
       const updateOutput = () => {
@@ -6435,9 +6905,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       return cb;
     }
     function setupMaskGroup(name, initialMask, onChange) {
-      const boxes = Array.from(
-        document.querySelectorAll(`input[name="${name}"]`)
-      );
+      const boxes = Array.from(document.querySelectorAll(`input[name="${name}"]`));
       if (!boxes.length) return null;
       function readMask() {
         let m = 0;
@@ -6481,13 +6949,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       }
       try {
         el.value = String(value);
-      } catch (e) {
+      } catch {
       }
       const out = document.getElementById(id + "Out");
       if (out) {
         try {
           out.value = String(value);
-        } catch (e) {
+        } catch {
         }
       }
     }
@@ -6526,8 +6994,29 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       }
       S(patch);
     }
+    const SLAB_IDS = [
+      "fieldMode",
+      "meshStep",
+      "capBias",
+      "gradScale",
+      "thickness",
+      "feather",
+      "contourOn",
+      "contourOnly",
+      "contourFront"
+    ];
+    function setSlabControlsEnabled(enabled) {
+      setDisabled(SLAB_IDS, !enabled);
+    }
     function applyRenderModeUI(mode) {
       const m = normRenderMode(mode);
+      if (uiLayerMode && m === "slab") {
+        setControlValue("renderMode", "fractal");
+        setSlabControlsEnabled(false);
+        S({ renderMode: "fractal" });
+        return;
+      }
+      setSlabControlsEnabled(m === "slab");
       S({ renderMode: m });
     }
     function applyLayerModeUI(isLayerMode) {
@@ -6556,13 +7045,15 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     setupSlider("layerGammaStep", (v) => S({ layerGammaStep: v }));
     setupSlider("layerSeparation", (v) => S({ worldOffset: v }));
     setupSlider("hueOffset", (v) => S({ hueOffset: v }));
+    let _lastUiNLayers = Math.max(1, Math.floor(renderGlobals.paramsState.nLayers || 1));
     setupSlider("nLayers", (v) => {
       const n = Math.max(1, Math.floor(v));
       S({ nLayers: n });
-      if (uiLayerMode && n > 1) {
+      if (uiLayerMode && _lastUiNLayers <= 1 && n > 1) {
         autoDisableForLayerMode(false);
         ensureLayerModeVisibilityDefaults();
       }
+      _lastUiNLayers = n;
     });
     setupSlider("gridDivs", (v) => {
       const val = Math.max(1, Math.floor(v));
@@ -6577,6 +7068,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     setupSlider("dispAmp", (v) => S({ dispAmp: v }));
     setupSlider("dispCurve", (v) => S({ dispCurve: v }));
     setupCheckbox("dispLimitOn", (v) => S({ dispLimitOn: v }));
+    setupCheckbox("bowlOn", (v) => S({ bowlOn: v }));
+    setupSlider("bowlDepth", (v) => S({ bowlDepth: v }));
     setupSlider("slopeLimit", (deg) => {
       const rad = deg * Math.PI / 180;
       const rnorm = Math.sin(rad) * Math.sin(rad);
@@ -6604,10 +7097,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
       if (typeof window.setAlphaMode === "function") {
         try {
           window.setAlphaMode(n);
-        } catch (e) {
+        } catch {
           try {
             window.setAlphaMode(canvasMode);
-          } catch (e2) {
+          } catch {
           }
         }
       } else {
@@ -6617,14 +7110,23 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r
     setupSelect("renderMode", (v) => {
       applyRenderModeUI(v);
     });
-    setupMaskGroup(
-      "scaleMode",
-      renderGlobals.paramsState.scaleMode ?? 0,
-      (mask) => {
-        S({ scaleMode: mask >>> 0 });
-      }
-    );
+    setupMaskGroup("scaleMode", renderGlobals.paramsState.scaleMode ?? 0, (mask) => {
+      S({ scaleMode: mask >>> 0 });
+    });
+    setupSelect("fieldMode", (v) => S({ fieldMode: +v }));
+    setupSlider("meshStep", (v) => {
+      const n = Math.max(1, Math.floor(v));
+      S({ meshStep: n });
+    });
+    setupSlider("capBias", (v) => S({ capBias: v }));
+    setupSlider("gradScale", (v) => S({ gradScale: v }));
+    setupSlider("thickness", (v) => S({ thickness: v }));
+    setupSlider("feather", (v) => S({ feather: v }));
+    setupCheckbox("contourOn", (v) => S({ contourOn: v }));
+    setupCheckbox("contourOnly", (v) => S({ contourOnly: v }));
+    setupCheckbox("contourFront", (v) => S({ contourFront: v }));
     applyLayerModeUI(!!renderGlobals.paramsState.layerMode);
+    setSlabControlsEnabled(normRenderMode(renderGlobals.paramsState.renderMode) === "slab");
     applyRenderModeUI(renderGlobals.paramsState.renderMode);
   };
 

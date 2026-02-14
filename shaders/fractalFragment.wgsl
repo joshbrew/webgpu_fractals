@@ -103,6 +103,95 @@ fn sampleGradientRGB(t: f32) -> vec3<f32> {
   return clamp(c.rgb, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
+fn monoTintRGB(l: f32) -> vec3<f32> {
+  let ll = clamp(l, 0.0, 1.0);
+
+  if (abs(render.hueOffset) <= 1e-6) {
+    return vec3<f32>(ll);
+  }
+
+  let hue = sampleGradientRGB(fract(render.hueOffset));
+  return hue * ll;
+}
+
+fn paletteRGB(r: f32) -> vec3<f32> {
+  if (render.useHueGradient != 0u) {
+    let u = fract(r + render.hueOffset);
+    return sampleGradientRGB(u);
+  }
+
+  var H : f32 = 0.0;
+  var S : f32 = 1.0;
+  var L : f32 = 0.5;
+
+  var monoL : f32 = -1.0;
+
+  switch (render.scheme) {
+    case 0u:  { H = (260.0 - 260.0 * pow(r, 0.9)) / 360.0; L = (10.0  + 65.0  * pow(r, 1.2)) / 100.0; }
+    case 1u:  { H = (0.0 + 60.0 * r) / 360.0;            L = 0.50 + 0.50 * r; }
+    case 2u:  { H = (200.0 - 100.0 * r) / 360.0;         L = 0.30 + 0.70 * r; }
+    case 3u:  { H = (30.0 + 270.0 * r) / 360.0;          L = 0.30 + 0.40 * r; }
+    case 4u:  { H = (120.0 -  90.0 * r) / 360.0;         L = 0.20 + 0.50 * r; }
+    case 5u:  { H = (300.0 - 240.0 * r) / 360.0;         L = 0.55 + 0.20 * sin(r * 3.14159); }
+
+    case 6u:  { monoL = r; }
+
+    case 7u:  { H = (10.0 + 60.0 * pow(r, 1.2)) / 360.0; L = 0.15 + 0.75 * pow(r, 1.5); }
+    case 8u:  { H = r;                                   L = 0.45 + 0.25 * (1.0 - r); }
+    case 9u:  { H = fract(2.0 * r);                       L = 0.50; }
+    case 10u: { H = fract(3.0 * r + 0.1);                 L = 0.65; }
+    case 11u: { H = 0.75 - 0.55 * r;                      L = 0.25 + 0.55 * r * r; }
+    case 12u: { H = (5.0 + 70.0 * r) / 360.0;             L = 0.10 + 0.80 * pow(r, 1.4); }
+    case 13u: { H = (260.0 - 260.0 * r) / 360.0;          L = 0.30 + 0.60 * pow(r, 0.8); }
+    case 14u: { H = (230.0 - 160.0 * r) / 360.0;          L = 0.25 + 0.60 * r; }
+    case 15u: { H = (200.0 + 40.0 * r) / 360.0;           L = 0.20 + 0.50 * r; }
+    case 16u: { H = 0.60;                                 L = 0.15 + 0.35 * r; }
+    case 17u: {
+      if (r < 0.5) { H = 0.55 + (0.75 - 0.55) * (r * 2.0); }
+      else        { H = 0.02 + (0.11 - 0.02) * ((r - 0.5) * 2.0); }
+      L = 0.25 + 0.55 * abs(r - 0.5);
+    }
+    case 18u: { H = fract(3.0 * r);                       L = 0.50 + 0.25 * (1.0 - r); }
+    case 19u: { H = fract(4.0 * r);                       L = 0.50; }
+    case 20u: { H = fract(5.0 * r + 0.2);                 L = 0.65; }
+    case 21u: { H = (240.0 - 240.0 * r) / 360.0;          L = 0.30 + 0.40 * r; }
+    case 22u: { H = fract(r * 6.0 + sin(r * 10.0));       L = 0.40 + 0.30 * sin(r * 20.0); }
+    case 23u: { H = (30.0 + 50.0 * r) / 360.0;            L = 0.45 + 0.30 * r; }
+    case 24u: { H = (90.0 - 80.0 * r) / 360.0;            L = 0.50 + 0.40 * r; }
+    case 25u: { H = (100.0 - 100.0 * r) / 360.0;          L = 0.40 + 0.50 * r; }
+
+    case 26u: {
+      let loopVal = fract(r * 10.0);
+      monoL = loopVal * 0.8;
+    }
+
+    case 27u: {
+      if (r < 0.5) { H = 0.80 + (0.40 - 0.80) * (r * 2.0); }
+      else        { H = 0.10 + (0.00 - 0.10) * ((r - 0.5) * 2.0); }
+      L = 0.20 + 0.60 * abs(r - 0.5);
+    }
+    case 28u: { H = fract(sin(r * 6.28318) * 0.5 + 0.5);  L = 0.50; }
+    case 29u: { H = fract(r * 3.0);                       L = fract(r * 3.0); }
+    case 30u: { H = fract(r * 6.0);                       L = 0.45 + 0.40 * abs(sin(r * 6.0 * 3.14159)); }
+    case 31u: {
+      let t = fract(r * 8.0);
+      if (t < 0.5) { H = t * 2.0; } else { H = (1.0 - t) * 2.0; }
+      L = 0.60 - 0.30 * abs(t - 0.5);
+    }
+    case 32u: { H = fract(pow(r, 0.7) * 12.0);            L = 0.50 + 0.30 * pow(r, 1.2); }
+    case 33u: { H = fract(r * 10.0 + 0.3);                L = 0.40 + 0.50 * r; }
+
+    default:  { H = (40.0 + 310.0 * pow(r, 1.3)) / 360.0; L = 0.20 + 0.50 * pow(r, 0.8); }
+  }
+
+  if (monoL >= 0.0) {
+    return monoTintRGB(monoL);
+  }
+
+  H = fract(H + render.hueOffset);
+  return hsl2rgb(vec3<f32>(H, S, L));
+}
+
 struct GateResult {
   passed : bool,
   alpha  : f32,
@@ -198,75 +287,9 @@ fn fs_main(input : FSIn) -> @location(0) vec4<f32> {
   if (!g.passed) {
     discard;
   }
-  let a = g.alpha;
+  let a = clamp(g.alpha, 0.0, 1.0);
 
-  var rgb = vec3<f32>(0.0);
-
-  if (render.useHueGradient != 0u) {
-    let u = fract(r + render.hueOffset);
-    rgb = sampleGradientRGB(u);
-  } else {
-    var H : f32 = 0.0;
-    var S : f32 = 1.0;
-    var L : f32 = 0.5;
-
-    switch (render.scheme) {
-      case 0u: { H = (260.0 - 260.0 * pow(r, 0.9)) / 360.0; L = (10.0  + 65.0  * pow(r, 1.2)) / 100.0; }
-      case 1u: { H = (0.0 + 60.0 * r) / 360.0; L = 0.50 + 0.50 * r; }
-      case 2u: { H = (200.0 - 100.0 * r) / 360.0; L = 0.30 + 0.70 * r; }
-      case 3u: { H = (30.0 + 270.0 * r) / 360.0; L = 0.30 + 0.40 * r; }
-      case 4u: { H = (120.0 -  90.0 * r) / 360.0; L = 0.20 + 0.50 * r; }
-      case 5u: { H = (300.0 - 240.0 * r) / 360.0; L = 0.55 + 0.20 * sin(r * 3.14159); }
-      case 6u: { return vec4<f32>(vec3<f32>(r), a); }
-      case 7u: { H = (10.0 + 60.0 * pow(r, 1.2)) / 360.0; L = 0.15 + 0.75 * pow(r, 1.5); }
-      case 8u: { H = r; L = 0.45 + 0.25 * (1.0 - r); }
-      case 9u: { H = fract(2.0 * r); L = 0.50; }
-      case 10u: { H = fract(3.0 * r + 0.1); L = 0.65; }
-      case 11u: { H = 0.75 - 0.55 * r; L = 0.25 + 0.55 * r * r; }
-      case 12u: { H = (5.0 + 70.0 * r) / 360.0; L = 0.10 + 0.80 * pow(r, 1.4); }
-      case 13u: { H = (260.0 - 260.0 * r) / 360.0; L = 0.30 + 0.60 * pow(r, 0.8); }
-      case 14u: { H = (230.0 - 160.0 * r) / 360.0; L = 0.25 + 0.60 * r; }
-      case 15u: { H = (200.0 + 40.0 * r) / 360.0; L = 0.20 + 0.50 * r; }
-      case 16u: { H = 0.60; L = 0.15 + 0.35 * r; }
-      case 17u: {
-        if (r < 0.5) { H = 0.55 + (0.75 - 0.55) * (r * 2.0); }
-        else { H = 0.02 + (0.11 - 0.02) * ((r - 0.5) * 2.0); }
-        L = 0.25 + 0.55 * abs(r - 0.5);
-      }
-      case 18u: { H = fract(3.0 * r); L = 0.50 + 0.25 * (1.0 - r); }
-      case 19u: { H = fract(4.0 * r); L = 0.50; }
-      case 20u: { H = fract(5.0 * r + 0.2); L = 0.65; }
-      case 21u: { H = (240.0 - 240.0 * r) / 360.0; L = 0.30 + 0.40 * r; }
-      case 22u: { H = fract(r * 6.0 + sin(r * 10.0)); L = 0.40 + 0.30 * sin(r * 20.0); }
-      case 23u: { H = (30.0 + 50.0 * r) / 360.0; L = 0.45 + 0.30 * r; }
-      case 24u: { H = (90.0 - 80.0 * r) / 360.0; L = 0.50 + 0.40 * r; }
-      case 25u: { H = (100.0 - 100.0 * r) / 360.0; L = 0.40 + 0.50 * r; }
-      case 26u: {
-        let loopVal = fract(r * 10.0);
-        let Lmono   = loopVal * 0.8;
-        return vec4<f32>(vec3<f32>(Lmono), a);
-      }
-      case 27u: {
-        if (r < 0.5) { H = 0.80 + (0.40 - 0.80) * (r * 2.0); }
-        else { H = 0.10 + (0.00 - 0.10) * ((r - 0.5) * 2.0); }
-        L = 0.20 + 0.60 * abs(r - 0.5);
-      }
-      case 28u: { H = fract(sin(r * 6.28318) * 0.5 + 0.5); L = 0.50; }
-      case 29u: { H = fract(r * 3.0); L = fract(r * 3.0); }
-      case 30u: { H = fract(r * 6.0); L = 0.45 + 0.40 * abs(sin(r * 6.0 * 3.14159)); }
-      case 31u: {
-        let t = fract(r * 8.0);
-        if (t < 0.5) { H = t * 2.0; } else { H = (1.0 - t) * 2.0; }
-        L = 0.60 - 0.30 * abs(t - 0.5);
-      }
-      case 32u: { H = fract(pow(r, 0.7) * 12.0); L = 0.50 + 0.30 * pow(r, 1.2); }
-      case 33u: { H = fract(r * 10.0 + 0.3); L = 0.40 + 0.50 * r; }
-      default: { H = (40.0 + 310.0 * pow(r, 1.3)) / 360.0; L = 0.20 + 0.50 * pow(r, 0.8); }
-    }
-
-    H = fract(H + render.hueOffset);
-    rgb = hsl2rgb(vec3<f32>(H, S, L));
-  }
+  var rgb = paletteRGB(r);
 
   if (render.lightingOn != 0u) {
     let n       = normalize(input.s.gba);
@@ -290,4 +313,69 @@ fn fs_main(input : FSIn) -> @location(0) vec4<f32> {
   }
 
   return vec4<f32>(rgb, a);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Weighted blended OIT pass
+// ────────────────────────────────────────────────────────────────────────────
+struct OITOut {
+  @location(0) accum  : vec4<f32>,
+  @location(1) reveal : vec4<f32>,
+};
+
+fn oitWeight(depth01: f32, a: f32) -> f32 {
+  let z = clamp(depth01, 0.0, 1.0);
+  let z2 = z * z;
+  let z4 = z2 * z2;
+  let wZ = clamp(0.03 / (0.0001 + z4), 0.01, 50.0);
+  let wA = max(a, 0.02);
+  return wZ * wA;
+}
+
+@fragment
+fn fs_oit(input : FSIn) -> OITOut {
+  let li = effectiveArrayLayerIndex();
+  let texel = textureSample(myTex, mySamp, input.uv, li);
+  let r     = texel.r;
+  let a_in  = texel.a;
+
+  let s_r = input.s.r;
+  let flagVal = input.flag;
+
+  let g = shouldPassAndComputeAlpha(r, a_in, s_r, flagVal);
+  if (!g.passed) {
+    discard;
+  }
+
+  let a = clamp(g.alpha, 0.0, 1.0);
+
+  var rgb = paletteRGB(r);
+
+  if (render.lightingOn != 0u) {
+    let n       = normalize(input.s.gba);
+    let lightWS = render.lightPos * render.quadScale;
+    let Ldir    = normalize(lightWS - input.wPos);
+    let Vdir    = normalize(-input.wPos);
+    let hVec    = normalize(Ldir + Vdir);
+
+    let diff = max(dot(n, Ldir), 0.0);
+    let spec = pow(max(dot(n, hVec), 0.0), render.specPower) * smoothstep(0.0, 0.1, diff);
+
+    let ambient    = 0.15;
+    let diffWeight = 1.0;
+    let specWeight = 1.25;
+
+    rgb = clamp(
+      rgb * (ambient + diffWeight * diff) + specWeight * spec,
+      vec3<f32>(0.0),
+      vec3<f32>(1.0)
+    );
+  }
+
+  let w = oitWeight(input.pos.z, a);
+
+  var out : OITOut;
+  out.accum = vec4<f32>(rgb * (a * w), a * w);
+  out.reveal = vec4<f32>(0.0, 0.0, 0.0, a);
+  return out;
 }

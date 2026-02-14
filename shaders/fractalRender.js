@@ -21,173 +21,106 @@ function _isFiniteNum(x) {
   return typeof x === "number" && Number.isFinite(x);
 }
 
-function _hexToRGBA01(hex) {
-  const s = String(hex || "").trim();
-  const h = s.startsWith("#") ? s.slice(1) : s;
-  if (!(h.length === 3 || h.length === 4 || h.length === 6 || h.length === 8))
-    return null;
-
-  const toNib = (c) => {
-    const v = parseInt(c, 16);
-    return Number.isFinite(v) ? v : null;
-  };
-
-  const toByte2 = (a, b) => {
-    const v = parseInt(a + b, 16);
-    return Number.isFinite(v) ? v : null;
-  };
-
-  let r = 255,
-    g = 255,
-    b = 255,
-    a = 255;
-
-  if (h.length === 3 || h.length === 4) {
-    const r0 = toNib(h[0]);
-    const g0 = toNib(h[1]);
-    const b0 = toNib(h[2]);
-    const a0 = h.length === 4 ? toNib(h[3]) : 15;
-    if (r0 == null || g0 == null || b0 == null || a0 == null) return null;
-    r = r0 * 17;
-    g = g0 * 17;
-    b = b0 * 17;
-    a = a0 * 17;
-  } else {
-    const r0 = toByte2(h[0], h[1]);
-    const g0 = toByte2(h[2], h[3]);
-    const b0 = toByte2(h[4], h[5]);
-    const a0 = h.length === 8 ? toByte2(h[6], h[7]) : 255;
-    if (r0 == null || g0 == null || b0 == null || a0 == null) return null;
-    r = r0;
-    g = g0;
-    b = b0;
-    a = a0;
-  }
-
-  return [r / 255, g / 255, b / 255, a / 255];
+function _u32(v, d) {
+  const n = v == null ? d : v;
+  return (n >>> 0) | 0;
 }
 
-function _parseColorStop(c) {
-  if (c == null) return [1, 1, 1, 1];
-
-  if (typeof c === "string") {
-    const x = _hexToRGBA01(c);
-    return x || [1, 1, 1, 1];
-  }
-
-  if (Array.isArray(c)) {
-    const r0 = +c[0];
-    const g0 = +c[1];
-    const b0 = +c[2];
-    const a0 = c.length > 3 ? +c[3] : 1;
-    const maxv = Math.max(r0, g0, b0, a0);
-    const scale = maxv > 1.5 ? 1 / 255 : 1;
-    return [
-      _clamp01(r0 * scale),
-      _clamp01(g0 * scale),
-      _clamp01(b0 * scale),
-      _clamp01(a0 * scale),
-    ];
-  }
-
-  if (typeof c === "object") {
-    const r0 = +c.r;
-    const g0 = +c.g;
-    const b0 = +c.b;
-    const a0 = "a" in c ? +c.a : 1;
-    const maxv = Math.max(r0, g0, b0, a0);
-    const scale = maxv > 1.5 ? 1 / 255 : 1;
-    return [
-      _clamp01(r0 * scale),
-      _clamp01(g0 * scale),
-      _clamp01(b0 * scale),
-      _clamp01(a0 * scale),
-    ];
-  }
-
-  return [1, 1, 1, 1];
+function _f32(v, d) {
+  const n = v == null ? d : v;
+  const x = +n;
+  return Number.isFinite(x) ? x : d;
 }
 
-function _rgbToHsv(r, g, b) {
-  const mx = Math.max(r, g, b);
-  const mn = Math.min(r, g, b);
-  const d = mx - mn;
-
-  let h = 0;
-  if (d > 1e-12) {
-    if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
-    else if (mx === g) h = (b - r) / d + 2;
-    else h = (r - g) / d + 4;
-    h /= 6;
-  }
-
-  const s = mx <= 1e-12 ? 0 : d / mx;
-  const v = mx;
-  return [h, s, v];
+function _v3(a, d0, d1, d2) {
+  if (!Array.isArray(a)) return [d0, d1, d2];
+  return [
+    Number.isFinite(+a[0]) ? +a[0] : d0,
+    Number.isFinite(+a[1]) ? +a[1] : d1,
+    Number.isFinite(+a[2]) ? +a[2] : d2,
+  ];
 }
 
-function _hsvToRgb(h, s, v) {
-  h = ((h % 1) + 1) % 1;
-  s = _clamp01(s);
-  v = _clamp01(v);
+const _OIT_COMPOSITE_WGSL = `
+// group(0): accum/reveal + sampler
+@group(0) @binding(0) var accumTex : texture_2d<f32>;
+@group(0) @binding(1) var revealTex : texture_2d<f32>;
+@group(0) @binding(2) var samp : sampler;
 
-  const i = Math.floor(h * 6);
-  const f = h * 6 - i;
-  const p = v * (1 - s);
-  const q = v * (1 - f * s);
-  const t = v * (1 - (1 - f) * s);
+struct VSOut {
+  @builtin(position) pos : vec4<f32>,
+  @location(0) uv : vec2<f32>,
+};
 
-  switch (i % 6) {
-    case 0:
-      return [v, t, p];
-    case 1:
-      return [q, v, p];
-    case 2:
-      return [p, v, t];
-    case 3:
-      return [p, q, v];
-    case 4:
-      return [t, p, v];
-    default:
-      return [v, p, q];
-  }
+@vertex
+fn vs_fullscreen(@builtin(vertex_index) vi : u32) -> VSOut {
+  var pos = array<vec2<f32>, 3>(
+    vec2<f32>(-1.0, -1.0),
+    vec2<f32>( 3.0, -1.0),
+    vec2<f32>(-1.0,  3.0)
+  );
+  var uv = array<vec2<f32>, 3>(
+    vec2<f32>(0.0, 0.0),
+    vec2<f32>(2.0, 0.0),
+    vec2<f32>(0.0, 2.0)
+  );
+
+  var o : VSOut;
+  o.pos = vec4<f32>(pos[vi], 0.0, 1.0);
+  o.uv = uv[vi];
+  return o;
 }
 
-function _lerp(a, b, t) {
-  return a + (b - a) * t;
+fn safeDiv(a: vec3<f32>, b: f32) -> vec3<f32> {
+  let d = max(b, 1e-6);
+  return a / d;
 }
+
+@fragment
+fn fs_composite_premul(i: VSOut) -> @location(0) vec4<f32> {
+  let acc = textureSampleLevel(accumTex, samp, i.uv, 0.0);
+  let rev = textureSampleLevel(revealTex, samp, i.uv, 0.0);
+
+  let rgb = safeDiv(acc.rgb, acc.a);
+  let revealage = clamp(rev.a, 0.0, 1.0);
+  let a = clamp(1.0 - revealage, 0.0, 1.0);
+
+  return vec4<f32>(rgb * a, a);
+}
+
+@fragment
+fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
+  let acc = textureSampleLevel(accumTex, samp, i.uv, 0.0);
+  let rgb = safeDiv(acc.rgb, acc.a);
+  return vec4<f32>(rgb, 1.0);
+}
+`;
 
 export class RenderPipelineGPU {
-  /**
-   * opts:
-   *  - renderUniformStride (default 256)
-   *  - initialGridDivs (default 256)
-   *  - quadScale (default 1.0)
-   *  - canvasAlphaMode (default "premultiplied") -> used by resize()
-   *  - gradientSize (default 512)
-   */
   constructor(device, context, vsCode = vert, fsCode = frag, opts = {}) {
     this.device = device;
     this.context = context;
     this.vsCode = vsCode;
     this.fsCode = fsCode;
 
-    this.renderUniformStride = opts.renderUniformStride ?? 256;
+    this.renderUniformStride = _alignUp(opts.renderUniformStride ?? 256, 256);
     this.gridDivs = opts.initialGridDivs ?? 256;
     this.quadScale = opts.quadScale ?? 1.0;
     this.canvasAlphaMode = opts.canvasAlphaMode ?? "premultiplied";
 
+    this.invertCameraY =
+      opts.invertCameraY != null ? !!opts.invertCameraY : true;
+
     this.format = navigator.gpu.getPreferredCanvasFormat();
 
-    this._gradientSize = Math.max(2, Math.min(4096, (opts.gradientSize ?? 512) | 0));
+    this._gradientSize = Math.max(
+      2,
+      Math.min(4096, (opts.gradientSize ?? 512) | 0),
+    );
     this._gradientTex = null;
     this._gradientView = null;
     this._fallbackGradTex = null;
     this._fallbackGradView = null;
-
-    this._createSharedLayouts();
-    this._createRenderPipelines();
-    this._createBlitPipelines();
 
     this.sampler = device.createSampler({
       magFilter: "linear",
@@ -198,7 +131,10 @@ export class RenderPipelineGPU {
 
     this._renderUBOCapLayers = 0;
     this.renderUniformBuffer = null;
-    this._ensureRenderUniformCapacity(1);
+
+    this._renderUBOTmp = new ArrayBuffer(96);
+    this._renderUBODV = new DataView(this._renderUBOTmp);
+    this._threshTmp = new Float32Array(4);
 
     this.threshBuf = device.createBuffer({
       size: 16,
@@ -212,18 +148,111 @@ export class RenderPipelineGPU {
 
     this.gridStripes = null;
     this.chunks = [];
+
     this.modelBuffers = [];
+    this._depthView = null;
     this.depthTexture = null;
+    this._lastCanvasSize = [0, 0];
+
+    this._fallbackSdfTex = null;
+    this._fallbackSdfView = null;
+    this._fallbackFlagTex = null;
+    this._fallbackFlagView = null;
+
+    this._oitAccumTex = null;
+    this._oitAccumView = null;
+    this._oitRevealTex = null;
+    this._oitRevealView = null;
+    this._oitW = 0;
+    this._oitH = 0;
+    this._oitBg = null;
+
+    this._modelKey = "";
+    this._lastSetChunksState = {
+      chunksRef: null,
+      layersCount: 0,
+      requireSdf: false,
+    };
+
+    this._tmpLookTarget = [0, 0, 0];
+
+    this._rpDescOpaque = {
+      colorAttachments: [
+        {
+          view: null,
+          loadOp: "clear",
+          storeOp: "store",
+          clearValue: { r: 0, g: 0, b: 0, a: 1 },
+        },
+      ],
+      depthStencilAttachment: {
+        view: null,
+        depthLoadOp: "clear",
+        depthStoreOp: "store",
+        depthClearValue: 1,
+      },
+    };
+
+    this._rpDescOIT = {
+      colorAttachments: [
+        {
+          view: null,
+          loadOp: "clear",
+          storeOp: "store",
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+        },
+        {
+          view: null,
+          loadOp: "clear",
+          storeOp: "store",
+          clearValue: { r: 0, g: 0, b: 0, a: 1 },
+        },
+      ],
+    };
+
+    this._rpDescCompositePremul = {
+      colorAttachments: [
+        {
+          view: null,
+          loadOp: "clear",
+          storeOp: "store",
+          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+        },
+      ],
+    };
+
+    this._rpDescCompositeOpaque = {
+      colorAttachments: [
+        {
+          view: null,
+          loadOp: "clear",
+          storeOp: "store",
+          clearValue: { r: 0, g: 0, b: 0, a: 1 },
+        },
+      ],
+    };
+
+    this._rpDescBlitOpaque = {
+      colorAttachments: [
+        {
+          view: null,
+          loadOp: "clear",
+          storeOp: "store",
+          clearValue: { r: 0, g: 0, b: 0, a: 1 },
+        },
+      ],
+    };
 
     this._createFallbackTextures();
     this._ensureGradientTexture(this._gradientSize);
     this.setHueGradientWheel({ count: this._gradientSize });
 
-    this._lastCanvasSize = [0, 0];
-    this._modelKey = "";
-    this._depthView = null;
+    this._createSharedLayouts();
+    this._createRenderPipelines();
+    this._createOITCompositePipeline();
+    this._createBlitPipelines();
 
-    this._lastSetChunks = { layersCount: 1, requireSdf: false };
+    this._ensureRenderUniformCapacity(1);
 
     this.writeThresholdUniform = (p) => this.writeThreshUniform(p);
     this.renderFrame = (p, c) => this.render(p, c);
@@ -231,86 +260,8 @@ export class RenderPipelineGPU {
     this.blitToView = (p, v) => this.renderBlitToView(p, v);
   }
 
-  static generateGradientRGBA8(stops, count = 512, opts = {}) {
-    const n = Array.isArray(stops) ? stops.length : 0;
-    const K = Math.max(2, Math.min(4096, count | 0));
-
-    if (n < 2) {
-      const out = new Uint8Array(K * 4);
-      for (let i = 0; i < K; ++i) {
-        out[i * 4 + 0] = 255;
-        out[i * 4 + 1] = 255;
-        out[i * 4 + 2] = 255;
-        out[i * 4 + 3] = 255;
-      }
-      return out;
-    }
-
-    const space = String(opts.space || "rgb").toLowerCase();
-    const cols = new Array(n);
-    for (let i = 0; i < n; ++i) cols[i] = _parseColorStop(stops[i]);
-
-    let colsHSV = null;
-    if (space === "hsv") {
-      colsHSV = new Array(n);
-      for (let i = 0; i < n; ++i) {
-        const c = cols[i];
-        const hsv = _rgbToHsv(c[0], c[1], c[2]);
-        colsHSV[i] = [hsv[0], hsv[1], hsv[2], c[3]];
-      }
-    }
-
-    const out = new Uint8Array(K * 4);
-    const denom = K === 1 ? 1 : K - 1;
-
-    for (let i = 0; i < K; ++i) {
-      const u = denom ? i / denom : 0;
-      const s = u * (n - 1);
-      let j = Math.floor(s);
-      if (j < 0) j = 0;
-      if (j > n - 2) j = n - 2;
-      const t = s - j;
-
-      let r = 1,
-        g = 1,
-        b = 1,
-        a = 1;
-
-      if (colsHSV) {
-        const c0 = colsHSV[j];
-        const c1 = colsHSV[j + 1];
-
-        let h0 = c0[0];
-        let h1 = c1[0];
-        let dh = h1 - h0;
-        if (dh > 0.5) dh -= 1;
-        else if (dh < -0.5) dh += 1;
-
-        const h = h0 + dh * t;
-        const s2 = _lerp(c0[1], c1[1], t);
-        const v2 = _lerp(c0[2], c1[2], t);
-        const rgb = _hsvToRgb(h, s2, v2);
-        r = rgb[0];
-        g = rgb[1];
-        b = rgb[2];
-        a = _lerp(c0[3], c1[3], t);
-      } else {
-        const c0 = cols[j];
-        const c1 = cols[j + 1];
-        r = _lerp(c0[0], c1[0], t);
-        g = _lerp(c0[1], c1[1], t);
-        b = _lerp(c0[2], c1[2], t);
-        a = _lerp(c0[3], c1[3], t);
-      }
-
-      const o = i * 4;
-      out[o + 0] = (Math.max(0, Math.min(1, r)) * 255 + 0.5) | 0;
-      out[o + 1] = (Math.max(0, Math.min(1, g)) * 255 + 0.5) | 0;
-      out[o + 2] = (Math.max(0, Math.min(1, b)) * 255 + 0.5) | 0;
-      out[o + 3] = (Math.max(0, Math.min(1, a)) * 255 + 0.5) | 0;
-    }
-
-    return out;
+  setInvertCameraY(v) {
+    this.invertCameraY = !!v;
   }
 
   static generateHueWheelRGBA8(count = 512, opts = {}) {
@@ -327,12 +278,54 @@ export class RenderPipelineGPU {
     for (let i = 0; i < K; ++i) {
       const u = denom ? i / denom : 0;
       const h = hueOffset + u * cycles;
-      const rgb = _hsvToRgb(h, s, v);
+
+      const hh = ((h % 1) + 1) % 1;
+      const ii = Math.floor(hh * 6);
+      const ff = hh * 6 - ii;
+      const p = v * (1 - s);
+      const q = v * (1 - ff * s);
+      const t = v * (1 - (1 - ff) * s);
+
+      let r = v,
+        g = t,
+        b = p;
+      switch (ii % 6) {
+        case 0:
+          r = v;
+          g = t;
+          b = p;
+          break;
+        case 1:
+          r = q;
+          g = v;
+          b = p;
+          break;
+        case 2:
+          r = p;
+          g = v;
+          b = t;
+          break;
+        case 3:
+          r = p;
+          g = q;
+          b = v;
+          break;
+        case 4:
+          r = t;
+          g = p;
+          b = v;
+          break;
+        default:
+          r = v;
+          g = p;
+          b = q;
+          break;
+      }
 
       const o = i * 4;
-      out[o + 0] = (rgb[0] * 255 + 0.5) | 0;
-      out[o + 1] = (rgb[1] * 255 + 0.5) | 0;
-      out[o + 2] = (rgb[2] * 255 + 0.5) | 0;
+      out[o + 0] = (r * 255 + 0.5) | 0;
+      out[o + 1] = (g * 255 + 0.5) | 0;
+      out[o + 2] = (b * 255 + 0.5) | 0;
       out[o + 3] = (_clamp01(a) * 255 + 0.5) | 0;
     }
 
@@ -379,7 +372,8 @@ export class RenderPipelineGPU {
 
   _ensureGradientTexture(count) {
     const W = Math.max(2, Math.min(4096, count | 0));
-    if (this._gradientTex && this._gradientSize === W && this._gradientView) return true;
+    if (this._gradientTex && this._gradientSize === W && this._gradientView)
+      return true;
 
     try {
       if (this._gradientTex) this._gradientTex.destroy();
@@ -439,26 +433,55 @@ export class RenderPipelineGPU {
     }
   }
 
-  setHueGradientOverride(stops, count = 512, opts = {}) {
-    const n = Array.isArray(stops) ? stops.length : 0;
-    const k = Math.max(2, Math.min(10, n | 0));
-    if (k < 2) return false;
-
-    const W = Math.max(2, Math.min(4096, count | 0 || 512));
-    const rgba = RenderPipelineGPU.generateGradientRGBA8(stops.slice(0, k), W, opts);
+  setHueGradientWheel(opts = {}) {
+    const W = Math.max(
+      2,
+      Math.min(4096, opts.count | 0 || this._gradientSize || 512),
+    );
+    const rgba = RenderPipelineGPU.generateHueWheelRGBA8(W, opts);
     const ok = this._uploadGradientRGBA8(rgba, W);
-
     if (ok) this._rebuildBg0ForGradientIfNeeded();
     return ok;
   }
 
-  setHueGradientWheel(opts = {}) {
-    const W = Math.max(2, Math.min(4096, opts.count | 0 || this._gradientSize || 512));
-    const rgba = RenderPipelineGPU.generateHueWheelRGBA8(W, opts);
-    const ok = this._uploadGradientRGBA8(rgba, W);
+  _ensureFallbackGradientTexture() {
+    if (this._fallbackGradTex && this._fallbackGradView) return true;
 
-    if (ok) this._rebuildBg0ForGradientIfNeeded();
-    return ok;
+    try {
+      if (this._fallbackGradTex) this._fallbackGradTex.destroy();
+    } catch {}
+    this._fallbackGradTex = null;
+    this._fallbackGradView = null;
+
+    try {
+      this._fallbackGradTex = this.device.createTexture({
+        size: [1, 1, 1],
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+      });
+      this._fallbackGradView = this._fallbackGradTex.createView({
+        dimension: "2d",
+      });
+      this.device.queue.writeTexture(
+        { texture: this._fallbackGradTex },
+        new Uint8Array([255, 255, 255, 255]),
+        { bytesPerRow: 256, rowsPerImage: 1 },
+        { width: 1, height: 1, depthOrArrayLayers: 1 },
+      );
+      return true;
+    } catch (e) {
+      this._fallbackGradTex = null;
+      this._fallbackGradView = null;
+      console.warn("Could not create fallback Gradient texture:", e);
+      return false;
+    }
+  }
+
+  _getGradientView() {
+    if (this._gradientView) return this._gradientView;
+    if (this._fallbackGradView) return this._fallbackGradView;
+    if (this._ensureFallbackGradientTexture()) return this._fallbackGradView;
+    return null;
   }
 
   _ensureArrayViewFromTexture(tex, layersCount) {
@@ -481,14 +504,6 @@ export class RenderPipelineGPU {
     return null;
   }
 
-  _pickChunkTex(info, names) {
-    for (const n of names) {
-      const v = info[n];
-      if (v && typeof v.createView === "function") return v;
-    }
-    return null;
-  }
-
   _pickChunkArrayView(info, names) {
     for (const n of names) {
       const v = info[n];
@@ -508,14 +523,13 @@ export class RenderPipelineGPU {
     if (!this.chunks || this.chunks.length === 0) return;
 
     const bgLayout0 = this._bgLayout0;
-
     const gradView = this._getGradientView();
     if (!gradView) return;
 
     for (let i = 0; i < this.chunks.length; ++i) {
       const info = this.chunks[i];
-
-      const fractalView = info._fractalArrayView || info.storageView || info.fractalView || null;
+      const fractalView =
+        info._fractalArrayView || info.storageView || info.fractalView || null;
       if (!fractalView) continue;
 
       try {
@@ -543,8 +557,8 @@ export class RenderPipelineGPU {
 
   _ensureRenderUniformCapacity(layers) {
     const need = Math.max(1, layers | 0);
-
-    if (this.renderUniformBuffer && (this._renderUBOCapLayers | 0) >= need) return;
+    if (this.renderUniformBuffer && (this._renderUBOCapLayers | 0) >= need)
+      return;
 
     let cap = 1;
     while (cap < need) cap <<= 1;
@@ -559,7 +573,6 @@ export class RenderPipelineGPU {
     });
 
     this._renderUBOCapLayers = cap;
-
     this._rebuildBg0ForGradientIfNeeded();
   }
 
@@ -652,22 +665,6 @@ export class RenderPipelineGPU {
       ],
     };
 
-    this.renderPipelineDepth = this.device.createRenderPipeline({
-      layout: this._pipelineLayout,
-      vertex: vstate,
-      fragment: {
-        module: fsModule,
-        entryPoint: "fs_prepass",
-        targets: [{ format: this.format, writeMask: 0 }],
-      },
-      primitive: { topology: "triangle-list" },
-      depthStencil: {
-        format: "depth24plus",
-        depthWriteEnabled: true,
-        depthCompare: "less",
-      },
-    });
-
     this.renderPipelineOpaque = this.device.createRenderPipeline({
       layout: this._pipelineLayout,
       vertex: vstate,
@@ -684,29 +681,93 @@ export class RenderPipelineGPU {
       },
     });
 
-    this.renderPipelineTransparent = this.device.createRenderPipeline({
+    this._oitAccumFormat = "rgba16float";
+    this._oitRevealFormat = "rgba16float";
+
+    this.renderPipelineOIT = this.device.createRenderPipeline({
       layout: this._pipelineLayout,
       vertex: vstate,
       fragment: {
         module: fsModule,
-        entryPoint: "fs_main",
+        entryPoint: "fs_oit",
         targets: [
           {
-            format: this.format,
+            format: this._oitAccumFormat,
             blend: {
-              color: { srcFactor: "src-alpha", dstFactor: "one-minus-src-alpha", operation: "add" },
-              alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
+              color: { srcFactor: "one", dstFactor: "one", operation: "add" },
+              alpha: { srcFactor: "one", dstFactor: "one", operation: "add" },
             },
             writeMask: GPUColorWrite.ALL,
+          },
+          {
+            format: this._oitRevealFormat,
+            blend: {
+              color: {
+                srcFactor: "zero",
+                dstFactor: "one-minus-src-alpha",
+                operation: "add",
+              },
+              alpha: {
+                srcFactor: "zero",
+                dstFactor: "one-minus-src-alpha",
+                operation: "add",
+              },
+            },
+            writeMask: GPUColorWrite.ALPHA,
           },
         ],
       },
       primitive: { topology: "triangle-list" },
-      depthStencil: {
-        format: "depth24plus",
-        depthWriteEnabled: false,
-        depthCompare: "less-equal",
+    });
+  }
+
+  _createOITCompositePipeline() {
+    this._oitCompositeLayout = this.device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: { sampleType: "float", viewDimension: "2d" },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: { sampleType: "float", viewDimension: "2d" },
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: { type: "filtering" },
+        },
+      ],
+    });
+
+    this._oitCompositePipelineLayout = this.device.createPipelineLayout({
+      bindGroupLayouts: [this._oitCompositeLayout],
+    });
+
+    const mod = this.device.createShaderModule({ code: _OIT_COMPOSITE_WGSL });
+
+    this._oitCompositePipelinePremul = this.device.createRenderPipeline({
+      layout: this._oitCompositePipelineLayout,
+      vertex: { module: mod, entryPoint: "vs_fullscreen" },
+      fragment: {
+        module: mod,
+        entryPoint: "fs_composite_premul",
+        targets: [{ format: this.format, writeMask: GPUColorWrite.ALL }],
       },
+      primitive: { topology: "triangle-list" },
+    });
+
+    this._oitCompositePipelineOpaque = this.device.createRenderPipeline({
+      layout: this._oitCompositePipelineLayout,
+      vertex: { module: mod, entryPoint: "vs_fullscreen" },
+      fragment: {
+        module: mod,
+        entryPoint: "fs_composite_opaque",
+        targets: [{ format: this.format, writeMask: GPUColorWrite.ALL }],
+      },
+      primitive: { topology: "triangle-list" },
     });
   }
 
@@ -714,22 +775,24 @@ export class RenderPipelineGPU {
     const vsBlitModule = this.device.createShaderModule({ code: vBlit });
     const fsBlitModule = this.device.createShaderModule({ code: fBlit });
 
+    const vstate = {
+      module: vsBlitModule,
+      entryPoint: "vs_blit",
+      buffers: [
+        {
+          arrayStride: 5 * 4,
+          stepMode: "vertex",
+          attributes: [
+            { shaderLocation: 0, offset: 0, format: "float32x3" },
+            { shaderLocation: 1, offset: 3 * 4, format: "float32x2" },
+          ],
+        },
+      ],
+    };
+
     this.renderPipelineBlitOpaque = this.device.createRenderPipeline({
       layout: this._pipelineLayout,
-      vertex: {
-        module: vsBlitModule,
-        entryPoint: "vs_blit",
-        buffers: [
-          {
-            arrayStride: 5 * 4,
-            stepMode: "vertex",
-            attributes: [
-              { shaderLocation: 0, offset: 0, format: "float32x3" },
-              { shaderLocation: 1, offset: 3 * 4, format: "float32x2" },
-            ],
-          },
-        ],
-      },
+      vertex: vstate,
       fragment: {
         module: fsBlitModule,
         entryPoint: "fs_blit",
@@ -738,17 +801,134 @@ export class RenderPipelineGPU {
       primitive: { topology: "triangle-list" },
       depthStencil: undefined,
     });
+
+    this.renderPipelineBlitTransparent = this.device.createRenderPipeline({
+      layout: this._pipelineLayout,
+      vertex: vstate,
+      fragment: {
+        module: fsBlitModule,
+        entryPoint: "fs_blit",
+        targets: [
+          {
+            format: this.format,
+            blend: {
+              color: {
+                srcFactor: "src-alpha",
+                dstFactor: "one-minus-src-alpha",
+                operation: "add",
+              },
+              alpha: {
+                srcFactor: "one",
+                dstFactor: "one-minus-src-alpha",
+                operation: "add",
+              },
+            },
+            writeMask: GPUColorWrite.ALL,
+          },
+        ],
+      },
+      primitive: { topology: "triangle-list" },
+      depthStencil: undefined,
+    });
+  }
+
+  _destroyOITTargets() {
+    try {
+      if (this._oitAccumTex) this._oitAccumTex.destroy();
+    } catch {}
+    try {
+      if (this._oitRevealTex) this._oitRevealTex.destroy();
+    } catch {}
+    this._oitAccumTex = null;
+    this._oitAccumView = null;
+    this._oitRevealTex = null;
+    this._oitRevealView = null;
+    this._oitBg = null;
+    this._oitW = 0;
+    this._oitH = 0;
+  }
+
+  _ensureOITTargets(w, h) {
+    const W = Math.max(1, w | 0);
+    const H = Math.max(1, h | 0);
+
+    if (
+      this._oitAccumTex &&
+      this._oitRevealTex &&
+      this._oitW === W &&
+      this._oitH === H
+    ) {
+      if (this._oitBg) return true;
+      if (this._oitAccumView && this._oitRevealView) {
+        try {
+          this._oitBg = this.device.createBindGroup({
+            layout: this._oitCompositeLayout,
+            entries: [
+              { binding: 0, resource: this._oitAccumView },
+              { binding: 1, resource: this._oitRevealView },
+              { binding: 2, resource: this.sampler },
+            ],
+          });
+          return true;
+        } catch {
+          this._oitBg = null;
+          return false;
+        }
+      }
+    }
+
+    this._destroyOITTargets();
+
+    try {
+      this._oitAccumTex = this.device.createTexture({
+        size: [W, H, 1],
+        format: this._oitAccumFormat,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+      });
+      this._oitAccumView = this._oitAccumTex.createView({ dimension: "2d" });
+
+      this._oitRevealTex = this.device.createTexture({
+        size: [W, H, 1],
+        format: this._oitRevealFormat,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+      });
+      this._oitRevealView = this._oitRevealTex.createView({ dimension: "2d" });
+
+      this._oitBg = this.device.createBindGroup({
+        layout: this._oitCompositeLayout,
+        entries: [
+          { binding: 0, resource: this._oitAccumView },
+          { binding: 1, resource: this._oitRevealView },
+          { binding: 2, resource: this.sampler },
+        ],
+      });
+
+      this._oitW = W;
+      this._oitH = H;
+      return true;
+    } catch (e) {
+      console.warn("Could not create OIT targets:", e);
+      this._destroyOITTargets();
+      return false;
+    }
   }
 
   resize(clientWidth, clientHeight) {
-    const pw = Math.floor(clientWidth * (window.devicePixelRatio || 1));
-    const ph = Math.floor(clientHeight * (window.devicePixelRatio || 1));
+    const dpr = window.devicePixelRatio || 1;
+    const pw = Math.floor(clientWidth * dpr);
+    const ph = Math.floor(clientHeight * dpr);
+
+    const lastW = this._lastCanvasSize[0] | 0;
+    const lastH = this._lastCanvasSize[1] | 0;
+
+    if (pw === lastW && ph === lastH && pw > 0 && ph > 0) return;
 
     this.context.configure({
       device: this.device,
       format: this.format,
       alphaMode: this.canvasAlphaMode,
       size: [pw, ph],
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
     });
 
     try {
@@ -764,89 +944,67 @@ export class RenderPipelineGPU {
     this._depthView = null;
     this._lastCanvasSize = [pw, ph];
     this.gridStripes = null;
-  }
 
-  _ensureFallbackGradientTexture() {
-    if (this._fallbackGradTex && this._fallbackGradView) return true;
-
-    try {
-      if (this._fallbackGradTex) this._fallbackGradTex.destroy();
-    } catch {}
-    this._fallbackGradTex = null;
-    this._fallbackGradView = null;
-
-    try {
-      this._fallbackGradTex = this.device.createTexture({
-        size: [1, 1, 1],
-        format: "rgba8unorm",
-        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
-      });
-      this._fallbackGradView = this._fallbackGradTex.createView({ dimension: "2d" });
-      this.device.queue.writeTexture(
-        { texture: this._fallbackGradTex },
-        new Uint8Array([255, 255, 255, 255]),
-        { bytesPerRow: 256, rowsPerImage: 1 },
-        { width: 1, height: 1, depthOrArrayLayers: 1 },
-      );
-      return true;
-    } catch (e) {
-      this._fallbackGradTex = null;
-      this._fallbackGradView = null;
-      console.warn("Could not create fallback Gradient texture:", e);
-      return false;
-    }
-  }
-
-  _getGradientView() {
-    if (this._gradientView) return this._gradientView;
-    if (this._fallbackGradView) return this._fallbackGradView;
-    if (this._ensureFallbackGradientTexture()) return this._fallbackGradView;
-    return null;
+    this._destroyOITTargets();
   }
 
   async setChunks(chunks = [], layers = 1, opts = {}) {
-    const { requireSdf = false } = opts;
+    const layersCount = Math.max(1, Math.floor(layers || 1));
+    const requireSdf = !!opts.requireSdf;
 
-    for (const c of this.chunks) {
-      delete c._renderBg0;
-      delete c._renderBg1;
-      delete c._modelBufIdx;
-      delete c._modelData;
-      delete c._fractalArrayView;
-      delete c._sdfArrayView;
-      delete c._flagArrayView;
+    if (
+      this._lastSetChunksState.chunksRef === chunks &&
+      this._lastSetChunksState.layersCount === layersCount &&
+      this._lastSetChunksState.requireSdf === requireSdf
+    ) {
+      return;
     }
 
-    this.chunks = chunks || [];
+    this._ensureRenderUniformCapacity(layersCount);
 
-    for (const b of this.modelBuffers) {
-      try {
-        b.destroy();
-      } catch {}
+    const gradView = this._getGradientView();
+    if (!gradView) {
+      throw new Error(
+        "RenderPipelineGPU.setChunks: missing gradient view for binding(0,5).",
+      );
     }
 
-    this.modelBuffers = this.chunks.map(() =>
-      this.device.createBuffer({ size: 4 * 20, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST }),
-    );
+    const nextChunks = chunks || [];
+    const nextCount = nextChunks.length | 0;
+
+    if (this.chunks !== nextChunks) this.chunks = nextChunks;
+
+    if (this.modelBuffers.length !== nextCount) {
+      const old = this.modelBuffers;
+      for (let i = nextCount; i < old.length; ++i) {
+        try {
+          old[i].destroy();
+        } catch {}
+      }
+      old.length = nextCount;
+
+      for (let i = 0; i < nextCount; ++i) {
+        if (!old[i]) {
+          old[i] = this.device.createBuffer({
+            size: 4 * 20,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+          });
+        }
+      }
+      this.modelBuffers = old;
+    }
 
     const bgLayout0 = this._bgLayout0;
     const bgLayout1 = this._bgLayout1;
 
-    const layersCount = Math.max(1, Math.floor(layers || 1));
+    for (let i = 0; i < nextCount; ++i) {
+      const info = nextChunks[i];
+      if (!info) continue;
 
-    this._lastSetChunks = { layersCount, requireSdf: !!requireSdf };
+      if (!info._modelData) info._modelData = new Float32Array(20);
 
-    const gradView = this._getGradientView();
-    if (!gradView) {
-      throw new Error("RenderPipelineGPU.setChunks: missing gradient view for binding(0,5).");
-    }
-
-    for (let i = 0; i < this.chunks.length; ++i) {
-      const info = this.chunks[i];
-
-      info._modelData = new Float32Array(20);
-
-      const fractalTex = info.fractalTex || info.fractalTexture || info.fractal || null;
+      const fractalTex =
+        info.fractalTex || info.fractalTexture || info.fractal || null;
       const sdfTex = info.sdfTex || info.sdfTexture || info.sdf || null;
       const flagTex = info.flagTex || info.flagTexture || info.flag || null;
 
@@ -854,7 +1012,11 @@ export class RenderPipelineGPU {
         this._ensureArrayViewFromTexture(fractalTex, layersCount) ||
         info.storageView ||
         info.fractalView ||
-        this._pickChunkArrayView(info, ["fractalViews", "fractalLayerViews", "layerViews"]);
+        this._pickChunkArrayView(info, [
+          "fractalViews",
+          "fractalLayerViews",
+          "layerViews",
+        ]);
 
       if (!fractalArrayView) {
         const keys = Object.keys(info);
@@ -863,172 +1025,217 @@ export class RenderPipelineGPU {
         throw new Error(msg);
       }
 
-      const sdfArrayView = this._ensureArrayViewFromTexture(sdfTex, layersCount) || info.sdfView || this._fallbackSdfView;
-      const flagArrayView = this._ensureArrayViewFromTexture(flagTex, layersCount) || info.flagView || this._fallbackFlagView;
+      const sdfArrayView =
+        this._ensureArrayViewFromTexture(sdfTex, layersCount) ||
+        info.sdfView ||
+        this._fallbackSdfView;
+
+      const flagArrayView =
+        this._ensureArrayViewFromTexture(flagTex, layersCount) ||
+        info.flagView ||
+        this._fallbackFlagView;
 
       if (requireSdf && (!sdfArrayView || !flagArrayView)) {
-        throw new Error(`RenderPipelineGPU.setChunks: chunk[${i}] missing SDF or flag view and requireSdf=true.`);
+        throw new Error(
+          `RenderPipelineGPU.setChunks: chunk[${i}] missing SDF or flag view and requireSdf=true.`,
+        );
       }
+
+      const key = `${layersCount}|${requireSdf ? 1 : 0}`;
+      const prevKey = info._bindKey || "";
 
       info._fractalArrayView = fractalArrayView;
       info._sdfArrayView = sdfArrayView;
       info._flagArrayView = flagArrayView;
 
-      info._renderBg0 = this.device.createBindGroup({
-        layout: bgLayout0,
-        entries: [
-          { binding: 0, resource: fractalArrayView },
-          { binding: 1, resource: this.sampler },
-          {
-            binding: 2,
-            resource: {
-              buffer: this.renderUniformBuffer,
-              offset: 0,
-              size: this.renderUniformStride,
-            },
-          },
-          { binding: 3, resource: { buffer: this.cameraBuffer } },
-          { binding: 4, resource: { buffer: this.threshBuf } },
-          { binding: 5, resource: gradView },
-        ],
-      });
-
-      try {
-        info._renderBg1 = this.device.createBindGroup({
-          layout: bgLayout1,
+      if (prevKey !== key || !info._renderBg0) {
+        info._renderBg0 = this.device.createBindGroup({
+          layout: bgLayout0,
           entries: [
-            { binding: 0, resource: { buffer: this.modelBuffers[i] } },
-            { binding: 1, resource: sdfArrayView },
-            { binding: 2, resource: flagArrayView },
-            { binding: 3, resource: this.sampler },
+            { binding: 0, resource: fractalArrayView },
+            { binding: 1, resource: this.sampler },
+            {
+              binding: 2,
+              resource: {
+                buffer: this.renderUniformBuffer,
+                offset: 0,
+                size: this.renderUniformStride,
+              },
+            },
+            { binding: 3, resource: { buffer: this.cameraBuffer } },
+            { binding: 4, resource: { buffer: this.threshBuf } },
+            { binding: 5, resource: gradView },
           ],
         });
-      } catch (e) {
-        console.error("setChunks: createBindGroup(bg1) failed for chunk", i, e);
-        info._renderBg1 = null;
-      }
 
-      info._modelBufIdx = i;
+        try {
+          info._renderBg1 = this.device.createBindGroup({
+            layout: bgLayout1,
+            entries: [
+              { binding: 0, resource: { buffer: this.modelBuffers[i] } },
+              { binding: 1, resource: sdfArrayView },
+              { binding: 2, resource: flagArrayView },
+              { binding: 3, resource: this.sampler },
+            ],
+          });
+        } catch (e) {
+          console.error("setChunks: createBindGroup(bg1) failed for chunk", i, e);
+          info._renderBg1 = null;
+        }
+
+        info._modelBufIdx = i;
+        info._bindKey = key;
+      } else {
+        info._modelBufIdx = i;
+      }
     }
 
     this._modelKey = "";
+    this._lastSetChunksState = { chunksRef: chunks, layersCount, requireSdf };
   }
 
   updateCamera(cam, aspect) {
     const proj = glmath.perspective(cam.fov, aspect, 0.01, 10000.0);
-    const view = glmath.lookAt(cam.cameraPos, cam.lookTarget, cam.upDir);
+
+    let target = cam.lookTarget;
+    if (this.invertCameraY && target && cam.cameraPos) {
+      const cp = cam.cameraPos;
+      const cx = +cp[0],
+        cy = +cp[1],
+        cz = +cp[2];
+      const tx = +target[0],
+        ty = +target[1],
+        tz = +target[2];
+
+      const dy = ty - cy;
+      const tmp = this._tmpLookTarget;
+      tmp[0] = tx;
+      tmp[1] = cy - dy;
+      tmp[2] = tz;
+      target = tmp;
+    }
+
+    const view = glmath.lookAt(cam.cameraPos, target, cam.upDir);
     const viewProj = glmath.mulMat(proj, view);
     this.device.queue.writeBuffer(this.cameraBuffer, 0, viewProj);
   }
 
   writeRenderUniform(paramsState = {}, dstByteOffset = 0) {
-    const defaults = {
-      layerIndex: 0,
-      scheme: 0,
-      useHueGradient: false,
-      dispMode: 0,
+    const dv = this._renderUBODV;
 
-      bowlOn: false,
-      lightingOn: false,
-      dispLimitOn: false,
-      alphaMode: 0,
-
-      hueOffset: 0.0,
-      dispAmp: 0.15,
-      dispCurve: 3.0,
-      bowlDepth: 0.25,
-
-      quadScale: 1.0,
-      gridSize: 512,
-      slopeLimit: 0.5,
-      wallJump: 0.05,
-
-      lightPos: [0.0, 0.0, 5.0],
-      specPower: 32.0,
-
-      worldOffset: 0.0,
-      worldStart: 0.0,
-    };
-
-    const p = Object.assign({}, defaults, paramsState);
-    const lp = Array.isArray(p.lightPos) ? p.lightPos : defaults.lightPos;
+    const layerIndex = _u32(paramsState.layerIndex, 0);
+    const scheme = _u32(paramsState.scheme, 0);
 
     const useHueGradient =
-      p.useHueGradient != null
-        ? !!p.useHueGradient
-        : p.hueGradientOn != null
-          ? !!p.hueGradientOn
-          : p.hueGradient != null
-            ? !!p.hueGradient
+      paramsState.useHueGradient != null
+        ? !!paramsState.useHueGradient
+        : paramsState.hueGradientOn != null
+          ? !!paramsState.hueGradientOn
+          : paramsState.hueGradient != null
+            ? !!paramsState.hueGradient
             : false;
 
+    const dispMode = _u32(paramsState.dispMode, 0);
+
+    const bowlOn = !!paramsState.bowlOn;
+    const lightingOn = !!paramsState.lightingOn;
+    const dispLimitOn = !!paramsState.dispLimitOn;
+
+    const alphaMode = _u32(paramsState.alphaMode, 0);
+
+    const hueOffset = _f32(paramsState.hueOffset, 0.0);
+    const dispAmp = _f32(paramsState.dispAmp, 0.15);
+    const dispCurve = _f32(paramsState.dispCurve, 3.0);
+    const bowlDepth = _f32(paramsState.bowlDepth, 0.25);
+
+    const quadScale = _f32(
+      paramsState.quadScale,
+      _isFiniteNum(this.quadScale) ? +this.quadScale : 1.0,
+    );
+    const gridSize = _f32(paramsState.gridSize, 512.0);
+    const slopeLimit = _f32(paramsState.slopeLimit, 0.5);
+    const wallJump = _f32(paramsState.wallJump, 0.05);
+
+    const lp = _v3(paramsState.lightPos, 0.0, 0.0, 5.0);
+    const specPower = _f32(paramsState.specPower, 32.0);
+
     const worldOffset =
-      p.worldOffset != null
-        ? +p.worldOffset
-        : p.layerSeparation != null
-          ? +p.layerSeparation
-          : p.layerSpacing != null
-            ? +p.layerSpacing
-            : p.layerStep != null
-              ? +p.layerStep
-              : p.layerOffset != null
-                ? +p.layerOffset
+      paramsState.worldOffset != null
+        ? _f32(paramsState.worldOffset, 0.0)
+        : paramsState.layerSeparation != null
+          ? _f32(paramsState.layerSeparation, 0.0)
+          : paramsState.layerSpacing != null
+            ? _f32(paramsState.layerSpacing, 0.0)
+            : paramsState.layerStep != null
+              ? _f32(paramsState.layerStep, 0.0)
+              : paramsState.layerOffset != null
+                ? _f32(paramsState.layerOffset, 0.0)
                 : 0.0;
 
     const worldStart =
-      p.worldStart != null
-        ? +p.worldStart
-        : p.layerStart != null
-          ? +p.layerStart
-          : p.layerBase != null
-            ? +p.layerBase
+      paramsState.worldStart != null
+        ? _f32(paramsState.worldStart, 0.0)
+        : paramsState.layerStart != null
+          ? _f32(paramsState.layerStart, 0.0)
+          : paramsState.layerBase != null
+            ? _f32(paramsState.layerBase, 0.0)
             : 0.0;
 
-    const buf = new ArrayBuffer(96);
-    const dv = new DataView(buf);
-
-    dv.setUint32(0, p.layerIndex >>> 0, true);
-    dv.setUint32(4, p.scheme >>> 0, true);
+    dv.setUint32(0, layerIndex >>> 0, true);
+    dv.setUint32(4, scheme >>> 0, true);
     dv.setUint32(8, useHueGradient ? 1 : 0, true);
-    dv.setUint32(12, p.dispMode >>> 0, true);
+    dv.setUint32(12, dispMode >>> 0, true);
 
-    dv.setUint32(16, p.bowlOn ? 1 : 0, true);
-    dv.setUint32(20, p.lightingOn ? 1 : 0, true);
-    dv.setUint32(24, p.dispLimitOn ? 1 : 0, true);
-    dv.setUint32(28, p.alphaMode >>> 0, true);
+    dv.setUint32(16, bowlOn ? 1 : 0, true);
+    dv.setUint32(20, lightingOn ? 1 : 0, true);
+    dv.setUint32(24, dispLimitOn ? 1 : 0, true);
+    dv.setUint32(28, alphaMode >>> 0, true);
 
-    dv.setFloat32(32, +p.hueOffset || 0.0, true);
-    dv.setFloat32(36, +p.dispAmp || 0.0, true);
-    dv.setFloat32(40, +p.dispCurve || 0.0, true);
-    dv.setFloat32(44, +p.bowlDepth || 0.0, true);
+    dv.setFloat32(32, hueOffset, true);
+    dv.setFloat32(36, dispAmp, true);
+    dv.setFloat32(40, dispCurve, true);
+    dv.setFloat32(44, bowlDepth, true);
 
-    dv.setFloat32(48, +p.quadScale || 0.0, true);
-    dv.setFloat32(52, +p.gridSize || 0.0, true);
-    dv.setFloat32(56, +p.slopeLimit || 0.0, true);
-    dv.setFloat32(60, +p.wallJump || 0.0, true);
+    dv.setFloat32(48, quadScale, true);
+    dv.setFloat32(52, gridSize, true);
+    dv.setFloat32(56, slopeLimit, true);
+    dv.setFloat32(60, wallJump, true);
 
-    dv.setFloat32(64, +(lp[0] ?? 0.0), true);
-    dv.setFloat32(68, +(lp[1] ?? 0.0), true);
-    dv.setFloat32(72, +(lp[2] ?? 0.0), true);
-    dv.setFloat32(76, +p.specPower || 0.0, true);
+    dv.setFloat32(64, lp[0], true);
+    dv.setFloat32(68, lp[1], true);
+    dv.setFloat32(72, lp[2], true);
+    dv.setFloat32(76, specPower, true);
 
-    dv.setFloat32(80, Number.isFinite(worldOffset) ? worldOffset : 0.0, true);
-    dv.setFloat32(84, Number.isFinite(worldStart) ? worldStart : 0.0, true);
+    dv.setFloat32(80, worldOffset, true);
+    dv.setFloat32(84, worldStart, true);
     dv.setFloat32(88, 0.0, true);
     dv.setFloat32(92, 0.0, true);
 
-    this.device.queue.writeBuffer(this.renderUniformBuffer, dstByteOffset >>> 0, buf);
+    this.device.queue.writeBuffer(
+      this.renderUniformBuffer,
+      dstByteOffset >>> 0,
+      this._renderUBOTmp,
+    );
   }
 
   writeThreshUniform(paramsState = {}) {
-    const defaults = { lowT: 0.0, highT: 1.0, basis: 0.0 };
-    const p = Object.assign({}, defaults, paramsState);
-    this.device.queue.writeBuffer(this.threshBuf, 0, new Float32Array([p.lowT, p.highT, p.basis, 0]));
+    const lowT = _f32(paramsState.lowT, 0.0);
+    const highT = _f32(paramsState.highT, 1.0);
+    const basis = _f32(paramsState.basis, 0.0);
+    this._threshTmp[0] = lowT;
+    this._threshTmp[1] = highT;
+    this._threshTmp[2] = basis;
+    this._threshTmp[3] = 0.0;
+    this.device.queue.writeBuffer(this.threshBuf, 0, this._threshTmp);
   }
 
   _updateModelBuffersIfNeeded(paramsState) {
-    const gridSize = _isFiniteNum(paramsState.gridSize) ? +paramsState.gridSize : 512;
-    const quadScale = _isFiniteNum(paramsState.quadScale) ? +paramsState.quadScale : this.quadScale;
+    const gridSize = _isFiniteNum(paramsState.gridSize)
+      ? +paramsState.gridSize
+      : 512;
+    const quadScale = _isFiniteNum(paramsState.quadScale)
+      ? +paramsState.quadScale
+      : this.quadScale;
 
     const key = `${gridSize}|${quadScale}|${this.chunks.length}`;
     if (key === this._modelKey) return;
@@ -1045,10 +1252,22 @@ export class RenderPipelineGPU {
       const x = -quadScale + info.offsetX * texelWorld;
       const y = -quadScale + (info.offsetY ?? 0) * texelWorld;
 
-      data[0] = w; data[1] = 0; data[2] = 0; data[3] = 0;
-      data[4] = 0; data[5] = h; data[6] = 0; data[7] = 0;
-      data[8] = 0; data[9] = 0; data[10] = 1; data[11] = 0;
-      data[12] = x; data[13] = y; data[14] = 0; data[15] = 1;
+      data[0] = w;
+      data[1] = 0;
+      data[2] = 0;
+      data[3] = 0;
+      data[4] = 0;
+      data[5] = h;
+      data[6] = 0;
+      data[7] = 0;
+      data[8] = 0;
+      data[9] = 0;
+      data[10] = 1;
+      data[11] = 0;
+      data[12] = x;
+      data[13] = y;
+      data[14] = 0;
+      data[15] = 1;
 
       const u0 = info.offsetX / gridSize;
       const v0 = (info.offsetY ?? 0) / gridSize;
@@ -1066,148 +1285,190 @@ export class RenderPipelineGPU {
     this._modelKey = key;
   }
 
-  async render(paramsState, camState) {
-    const aspect =
-      this._lastCanvasSize[0] && this._lastCanvasSize[1]
-        ? this._lastCanvasSize[0] / this._lastCanvasSize[1]
-        : 1;
+  _drawAll(pass, paramsState, nLayers) {
+    const chunks = this.chunks;
+    const stripes = this.gridStripes;
+    const stride = this.renderUniformStride;
 
-    this.updateCamera(camState, aspect);
+    const chunkCount = chunks.length | 0;
+    const stripeCount = stripes.length | 0;
 
-    const nLayers = Math.max(1, Math.floor(paramsState.nLayers ?? paramsState.layers ?? 1));
-    const alphaMode = paramsState.alphaMode ?? 0;
+    const savedLayer = paramsState.layerIndex;
 
-    this._ensureRenderUniformCapacity(nLayers);
+    for (let s = 0; s < stripeCount; ++s) {
+      const stripe = stripes[s];
+      pass.setVertexBuffer(0, stripe.vbuf);
+      pass.setIndexBuffer(stripe.ibuf, "uint32");
 
-    this.writeThreshUniform(paramsState);
+      for (let layer = 0; layer < nLayers; ++layer) {
+        const dyn = (layer * stride) >>> 0;
+        paramsState.layerIndex = layer;
+        this.writeRenderUniform(paramsState, dyn);
 
-    if (!this.gridStripes) {
-      this.gridStripes = await buildPlaneGridChunks(this.device, this.gridDivs);
-    }
+        for (let i = 0; i < chunkCount; ++i) {
+          const info = chunks[i];
+          const bg0 = info && info._renderBg0;
+          const bg1 = info && info._renderBg1;
+          if (!bg0 || !bg1) continue;
 
-    this._updateModelBuffersIfNeeded(paramsState);
-
-    const encoder = this.device.createCommandEncoder();
-    const viewTex = this.context.getCurrentTexture().createView();
-
-    if (!this._depthView) this._depthView = this.depthTexture.createView();
-
-    const useTransparent = alphaMode === 1 || alphaMode === 2;
-
-    const pass = encoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: viewTex,
-          loadOp: "clear",
-          storeOp: "store",
-          clearValue: { r: 0, g: 0, b: 0, a: 1 },
-        },
-      ],
-      depthStencilAttachment: {
-        view: this._depthView,
-        depthLoadOp: "clear",
-        depthStoreOp: "store",
-        depthClearValue: 1,
-      },
-    });
-
-    pass.setPipeline(useTransparent ? this.renderPipelineTransparent : this.renderPipelineOpaque);
-
-    for (let layer = nLayers - 1; layer >= 0; --layer) {
-      const dyn = (layer * this.renderUniformStride) >>> 0;
-
-      this.writeRenderUniform(Object.assign({}, paramsState, { layerIndex: layer }), dyn);
-
-      for (let i = 0; i < this.chunks.length; ++i) {
-        const info = this.chunks[i];
-
-        const bg0 = info._renderBg0;
-        if (!bg0) continue;
-        pass.setBindGroup(0, bg0, [dyn]);
-
-        const bg1 = info._renderBg1;
-        if (!bg1) continue;
-        pass.setBindGroup(1, bg1);
-
-        for (const stripe of this.gridStripes) {
-          pass.setVertexBuffer(0, stripe.vbuf);
-          pass.setIndexBuffer(stripe.ibuf, "uint32");
+          pass.setBindGroup(0, bg0, [dyn]);
+          pass.setBindGroup(1, bg1);
           pass.drawIndexed(stripe.indexCount, 1, 0, 0, 0);
         }
       }
     }
 
-    pass.end();
-
-    this.device.queue.submit([encoder.finish()]);
-    await this.device.queue.onSubmittedWorkDone();
+    paramsState.layerIndex = savedLayer;
   }
 
-  async renderBlitToView(paramsState, colorView) {
-    this._ensureRenderUniformCapacity(1);
-
-    this.writeRenderUniform(paramsState, 0);
-    this.writeThreshUniform(paramsState);
-
+  async _ensureGrid() {
     if (!this.gridStripes) {
       this.gridStripes = await buildPlaneGridChunks(this.device, this.gridDivs);
     }
+  }
 
-    this._updateModelBuffersIfNeeded(paramsState);
+  async render(paramsState, camState) {
+    const p = paramsState || {};
+    const w = this._lastCanvasSize[0] | 0;
+    const h = this._lastCanvasSize[1] | 0;
+    const aspect = w > 0 && h > 0 ? w / h : 1;
+
+    this.updateCamera(camState, aspect);
+
+    const nLayers = Math.max(1, Math.floor(p.nLayers ?? p.layers ?? 1));
+    const alphaMode = _u32(p.alphaMode, 0);
+    const useOIT = alphaMode === 1 || alphaMode === 2;
+
+    this._ensureRenderUniformCapacity(nLayers);
+    this.writeThreshUniform(p);
+    await this._ensureGrid();
+    this._updateModelBuffersIfNeeded(p);
+
+    const encoder = this.device.createCommandEncoder();
+    const outView = this.context.getCurrentTexture().createView();
+
+    if (useOIT) {
+      if (!this._ensureOITTargets(w || 1, h || 1)) return;
+
+      const oitDesc = this._rpDescOIT;
+      oitDesc.colorAttachments[0].view = this._oitAccumView;
+      oitDesc.colorAttachments[1].view = this._oitRevealView;
+
+      const oitPass = encoder.beginRenderPass(oitDesc);
+      oitPass.setPipeline(this.renderPipelineOIT);
+      this._drawAll(oitPass, p, nLayers);
+      oitPass.end();
+
+      const compositePipeline =
+        this.canvasAlphaMode === "opaque"
+          ? this._oitCompositePipelineOpaque
+          : this._oitCompositePipelinePremul;
+
+      const compDesc =
+        this.canvasAlphaMode === "opaque"
+          ? this._rpDescCompositeOpaque
+          : this._rpDescCompositePremul;
+
+      compDesc.colorAttachments[0].view = outView;
+
+      const compPass = encoder.beginRenderPass(compDesc);
+      compPass.setPipeline(compositePipeline);
+      compPass.setBindGroup(0, this._oitBg);
+      compPass.draw(3, 1, 0, 0);
+      compPass.end();
+    } else {
+      if (!this.depthTexture) {
+        this.depthTexture = this.device.createTexture({
+          size: [Math.max(1, w), Math.max(1, h), 1],
+          format: "depth24plus",
+          usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        });
+        this._depthView = null;
+      }
+      if (!this._depthView) this._depthView = this.depthTexture.createView();
+
+      const desc = this._rpDescOpaque;
+      desc.colorAttachments[0].view = outView;
+      desc.depthStencilAttachment.view = this._depthView;
+
+      const pass = encoder.beginRenderPass(desc);
+      pass.setPipeline(this.renderPipelineOpaque);
+      this._drawAll(pass, p, nLayers);
+      pass.end();
+    }
+
+    this.device.queue.submit([encoder.finish()]);
+
+    if (p && p.waitGPU) {
+      await this.device.queue.onSubmittedWorkDone();
+    }
+  }
+
+  async renderBlitToView(paramsState, colorView) {
+    const p = paramsState || {};
+    const w = this._lastCanvasSize[0] | 0;
+    const h = this._lastCanvasSize[1] | 0;
+
+    const nLayers = Math.max(1, Math.floor(p.nLayers ?? p.layers ?? 1));
+    const alphaMode = _u32(p.alphaMode, 0);
+    const useOIT = alphaMode === 1 || alphaMode === 2;
+
+    this._ensureRenderUniformCapacity(nLayers);
+    this.writeThreshUniform(p);
+    await this._ensureGrid();
+    this._updateModelBuffersIfNeeded(p);
 
     const encoder = this.device.createCommandEncoder();
 
-    const rpass = encoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: colorView,
-          loadOp: "clear",
-          storeOp: "store",
-          clearValue: { r: 0, g: 0, b: 0, a: 1 },
-        },
-      ],
-    });
+    if (useOIT) {
+      if (!this._ensureOITTargets(w || 1, h || 1)) return;
 
-    rpass.setPipeline(this.renderPipelineBlitOpaque);
+      const oitDesc = this._rpDescOIT;
+      oitDesc.colorAttachments[0].view = this._oitAccumView;
+      oitDesc.colorAttachments[1].view = this._oitRevealView;
 
-    for (let i = 0; i < this.chunks.length; ++i) {
-      const info = this.chunks[i];
+      const oitPass = encoder.beginRenderPass(oitDesc);
+      oitPass.setPipeline(this.renderPipelineOIT);
+      this._drawAll(oitPass, p, nLayers);
+      oitPass.end();
 
-      const bg0 = info._renderBg0;
-      if (!bg0) continue;
-      rpass.setBindGroup(0, bg0, [0]);
+      const compositePipeline =
+        this.canvasAlphaMode === "opaque"
+          ? this._oitCompositePipelineOpaque
+          : this._oitCompositePipelinePremul;
 
-      const bg1 = info._renderBg1;
-      if (!bg1) continue;
-      rpass.setBindGroup(1, bg1);
+      const compDesc =
+        this.canvasAlphaMode === "opaque"
+          ? this._rpDescCompositeOpaque
+          : this._rpDescCompositePremul;
 
-      for (const stripe of this.gridStripes) {
-        rpass.setVertexBuffer(0, stripe.vbuf);
-        rpass.setIndexBuffer(stripe.ibuf, "uint32");
-        rpass.drawIndexed(stripe.indexCount, 1, 0, 0, 0);
-      }
+      compDesc.colorAttachments[0].view = colorView;
+
+      const compPass = encoder.beginRenderPass(compDesc);
+      compPass.setPipeline(compositePipeline);
+      compPass.setBindGroup(0, this._oitBg);
+      compPass.draw(3, 1, 0, 0);
+      compPass.end();
+    } else {
+      const desc = this._rpDescBlitOpaque;
+      desc.colorAttachments[0].view = colorView;
+
+      const rpass = encoder.beginRenderPass(desc);
+      rpass.setPipeline(this.renderPipelineBlitOpaque);
+      this._drawAll(rpass, p, nLayers);
+      rpass.end();
     }
 
-    rpass.end();
-
     this.device.queue.submit([encoder.finish()]);
-    await this.device.queue.onSubmittedWorkDone();
+
+    if (p && p.waitGPU) {
+      await this.device.queue.onSubmittedWorkDone();
+    }
   }
 
   async renderBlitToTexture(paramsState, targetTexture) {
     const view = targetTexture.createView();
     await this.renderBlitToView(paramsState, view);
-  }
-
-  idxForWorldX(worldX, paramsState) {
-    const half = paramsState.quadScale;
-    const uGlobal = (worldX + half) / (2 * half);
-    const pixelX = Math.floor(uGlobal * paramsState.gridSize);
-    for (let i = 0; i < this.chunks.length; ++i) {
-      const c = this.chunks[i];
-      if (pixelX >= c.offsetX && pixelX < c.offsetX + c.width) return i;
-    }
-    return 0;
   }
 
   destroy() {
@@ -1265,6 +1526,8 @@ export class RenderPipelineGPU {
     } catch {}
     this.renderUniformBuffer = null;
     this._renderUBOCapLayers = 0;
+
+    this._destroyOITTargets();
   }
 }
 

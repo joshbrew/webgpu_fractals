@@ -204,7 +204,9 @@ function flushPending() {
     ps.dispMode = 0;
     ps.lightingOn = false;
 
-    const rm = (ps.renderMode == null ? "" : String(ps.renderMode)).trim().toLowerCase();
+    const rm = (ps.renderMode == null ? "" : String(ps.renderMode))
+      .trim()
+      .toLowerCase();
     if (rm === "slab" || rm === "1") ps.renderMode = "fractal";
 
     renderGlobals.computeDirty = true;
@@ -244,8 +246,12 @@ function resolveGammaSeries(params, count) {
   if (count <= 1) return { gammaStart: baseGamma, gammaRange: 0.0 };
 
   const step = Number.isFinite(+p.layerGammaStep) ? +p.layerGammaStep : 0.0;
-  const rangeExplicit = Number.isFinite(+p.layerGammaRange) ? +p.layerGammaRange : 0.0;
-  const gStartRaw = Number.isFinite(+p.layerGammaStart) ? +p.layerGammaStart : baseGamma;
+  const rangeExplicit = Number.isFinite(+p.layerGammaRange)
+    ? +p.layerGammaRange
+    : 0.0;
+  const gStartRaw = Number.isFinite(+p.layerGammaStart)
+    ? +p.layerGammaStart
+    : baseGamma;
 
   if (step !== 0) {
     const total = step * (count - 1);
@@ -274,8 +280,6 @@ function gammaForLayerIndex(gammaStart, gammaRange, li, count) {
 
 function needsSdf(params) {
   const p = params || renderGlobals.paramsState;
-  const req = requestedLayersFromParams(p);
-  if (req > 1) return false;
   return !!(p.dispMode && p.dispMode !== 0) || !!p.lightingOn;
 }
 
@@ -313,7 +317,8 @@ function _assertPipelineApi(renderPipeline) {
   if (!renderPipeline) throw new Error("Render pipeline missing");
 
   const hasSetChunks = typeof renderPipeline.setChunks === "function";
-  if (!hasSetChunks) throw new TypeError("renderPipeline.setChunks is not a function");
+  if (!hasSetChunks)
+    throw new TypeError("renderPipeline.setChunks is not a function");
 
   const hasRender =
     typeof renderPipeline.render === "function" ||
@@ -321,7 +326,9 @@ function _assertPipelineApi(renderPipeline) {
     typeof renderPipeline.draw === "function";
 
   if (!hasRender && typeof renderPipeline.renderBlitToView !== "function") {
-    throw new TypeError("renderPipeline has no render/renderFrame/draw/renderBlitToView");
+    throw new TypeError(
+      "renderPipeline has no render/renderFrame/draw/renderBlitToView",
+    );
   }
 }
 
@@ -335,7 +342,8 @@ export async function initRender() {
   const format = navigator.gpu.getPreferredCanvasFormat();
 
   function parseAlphaModeToNumeric(mode) {
-    if (mode === undefined || mode === null) return Number(renderGlobals.paramsState.alphaMode || 0);
+    if (mode === undefined || mode === null)
+      return Number(renderGlobals.paramsState.alphaMode || 0);
 
     if (typeof mode === "number" && Number.isFinite(mode)) {
       const n = Math.floor(mode);
@@ -403,15 +411,26 @@ export async function initRender() {
     renderGlobals.cameraDirty = true;
   }
 
-  const fractalCompute = new FractalTileComputeGPU(device, undefined, undefined, uniformStride);
+  const fractalCompute = new FractalTileComputeGPU(
+    device,
+    undefined,
+    undefined,
+    uniformStride,
+  );
   const sdfCompute = new SdfComputeGPU(device, uniformStride);
 
-  const renderPipeline = new RenderPipelineGPU(device, context, undefined, undefined, {
-    renderUniformStride: 256,
-    initialGridDivs: renderGlobals.paramsState.gridDivs,
-    quadScale: renderGlobals.paramsState.quadScale,
-    canvasAlphaMode: currentAlphaMode,
-  });
+  const renderPipeline = new RenderPipelineGPU(
+    device,
+    context,
+    undefined,
+    undefined,
+    {
+      renderUniformStride: 256,
+      initialGridDivs: renderGlobals.paramsState.gridDivs,
+      quadScale: renderGlobals.paramsState.quadScale,
+      canvasAlphaMode: currentAlphaMode,
+    },
+  );
 
   _assertPipelineApi(renderPipeline);
 
@@ -442,9 +461,16 @@ export async function initRender() {
   let _noSdfCacheSrc = null;
   let _noSdfCache = null;
 
+  let _withSdfCacheSrc = null;
+  let _withSdfCache = null;
+  let _sdfAllocEpoch = 0;
+
   function invalidateChunkCaches() {
     _noSdfCacheSrc = null;
     _noSdfCache = null;
+
+    _withSdfCacheSrc = null;
+    _withSdfCache = null;
   }
 
   function requestedLayers() {
@@ -470,7 +496,7 @@ export async function initRender() {
 
   function clampLayerIndex(li, n) {
     const nn = Math.max(1, n | 0);
-    const x = Number.isFinite(+li) ? (+li | 0) : 0;
+    const x = Number.isFinite(+li) ? +li | 0 : 0;
     if (x < 0) return 0;
     if (x >= nn) return nn - 1;
     return x;
@@ -510,7 +536,10 @@ export async function initRender() {
   function effectiveSplitCount(requestedSplit) {
     const req = Math.max(1, Math.floor(requestedSplit || 0));
     const eff = Math.min(req, MAX_PIXELS_PER_CHUNK);
-    if (eff !== req) console.debug("splitCount clamped: requested=" + req + ", effective=" + eff);
+    if (eff !== req)
+      console.debug(
+        "splitCount clamped: requested=" + req + ", effective=" + eff,
+      );
     return eff;
   }
 
@@ -529,7 +558,11 @@ export async function initRender() {
     if (!Array.isArray(chunkInfos) || chunkInfos.length === 0) return;
     layersToUse = Math.max(1, layersToUse | 0);
 
-    if (_slabSetChunksSrc === chunkInfos && _slabSetChunksLayers === layersToUse) return;
+    if (
+      _slabSetChunksSrc === chunkInfos &&
+      _slabSetChunksLayers === layersToUse
+    )
+      return;
 
     await slabPipeline.setChunks(chunkInfos, layersToUse);
     _slabSetChunksSrc = chunkInfos;
@@ -581,6 +614,15 @@ export async function initRender() {
 
     _noSdfCacheSrc = chunks;
     _noSdfCache = out;
+    return out;
+  }
+
+  function chunksWithSdf(chunks = []) {
+    if (_withSdfCacheSrc === chunks && _withSdfCache) return _withSdfCache;
+
+    const out = (chunks || []).map((c) => Object.assign({}, c));
+    _withSdfCacheSrc = chunks;
+    _withSdfCache = out;
     return out;
   }
 
@@ -636,11 +678,15 @@ export async function initRender() {
     }
 
     sdfReady = false;
+    _sdfAllocEpoch = 0;
     invalidateChunkCaches();
   }
 
   async function computeFractalLayer(layerIndex, aspect = 1) {
-    let requested = Math.max(1, Math.floor(renderGlobals.paramsState.splitCount || 0));
+    let requested = Math.max(
+      1,
+      Math.floor(renderGlobals.paramsState.splitCount || 0),
+    );
     let eff = Math.min(requested, MAX_PIXELS_PER_CHUNK);
     eff = Math.max(eff, MIN_SPLIT);
 
@@ -653,11 +699,18 @@ export async function initRender() {
           layerIndex: 0,
         });
 
-        const chunks = await fractalCompute.compute(params, layerIndex, aspect, "main", 1);
+        const chunks = await fractalCompute.compute(
+          params,
+          layerIndex,
+          aspect,
+          "main",
+          1,
+        );
         chunkInfos = chunks || [];
 
         for (const c of chunkInfos) {
-          if (!c.fractalView && c.layerViews && c.layerViews[0]) c.fractalView = c.layerViews[0];
+          if (!c.fractalView && c.layerViews && c.layerViews[0])
+            c.fractalView = c.layerViews[0];
           if (!c.layerViews && c.fractalView) c.layerViews = [c.fractalView];
         }
 
@@ -696,11 +749,14 @@ export async function initRender() {
                 fractalTex: device.createTexture({
                   size: [1, 1, 1],
                   format: "rgba8unorm",
-                  usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+                  usage:
+                    GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
                 }),
               },
             ];
-            chunkInfos[0].fractalView = chunkInfos[0].fractalTex.createView({ dimension: "2d" });
+            chunkInfos[0].fractalView = chunkInfos[0].fractalTex.createView({
+              dimension: "2d",
+            });
             chunkInfos[0].layerViews = [chunkInfos[0].fractalView];
           }
 
@@ -746,9 +802,18 @@ export async function initRender() {
 
       for (let li = 0; li < count; ++li) {
         const g = gammaForLayerIndex(gammaStart, gammaRange, li, count);
-        const paramsLi = g === baseParams.gamma ? baseParams : Object.assign({}, baseParams, { gamma: g });
+        const paramsLi =
+          g === baseParams.gamma
+            ? baseParams
+            : Object.assign({}, baseParams, { gamma: g });
 
-        const chunks = await fractalCompute.compute(paramsLi, li, aspect, "main", count);
+        const chunks = await fractalCompute.compute(
+          paramsLi,
+          li,
+          aspect,
+          "main",
+          count,
+        );
 
         for (const c of chunks) {
           const key = `${c.offsetX}|${c.offsetY}|${c.width}|${c.height}`;
@@ -758,7 +823,8 @@ export async function initRender() {
             dst.fractalLayerViews = new Array(count);
             merged.set(key, dst);
           }
-          const view = c.fractalView || (c.layerViews && c.layerViews[0]) || null;
+          const view =
+            c.fractalView || (c.layerViews && c.layerViews[0]) || null;
           dst.fractalLayerViews[li] = view;
         }
       }
@@ -796,16 +862,23 @@ export async function initRender() {
         layerIndex: 0,
       });
 
+      const wasReady = sdfReady;
+
       await sdfCompute.compute(chunkInfos, params, layerIndex, aspect);
       await device.queue.onSubmittedWorkDone();
 
       sdfReady = true;
-      invalidateChunkCaches();
+
+      const epochNow = (sdfCompute && sdfCompute._allocEpoch) | 0;
+      const realloc = epochNow !== (_sdfAllocEpoch | 0);
+      _sdfAllocEpoch = epochNow;
+
+      if (!wasReady || realloc) invalidateChunkCaches();
 
       if (queryCompute._bgCache) queryCompute._bgCache.clear();
       renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
 
-      await renderPipeline.setChunks(sdfReady ? chunkInfos : chunksWithoutSdf(chunkInfos), 1, {
+      await renderPipeline.setChunks(chunksWithSdf(chunkInfos), 1, {
         layerIndex: layerIndex >>> 0,
         requireSdf: true,
       });
@@ -859,7 +932,11 @@ export async function initRender() {
 
           c._usingTmpSdfFallback = true;
         } catch (e2) {
-          console.warn("computeSdfLayer: temporary fallback creation failed for chunk:", c, e2);
+          console.warn(
+            "computeSdfLayer: temporary fallback creation failed for chunk:",
+            c,
+            e2,
+          );
         }
       }
 
@@ -870,7 +947,10 @@ export async function initRender() {
           requireSdf: false,
         });
       } catch (ebg) {
-        console.warn("computeSdfLayer: renderPipeline.setChunks failed even with fallbacks:", ebg);
+        console.warn(
+          "computeSdfLayer: renderPipeline.setChunks failed even with fallbacks:",
+          ebg,
+        );
       }
 
       return chunkInfos;
@@ -895,6 +975,7 @@ export async function initRender() {
           format,
           alphaMode: currentAlphaMode,
           size: [canvas.width, canvas.height],
+          usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
         });
       } catch (e) {
         console.warn("setAlphaMode: context.configure failed:", e);
@@ -919,24 +1000,44 @@ export async function initRender() {
     const req = requestedLayers();
     ps.layerIndex = clampLayerIndex(ps.layerIndex, req);
 
+    const wantSdf = modeNeedsSdf(mode, ps);
+    const sdfSrcLayer = req > 1 ? 0 : ps.layerIndex;
+
     if (forceFractalRecompute) {
       if (req > 1) {
         await computeFractalLayerSeries(req, aspect);
-        freeSdfData(chunkInfos);
-        sdfReady = false;
 
         const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
 
         if (mode === "slab") {
+          freeSdfData(chunkInfos);
+          sdfReady = false;
+
           await ensureSlabChunks(layersToUse);
           slabWallsDirty = true;
-        } else {
-          renderPipeline.gridDivs = ps.gridDivs;
-          await renderPipeline.setChunks(chunksWithoutSdf(chunkInfos), layersToUse, {
-            layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
-            requireSdf: false,
-          });
+          return;
         }
+
+        if (wantSdf) {
+          freeSdfData(chunkInfos);
+          sdfReady = false;
+          await computeSdfLayer(sdfSrcLayer, aspect);
+        } else {
+          freeSdfData(chunkInfos);
+          sdfReady = false;
+        }
+
+        renderPipeline.gridDivs = ps.gridDivs;
+
+        const requireSdf = wantSdf && sdfReady;
+        await renderPipeline.setChunks(
+          requireSdf ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos),
+          layersToUse,
+          {
+            layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
+            requireSdf,
+          },
+        );
 
         return;
       }
@@ -949,41 +1050,61 @@ export async function initRender() {
 
         await ensureSlabChunks(1);
         slabWallsDirty = true;
-      } else if (modeNeedsSdf(mode, ps)) {
+        return;
+      }
+
+      if (wantSdf) {
         await computeSdfLayer(ps.layerIndex, aspect);
       } else {
         freeSdfData(chunkInfos);
         sdfReady = false;
       }
 
-      if (mode !== "slab") {
-        renderPipeline.gridDivs = ps.gridDivs;
-        const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
-        await renderPipeline.setChunks(requireSdf ? chunkInfos : chunksWithoutSdf(chunkInfos), 1, {
+      renderPipeline.gridDivs = ps.gridDivs;
+
+      const requireSdf = wantSdf && sdfReady;
+      await renderPipeline.setChunks(
+        requireSdf ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos),
+        1,
+        {
           layerIndex: clampLayerIndex(ps.layerIndex, 1),
           requireSdf,
-        });
-      }
+        },
+      );
 
       return;
     }
 
     if (req > 1) {
-      freeSdfData(chunkInfos);
-      sdfReady = false;
-
       const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
 
       if (mode === "slab") {
+        freeSdfData(chunkInfos);
+        sdfReady = false;
+
         await ensureSlabChunks(layersToUse);
         slabWallsDirty = true;
-      } else {
-        renderPipeline.gridDivs = ps.gridDivs;
-        await renderPipeline.setChunks(chunksWithoutSdf(chunkInfos), layersToUse, {
-          layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
-          requireSdf: false,
-        });
+        return;
       }
+
+      if (wantSdf) {
+        await computeSdfLayer(sdfSrcLayer, aspect);
+      } else {
+        freeSdfData(chunkInfos);
+        sdfReady = false;
+      }
+
+      renderPipeline.gridDivs = ps.gridDivs;
+
+      const requireSdf = wantSdf && sdfReady;
+      await renderPipeline.setChunks(
+        requireSdf ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos),
+        layersToUse,
+        {
+          layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
+          requireSdf,
+        },
+      );
 
       return;
     }
@@ -994,21 +1115,27 @@ export async function initRender() {
 
       await ensureSlabChunks(1);
       slabWallsDirty = true;
-    } else if (modeNeedsSdf(mode, ps)) {
+      return;
+    }
+
+    if (wantSdf) {
       await computeSdfLayer(ps.layerIndex, aspect);
     } else {
       freeSdfData(chunkInfos);
       sdfReady = false;
     }
 
-    if (mode !== "slab") {
-      renderPipeline.gridDivs = ps.gridDivs;
-      const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
-      await renderPipeline.setChunks(requireSdf ? chunkInfos : chunksWithoutSdf(chunkInfos), 1, {
+    renderPipeline.gridDivs = ps.gridDivs;
+
+    const requireSdf = wantSdf && sdfReady;
+    await renderPipeline.setChunks(
+      requireSdf ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos),
+      1,
+      {
         layerIndex: clampLayerIndex(ps.layerIndex, 1),
         requireSdf,
-      });
-    }
+      },
+    );
   }
 
   async function renderFrame() {
@@ -1039,7 +1166,6 @@ export async function initRender() {
       });
 
       slabWallsDirty = false;
-      await device.queue.onSubmittedWorkDone();
       return;
     }
 
@@ -1049,10 +1175,19 @@ export async function initRender() {
       layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
     });
 
-    const writeRenderUniform = _pickFn(renderPipeline, ["writeRenderUniform", "writeRenderUniforms", "writeUniforms"]);
+    const writeRenderUniform = _pickFn(renderPipeline, [
+      "writeRenderUniform",
+      "writeRenderUniforms",
+      "writeUniforms",
+    ]);
     if (writeRenderUniform) writeRenderUniform(localParams);
 
-    const writeThreshUniform = _pickFn(renderPipeline, ["writeThreshUniform", "writeThresholdUniform", "writeThresh", "writeThreshold"]);
+    const writeThreshUniform = _pickFn(renderPipeline, [
+      "writeThreshUniform",
+      "writeThresholdUniform",
+      "writeThresh",
+      "writeThreshold",
+    ]);
     if (writeThreshUniform) writeThreshUniform(localParams);
 
     if (renderGlobals.gridDirty) {
@@ -1062,7 +1197,10 @@ export async function initRender() {
     }
 
     const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
-    const chunksToUse = requireSdf ? chunkInfos : chunksWithoutSdf(chunkInfos);
+    const chunksToUse = requireSdf
+      ? chunksWithSdf(chunkInfos)
+      : chunksWithoutSdf(chunkInfos);
+
     await renderPipeline.setChunks(chunksToUse, layersToUse, {
       layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
       requireSdf,
@@ -1080,8 +1218,6 @@ export async function initRender() {
       const viewTex = context.getCurrentTexture().createView();
       await blitFn(localParams, viewTex);
     }
-
-    await device.queue.onSubmittedWorkDone();
   }
 
   async function handleResizeImmediate() {
@@ -1131,7 +1267,9 @@ export async function initRender() {
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       resizeTimer = 0;
-      handleResizeImmediate().catch((e) => console.error("debounced resize failed:", e));
+      handleResizeImmediate().catch((e) =>
+        console.error("debounced resize failed:", e),
+      );
     }, 150);
   }
 
@@ -1147,7 +1285,10 @@ export async function initRender() {
   }
   function onMouseMove(e) {
     yaw += e.movementX * 0.002;
-    pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch - e.movementY * 0.002));
+    pitch = Math.max(
+      -Math.PI / 2,
+      Math.min(Math.PI / 2, pitch - e.movementY * 0.002),
+    );
     updateLookTarget();
   }
 
@@ -1270,15 +1411,23 @@ export async function initRender() {
 
   function downloadBlob(blob, filename) {
     if (!blob) return;
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
+    a.style.display = "none";
     a.href = url;
-    a.download = filename;
-    document.body.insertAdjacentHTML("beforeend", "");
+    a.download = filename || "download";
+    a.rel = "noopener";
+
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+
+    setTimeout(() => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {}
+    }, 1000);
   }
 
   function canvasToPngBlob(canvasEl) {
@@ -1294,69 +1443,234 @@ export async function initRender() {
     });
   }
 
-  function copyWebGPUTo2D(canvasEl) {
-    return (async () => {
-      await device.queue.onSubmittedWorkDone();
-      const w = canvasEl.width;
-      const h = canvasEl.height;
-      const tmp = document.createElement("canvas");
-      tmp.width = w;
-      tmp.height = h;
-      const ctx2d = tmp.getContext("2d");
-      if (!ctx2d) throw new Error("2D context unavailable for export");
-      ctx2d.drawImage(canvasEl, 0, 0, w, h);
-      return canvasToPngBlob(tmp);
-    })();
+  function _alignUp(v, a) {
+    v = v | 0;
+    a = a | 0;
+    return (v + (a - 1)) & ~(a - 1);
+  }
+
+  let _exportTex = null;
+  let _exportTexW = 0;
+  let _exportTexH = 0;
+  let _exportTexFormat = "";
+  let _exportReadback = null;
+  let _exportReadbackBytes = 0;
+  let _exportBpr = 0;
+
+  let _export2dCanvas = null;
+  let _export2dCtx = null;
+
+  function _ensureExport2dCanvas(w, h) {
+    if (!_export2dCanvas) {
+      _export2dCanvas = document.createElement("canvas");
+      _export2dCtx = _export2dCanvas.getContext("2d");
+      if (!_export2dCtx) throw new Error("2D context unavailable for export");
+    }
+    if (_export2dCanvas.width !== w) _export2dCanvas.width = w;
+    if (_export2dCanvas.height !== h) _export2dCanvas.height = h;
+    return _export2dCtx;
+  }
+
+  function _ensureExportGpuTargets(w, h) {
+    w = Math.max(1, w | 0);
+    h = Math.max(1, h | 0);
+
+    const fmt =
+      (renderPipeline && renderPipeline.format) ||
+      navigator.gpu.getPreferredCanvasFormat();
+
+    const rawBpr = w * 4;
+    const bpr = _alignUp(rawBpr, 256);
+    const needBytes = bpr * h;
+
+    if (
+      !_exportTex ||
+      _exportTexW !== w ||
+      _exportTexH !== h ||
+      _exportTexFormat !== fmt
+    ) {
+      try {
+        if (_exportTex) _exportTex.destroy();
+      } catch {}
+      _exportTex = device.createTexture({
+        size: [w, h, 1],
+        format: fmt,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+      });
+      _exportTexW = w;
+      _exportTexH = h;
+      _exportTexFormat = fmt;
+    }
+
+    if (!_exportReadback || _exportReadbackBytes < needBytes) {
+      try {
+        if (_exportReadback) _exportReadback.destroy();
+      } catch {}
+      _exportReadback = device.createBuffer({
+        size: needBytes,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+      });
+      _exportReadbackBytes = needBytes;
+    }
+
+    _exportBpr = bpr;
+    return { texture: _exportTex, format: fmt, bytesPerRow: bpr };
+  }
+
+  async function _renderFractalToExportTexture(w, h) {
+    const ps = renderGlobals.paramsState;
+
+    const req = requestedLayers();
+    ps.layerIndex = clampLayerIndex(ps.layerIndex, req);
+
+    const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
+    const mode = normRenderMode(ps.renderMode);
+    if (mode === "slab") {
+      throw new Error("Offscreen export not implemented for slab mode.");
+    }
+
+    const aspect = w > 0 && h > 0 ? w / h : 1.0;
+
+    if (renderGlobals.gridDirty) {
+      renderPipeline.gridDivs = ps.gridDivs;
+      renderPipeline.gridStripes = null;
+      renderGlobals.gridDirty = false;
+    }
+
+    const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
+    const chunksToUse = requireSdf
+      ? chunksWithSdf(chunkInfos)
+      : chunksWithoutSdf(chunkInfos);
+
+    await renderPipeline.setChunks(chunksToUse, layersToUse, {
+      layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
+      requireSdf,
+    });
+
+    const camState = { cameraPos, lookTarget, upDir, fov };
+    renderPipeline.updateCamera(camState, aspect);
+
+    const { texture } = _ensureExportGpuTargets(w, h);
+    const view = texture.createView();
+
+    const localParams = Object.assign({}, ps, {
+      nLayers: layersToUse,
+      layers: layersToUse,
+      layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
+      cameraPos,
+      lookTarget,
+      upDir,
+      fov,
+    });
+
+    const blitFn = _pickFn(renderPipeline, ["renderBlitToView"]);
+    if (!blitFn) throw new Error("renderPipeline.renderBlitToView missing");
+
+    await blitFn(localParams, view);
+  }
+
+  async function _exportCurrentExportTextureToPngBlob(w, h) {
+    const { texture, format, bytesPerRow } = _ensureExportGpuTargets(w, h);
+
+    const encoder = device.createCommandEncoder();
+    encoder.copyTextureToBuffer(
+      { texture },
+      { buffer: _exportReadback, bytesPerRow, rowsPerImage: h },
+      { width: w, height: h, depthOrArrayLayers: 1 },
+    );
+
+    device.queue.submit([encoder.finish()]);
+    await device.queue.onSubmittedWorkDone();
+
+    await _exportReadback.mapAsync(GPUMapMode.READ);
+    const src = new Uint8Array(_exportReadback.getMappedRange());
+
+    const ctx2d = _ensureExport2dCanvas(w, h);
+    const img = ctx2d.createImageData(w, h);
+    const dst = img.data;
+
+    const isBGRA = String(format).toLowerCase().startsWith("bgra");
+
+    let dstOff = 0;
+    let srcRowOff = 0;
+
+    if (!isBGRA) {
+      for (let y = 0; y < h; y++) {
+        dst.set(src.subarray(srcRowOff, srcRowOff + w * 4), dstOff);
+        srcRowOff += bytesPerRow;
+        dstOff += w * 4;
+      }
+    } else {
+      for (let y = 0; y < h; y++) {
+        let s = srcRowOff;
+        for (let x = 0; x < w; x++) {
+          const b = src[s + 0];
+          const g = src[s + 1];
+          const r = src[s + 2];
+          const a = src[s + 3];
+          dst[dstOff + 0] = r;
+          dst[dstOff + 1] = g;
+          dst[dstOff + 2] = b;
+          dst[dstOff + 3] = a;
+          s += 4;
+          dstOff += 4;
+        }
+        srcRowOff += bytesPerRow;
+      }
+    }
+
+    _exportReadback.unmap();
+
+    ctx2d.putImageData(img, 0, 0);
+    return canvasToPngBlob(_export2dCanvas);
   }
 
   async function exportFractalCanvas() {
+    if (exporting) return;
+
+    exporting = true;
     try {
-      const canvasEl = document.getElementById("gpu-canvas");
-      if (!canvasEl) return;
-      const blob = await copyWebGPUTo2D(canvasEl);
+      flushPending();
+
+      const w = canvas.width | 0;
+      const h = canvas.height | 0;
+      const aspect = w > 0 && h > 0 ? w / h : 1.0;
+
+      await updateComputeAndDisplacement(aspect);
+      await _renderFractalToExportTexture(w, h);
+
+      const blob = await _exportCurrentExportTextureToPngBlob(w, h);
       const tag = randomTag();
       downloadBlob(blob, "fractal-canvas-" + tag + ".png");
     } catch (e) {
       console.error("exportFractalCanvas failed:", e);
+    } finally {
+      exporting = false;
+      renderGlobals.cameraDirty = true;
     }
   }
 
   async function exportFractalFullRes() {
-    try {
-      exporting = true;
+    if (exporting) return;
 
-      await device.queue.onSubmittedWorkDone();
+    exporting = true;
+    try {
       flushPending();
 
-      const targetRes = Math.max(64, Math.floor(renderGlobals.paramsState.gridSize || 1024));
-      const dpr = window.devicePixelRatio || 1;
-
-      const oldW = canvas.width;
-      const oldH = canvas.height;
-
-      const oldCW = oldW / dpr;
-      const oldCH = oldH / dpr;
-
-      canvas.width = targetRes;
-      canvas.height = targetRes;
-
-      slabPipeline.canvasAlphaMode = currentAlphaMode;
-      renderPipeline.canvasAlphaMode = currentAlphaMode;
-
-      slabPipeline.resize(targetRes / dpr, targetRes / dpr);
-      renderPipeline.resize(targetRes / dpr, targetRes / dpr);
+      const targetRes = Math.max(
+        64,
+        Math.floor(renderGlobals.paramsState.gridSize || 1024),
+      );
 
       const exportAspect = 1.0;
+
       await updateComputeAndDisplacement(exportAspect);
-      await renderFrame();
+      await _renderFractalToExportTexture(targetRes, targetRes);
 
-      const blob = await copyWebGPUTo2D(canvas);
-
-      canvas.width = oldW;
-      canvas.height = oldH;
-
-      slabPipeline.resize(oldCW, oldCH);
-      renderPipeline.resize(oldCW, oldCH);
+      const blob = await _exportCurrentExportTextureToPngBlob(
+        targetRes,
+        targetRes,
+      );
 
       const tag = randomTag();
       downloadBlob(blob, "fractal-" + targetRes + "-" + tag + ".png");
@@ -1405,7 +1719,6 @@ export async function initRender() {
     const dt = (now - lastTime) * 0.001;
     lastTime = now;
 
-    await device.queue.onSubmittedWorkDone();
     flushPending();
 
     if (exporting) {
@@ -1413,7 +1726,10 @@ export async function initRender() {
       return;
     }
 
-    const aspect = canvas.width > 0 && canvas.height > 0 ? canvas.width / canvas.height : 1.0;
+    const aspect =
+      canvas.width > 0 && canvas.height > 0
+        ? canvas.width / canvas.height
+        : 1.0;
 
     await updateComputeAndDisplacement(aspect);
 
@@ -1471,6 +1787,16 @@ export async function initRender() {
       try {
         renderPipeline.destroy();
       } catch {}
+
+      try {
+        if (_exportTex) _exportTex.destroy();
+      } catch {}
+      _exportTex = null;
+
+      try {
+        if (_exportReadback) _exportReadback.destroy();
+      } catch {}
+      _exportReadback = null;
 
       try {
         if (chunkInfos && chunkInfos.forEach) {

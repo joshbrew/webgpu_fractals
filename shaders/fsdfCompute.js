@@ -4,7 +4,7 @@ import sdfWGSL from "./fsdfCompute.wgsl";
 /**
  * SdfComputeGPU (single-layer)
  *
- * Allocates per-chunk SDF (rgba16float) and flag (r32uint) textures with **one array layer**.
+ * Allocates per-chunk SDF (rgba16float) and flag (r32uint) textures with one array layer.
  * We recompute layer 0 whenever `layerIndex` changes, keeping memory bounded and avoiding
  * massive N-layer allocations. All storage bindings are 2d-array views with arrayLayerCount=1.
  */
@@ -12,6 +12,8 @@ export class SdfComputeGPU {
   constructor(device, uniformStride = 256, group0 = null, group1 = null) {
     this.device = device;
     this.uniformStride = uniformStride;
+
+    this._allocEpoch = 0;
 
     // group0: dynamic uniform buffer (one block per chunk, dynamic offset)
     this._group0 =
@@ -89,7 +91,9 @@ export class SdfComputeGPU {
 
   /**
    * Ensure SDF & Flag textures + layer-0 views exist for every chunk.
-   * Always allocates **1 layer** (arrayLayerCount=1).
+   * Always allocates 1 layer (arrayLayerCount=1).
+   *
+   * Note: GPUTexture has no readable `.size`, so we track allocation dimensions on the chunk.
    */
   ensureSdfForChunks(chunks) {
     if (!Array.isArray(chunks)) {
@@ -97,7 +101,9 @@ export class SdfComputeGPU {
     }
 
     for (const c of chunks) {
-      if (typeof c.width !== "number" || typeof c.height !== "number") {
+      const w = c && Number.isFinite(+c.width) ? (c.width | 0) : 0;
+      const h = c && Number.isFinite(+c.height) ? (c.height | 0) : 0;
+      if (w <= 0 || h <= 0) {
         throw new Error(
           "ensureSdfForChunks: each chunk must have numeric width and height"
         );
@@ -105,13 +111,12 @@ export class SdfComputeGPU {
 
       const needRecreate =
         !c.sdfTex ||
-        !c.sdfTex.size ||
-        c.sdfTex.size[0] !== c.width ||
-        c.sdfTex.size[1] !== c.height ||
-        c.sdfTex.size[2] !== 1;
+        !c.flagTex ||
+        (c._sdfW | 0) !== w ||
+        (c._sdfH | 0) !== h ||
+        (c._sdfLayers | 0) !== 1;
 
       if (needRecreate) {
-        // dispose old if present
         try {
           if (c.sdfTex) c.sdfTex.destroy();
         } catch (_) {}
@@ -119,37 +124,30 @@ export class SdfComputeGPU {
           if (c.flagTex) c.flagTex.destroy();
         } catch (_) {}
 
-        // single-layer array textures
         const sdfTex = this.device.createTexture({
-          size: [c.width, c.height, 1],
+          size: [w, h, 1],
           format: "rgba16float",
           usage:
             GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
         });
         const flagTex = this.device.createTexture({
-          size: [c.width, c.height, 1],
+          size: [w, h, 1],
           format: "r32uint",
           usage:
             GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
         });
 
-        // layer-0 views (2d-array with arrayLayerCount=1)
-        const sdfLayerViews = [
-          sdfTex.createView({
-            dimension: "2d-array",
-            baseArrayLayer: 0,
-            arrayLayerCount: 1,
-          }),
-        ];
-        const flagLayerViews = [
-          flagTex.createView({
-            dimension: "2d-array",
-            baseArrayLayer: 0,
-            arrayLayerCount: 1,
-          }),
-        ];
+        const sdfLayerView0 = sdfTex.createView({
+          dimension: "2d-array",
+          baseArrayLayer: 0,
+          arrayLayerCount: 1,
+        });
+        const flagLayerView0 = flagTex.createView({
+          dimension: "2d-array",
+          baseArrayLayer: 0,
+          arrayLayerCount: 1,
+        });
 
-        // convenience full-array views (still 1 layer)
         const sdfView = sdfTex.createView({
           dimension: "2d-array",
           arrayLayerCount: 1,
@@ -161,14 +159,22 @@ export class SdfComputeGPU {
 
         c.sdfTex = sdfTex;
         c.flagTex = flagTex;
-        c.sdfLayerViews = sdfLayerViews;
-        c.flagLayerViews = flagLayerViews;
+
+        c.sdfLayerViews = [sdfLayerView0];
+        c.flagLayerViews = [flagLayerView0];
+
         c.sdfView = sdfView;
         c.flagView = flagView;
 
-        c._sdfLayerBgs = new Map(); // cache for bind groups that write layer 0
+        c._sdfW = w;
+        c._sdfH = h;
+        c._sdfLayers = 1;
+
+        c._sdfLayerBgs = new Map();
+        c._sdfFractalView = null;
+
+        this._allocEpoch = (this._allocEpoch + 1) | 0;
       } else {
-        // make sure views are present
         if (!Array.isArray(c.sdfLayerViews) || !c.sdfLayerViews[0]) {
           c.sdfLayerViews = [
             c.sdfTex.createView({
@@ -187,18 +193,24 @@ export class SdfComputeGPU {
             }),
           ];
         }
-        try {
-          c.sdfView = c.sdfTex.createView({
-            dimension: "2d-array",
-            arrayLayerCount: 1,
-          });
-        } catch (_) {}
-        try {
-          c.flagView = c.flagTex.createView({
-            dimension: "2d-array",
-            arrayLayerCount: 1,
-          });
-        } catch (_) {}
+
+        if (!c.sdfView) {
+          try {
+            c.sdfView = c.sdfTex.createView({
+              dimension: "2d-array",
+              arrayLayerCount: 1,
+            });
+          } catch (_) {}
+        }
+        if (!c.flagView) {
+          try {
+            c.flagView = c.flagTex.createView({
+              dimension: "2d-array",
+              arrayLayerCount: 1,
+            });
+          } catch (_) {}
+        }
+
         if (!c._sdfLayerBgs) c._sdfLayerBgs = new Map();
       }
     }
@@ -206,21 +218,17 @@ export class SdfComputeGPU {
 
   /**
    * Resolve a fractal source view for a chunk.
-   * We *prefer* layer 0 (since fractal is also single-layer in the real-time path),
-   * but fall back gracefully if chunk carries per-layer views.
+   * Prefer layer 0; fall back to whatever the chunk carries.
    */
   _getFractalView(chunk) {
-    // prefer explicit layer-0 view
     if (Array.isArray(chunk.layerViews)) {
       if (chunk.layerViews[0]) return chunk.layerViews[0];
-      // otherwise try the first available entry
       const first = chunk.layerViews.find(Boolean);
       if (first) return first;
     }
     if (chunk.fractalView) return chunk.fractalView;
 
     if (chunk.fractalTex) {
-      // try a 2d-array single-layer view at base layer 0
       try {
         return chunk.fractalTex.createView({
           dimension: "2d-array",
@@ -228,32 +236,28 @@ export class SdfComputeGPU {
           arrayLayerCount: 1,
         });
       } catch (_) {
-        // last resort: plain 2d (older paths)
         return chunk.fractalTex.createView({ dimension: "2d" });
       }
     }
 
-    throw new Error(
-      "SdfComputeGPU: chunk has no fractal view/texture to read from"
-    );
+    throw new Error("SdfComputeGPU: chunk has no fractal view/texture to read");
   }
 
   /**
    * Pack one dynamic UBO block for a tile. Matches WGSL layout.
-   * Note: we still send `layerIndex` for shader logic, but we always write to layer 0.
+   * We always write to array-layer 0 (single-layer outputs).
    */
-  _pack(paramsState, chunk, layerIndex, aspect = 1) {
+  _pack(paramsState, chunk) {
     const buf = new ArrayBuffer(this.uniformStride);
     const dv = new DataView(buf);
     let off = 0;
 
-    // 1) gridSize, force layerIndex -> 0 because outputs are single-layer (layer 0)
     dv.setUint32(off, paramsState.gridSize >>> 0, true);
     off += 4;
-    dv.setUint32(off, 0, true);
-    /* always write to array-layer 0 */ off += 4;
 
-    // 2) tile offset & size
+    dv.setUint32(off, 0, true);
+    off += 4;
+
     dv.setUint32(off, chunk.offsetX >>> 0, true);
     off += 4;
     dv.setUint32(off, (chunk.offsetY ?? 0) >>> 0, true);
@@ -261,43 +265,35 @@ export class SdfComputeGPU {
     dv.setUint32(off, chunk.width >>> 0, true);
     off += 4;
 
-    // IMPORTANT: shader expects tileHeight == gridSize (global clamp Y)
     dv.setUint32(off, paramsState.gridSize >>> 0, true);
     off += 4;
 
-    // 3) displacement & scale
     dv.setFloat32(off, paramsState.dispAmp ?? 0.15, true);
     off += 4;
     dv.setFloat32(off, paramsState.quadScale ?? 1.0, true);
     off += 4;
 
-    // 4) wall/jump thresholds
     dv.setFloat32(off, paramsState.slopeLimit ?? 0.5, true);
     off += 4;
     dv.setFloat32(off, paramsState.wallJump ?? 0.05, true);
     off += 4;
 
-    // 5) connectivityMode & dispMode
     dv.setUint32(off, (paramsState.connectivityMode ?? 0) >>> 0, true);
     off += 4;
     dv.setUint32(off, (paramsState.dispMode ?? 0) >>> 0, true);
     off += 4;
 
-    // 6) curve parameter
     dv.setFloat32(off, paramsState.dispCurve ?? 0.0, true);
     off += 4;
 
-    // 7) normalMode (0=2-sample,1=4,2=8)
     dv.setUint32(off, (paramsState.normalMode ?? 2) >>> 0, true);
     off += 4;
 
-    // NOTE: no 'aspect' here — shader SDFParams ends with normalMode.
     return buf;
   }
 
   /**
-   * Compute SDFs for chunks into **layer 0**.
-   * We recompute per requested `layerIndex`, but outputs are always targeted at array layer 0.
+   * Compute SDFs for chunks into layer 0.
    */
   async compute(
     chunks,
@@ -308,10 +304,8 @@ export class SdfComputeGPU {
   ) {
     if (!chunks || !chunks.length) return chunks;
 
-    // Allocate single-layer outputs
     this.ensureSdfForChunks(chunks);
 
-    // Build a big dynamic UBO with N blocks (one per chunk)
     const N = chunks.length;
     const bigBuf = this.device.createBuffer({
       size: this.uniformStride * N,
@@ -330,17 +324,21 @@ export class SdfComputeGPU {
       ],
     });
 
-    // Per-chunk storage bind groups (cache on the chunk). We always bind layer-0 SDF/flag views.
     const sBgs = new Array(N);
     for (let i = 0; i < N; ++i) {
       const c = chunks[i];
-      const cacheKey = 0; // single output layer
 
+      const fractalView = this._getFractalView(c);
+      if (c._sdfFractalView !== fractalView) {
+        if (c._sdfLayerBgs) c._sdfLayerBgs.clear();
+        c._sdfFractalView = fractalView;
+      }
+
+      const cacheKey = 0;
       let bg = c._sdfLayerBgs.get(cacheKey);
       if (!bg) {
-        const fractalView = this._getFractalView(c);
-        const sdfView = c.sdfLayerViews[0];
-        const flagView = c.flagLayerViews[0];
+        const sdfView = c.sdfLayerViews && c.sdfLayerViews[0];
+        const flagView = c.flagLayerViews && c.flagLayerViews[0];
 
         if (!sdfView || !flagView) {
           throw new Error(
@@ -360,10 +358,10 @@ export class SdfComputeGPU {
 
         c._sdfLayerBgs.set(cacheKey, bg);
       }
+
       sBgs[i] = bg;
     }
 
-    // Dispatch compute: one pass, N tiles, dynamic UBO offsets
     const pipe = this._pipeline(entryPoint);
     const enc = this.device.createCommandEncoder();
     const pass = enc.beginComputePass();
@@ -382,27 +380,7 @@ export class SdfComputeGPU {
 
     pass.end();
     this.device.queue.submit([enc.finish()]);
-
-    // Ensure completion so render/query can safely sample created views
     await this.device.queue.onSubmittedWorkDone();
-
-    // (Views already exist; no multi-layer full views needed. Keep convenience views anyway.)
-    for (const c of chunks) {
-      try {
-        if (!c.sdfView)
-          c.sdfView = c.sdfTex.createView({
-            dimension: "2d-array",
-            arrayLayerCount: 1,
-          });
-      } catch (_) {}
-      try {
-        if (!c.flagView)
-          c.flagView = c.flagTex.createView({
-            dimension: "2d-array",
-            arrayLayerCount: 1,
-          });
-      } catch (_) {}
-    }
 
     return chunks;
   }
@@ -415,13 +393,21 @@ export class SdfComputeGPU {
       try {
         if (c.flagTex) c.flagTex.destroy();
       } catch (_) {}
+
       if (c._sdfLayerBgs) c._sdfLayerBgs.clear();
+
       c.sdfLayerViews = null;
       c.flagLayerViews = null;
       c.sdfView = null;
       c.flagView = null;
       c._sdfLayerBgs = null;
+      c._sdfFractalView = null;
+
+      c._sdfW = 0;
+      c._sdfH = 0;
+      c._sdfLayers = 0;
     }
+
     this._pipeCache.clear();
   }
 

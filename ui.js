@@ -72,6 +72,12 @@ export const initUI = () => {
     "wallJump",
     "nLayers",
     "gridDivs",
+
+    "meshStep",
+    "capBias",
+    "gradScale",
+    "thickness",
+    "feather",
   ]);
 
   const FORMATTERS = {
@@ -92,6 +98,12 @@ export const initUI = () => {
     wallJump: (v) => Number(v).toFixed(3),
     nLayers: (v) => String(Math.round(Number(v))),
     gridDivs: (v) => String(Math.round(Number(v))),
+
+    meshStep: (v) => String(Math.max(1, Math.round(Number(v)))),
+    capBias: (v) => Number(v).toFixed(3),
+    gradScale: (v) => Number(v).toFixed(3),
+    thickness: (v) => Number(v).toFixed(3),
+    feather: (v) => Number(v).toFixed(3),
   };
 
   const DEFAULT_FORMATTER = (v) => String(Math.round(Number(v)));
@@ -165,7 +177,7 @@ export const initUI = () => {
     const fmt = FORMATTERS[id] || DEFAULT_FORMATTER;
     try {
       out.value = fmt(value);
-    } catch (e) {}
+    } catch {}
   }
 
   function setupSlider(id, onChange) {
@@ -176,7 +188,7 @@ export const initUI = () => {
     if (typeof initVal === "number") {
       try {
         slider.value = String(initVal);
-      } catch (e) {}
+      } catch {}
       setControlOutput(id, initVal);
     }
 
@@ -199,7 +211,7 @@ export const initUI = () => {
         if (Number.isNaN(num)) return;
         try {
           slider.value = String(num);
-        } catch (e) {}
+        } catch {}
         setControlOutput(id, num);
         onChange(num);
       };
@@ -220,7 +232,7 @@ export const initUI = () => {
     if (initVal !== undefined && initVal !== null) {
       try {
         sel.value = String(initVal);
-      } catch (e) {}
+      } catch {}
     }
 
     const updateOutput = () => {
@@ -264,9 +276,7 @@ export const initUI = () => {
   }
 
   function setupMaskGroup(name, initialMask, onChange) {
-    const boxes = Array.from(
-      document.querySelectorAll(`input[name="${name}"]`),
-    );
+    const boxes = Array.from(document.querySelectorAll(`input[name="${name}"]`));
     if (!boxes.length) return null;
 
     function readMask() {
@@ -320,13 +330,13 @@ export const initUI = () => {
 
     try {
       el.value = String(value);
-    } catch (e) {}
+    } catch {}
 
     const out = document.getElementById(id + "Out");
     if (out) {
       try {
         out.value = String(value);
-      } catch (e) {}
+      } catch {}
     }
   }
 
@@ -374,8 +384,33 @@ export const initUI = () => {
     S(patch);
   }
 
+  const SLAB_IDS = [
+    "fieldMode",
+    "meshStep",
+    "capBias",
+    "gradScale",
+    "thickness",
+    "feather",
+    "contourOn",
+    "contourOnly",
+    "contourFront",
+  ];
+
+  function setSlabControlsEnabled(enabled) {
+    setDisabled(SLAB_IDS, !enabled);
+  }
+
   function applyRenderModeUI(mode) {
     const m = normRenderMode(mode);
+
+    if (uiLayerMode && m === "slab") {
+      setControlValue("renderMode", "fractal");
+      setSlabControlsEnabled(false);
+      S({ renderMode: "fractal" });
+      return;
+    }
+
+    setSlabControlsEnabled(m === "slab");
     S({ renderMode: m });
   }
 
@@ -411,14 +446,18 @@ export const initUI = () => {
   setupSlider("layerSeparation", (v) => S({ worldOffset: v }));
   setupSlider("hueOffset", (v) => S({ hueOffset: v }));
 
+  let _lastUiNLayers = Math.max(1, Math.floor(renderGlobals.paramsState.nLayers || 1));
+
   setupSlider("nLayers", (v) => {
     const n = Math.max(1, Math.floor(v));
     S({ nLayers: n });
 
-    if (uiLayerMode && n > 1) {
+    if (uiLayerMode && _lastUiNLayers <= 1 && n > 1) {
       autoDisableForLayerMode(false);
       ensureLayerModeVisibilityDefaults();
     }
+
+    _lastUiNLayers = n;
   });
 
   setupSlider("gridDivs", (v) => {
@@ -437,6 +476,9 @@ export const initUI = () => {
   setupSlider("dispAmp", (v) => S({ dispAmp: v }));
   setupSlider("dispCurve", (v) => S({ dispCurve: v }));
   setupCheckbox("dispLimitOn", (v) => S({ dispLimitOn: v }));
+
+  setupCheckbox("bowlOn", (v) => S({ bowlOn: v }));
+  setupSlider("bowlDepth", (v) => S({ bowlDepth: v }));
 
   setupSlider("slopeLimit", (deg) => {
     const rad = (deg * Math.PI) / 180;
@@ -472,10 +514,10 @@ export const initUI = () => {
     if (typeof window.setAlphaMode === "function") {
       try {
         window.setAlphaMode(n);
-      } catch (e) {
+      } catch {
         try {
           window.setAlphaMode(canvasMode);
-        } catch (e2) {}
+        } catch {}
       }
     } else {
       window.__pendingAlphaMode = canvasMode;
@@ -486,14 +528,27 @@ export const initUI = () => {
     applyRenderModeUI(v);
   });
 
-  setupMaskGroup(
-    "scaleMode",
-    renderGlobals.paramsState.scaleMode ?? 0,
-    (mask) => {
-      S({ scaleMode: mask >>> 0 });
-    },
-  );
+  setupMaskGroup("scaleMode", renderGlobals.paramsState.scaleMode ?? 0, (mask) => {
+    S({ scaleMode: mask >>> 0 });
+  });
+
+  setupSelect("fieldMode", (v) => S({ fieldMode: +v }));
+
+  setupSlider("meshStep", (v) => {
+    const n = Math.max(1, Math.floor(v));
+    S({ meshStep: n });
+  });
+
+  setupSlider("capBias", (v) => S({ capBias: v }));
+  setupSlider("gradScale", (v) => S({ gradScale: v }));
+  setupSlider("thickness", (v) => S({ thickness: v }));
+  setupSlider("feather", (v) => S({ feather: v }));
+
+  setupCheckbox("contourOn", (v) => S({ contourOn: v }));
+  setupCheckbox("contourOnly", (v) => S({ contourOnly: v }));
+  setupCheckbox("contourFront", (v) => S({ contourFront: v }));
 
   applyLayerModeUI(!!renderGlobals.paramsState.layerMode);
+  setSlabControlsEnabled(normRenderMode(renderGlobals.paramsState.renderMode) === "slab");
   applyRenderModeUI(renderGlobals.paramsState.renderMode);
 };
