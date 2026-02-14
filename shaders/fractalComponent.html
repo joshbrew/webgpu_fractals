@@ -1,12 +1,14 @@
+<!-- shaders/fractalComponent.html -->
 <div id="canvas-container">
   <canvas id="gpu-canvas"></canvas>
+
   <div id="ui">
     <div class="ui-header">
       <span>☰ Menu</span>
-      <button id="toggle-ui" aria-label="Toggle Menu">–</button>
+      <button id="toggle-ui" type="button" aria-label="Toggle Menu">-</button>
     </div>
+
     <div id="ui-content">
-      <!-- Resolution slider -->
       <div class="row">
         <label
           title="Internal render resolution (GPU grid size). Higher values cost more GPU time."
@@ -38,6 +40,11 @@
         <button id="resetCameraBtn" type="button" title="Reset pan and zoom">
           Reset Camera
         </button>
+
+        <button id="exportCanvasBtn" type="button" title="Save a PNG of the current canvas">
+          Save PNG
+        </button>
+
         <button
           id="exportFullBtn"
           type="button"
@@ -47,7 +54,6 @@
         </button>
       </div>
 
-      <!-- zMin and dz (hidden) -->
       <div class="row" style="display: none">
         <label>
           zMin:
@@ -76,11 +82,10 @@
         </label>
       </div>
 
-      <!-- Fractal type -->
       <div class="row">
         <label title="Select the fractal equation family">
           Fractal:
-          <select id="fractalType" title="Choose the fractal formula (0-100)">
+          <select id="fractalType" title="Choose the fractal formula (0-71)">
             <option value="0">Mandelbrot</option>
             <option value="1">Tricorn</option>
             <option value="2">Burning Ship</option>
@@ -160,7 +165,7 @@
             class="numeric-input"
             type="number"
             min="0"
-            max="69"
+            max="71"
             step="1"
             value="0"
             title="Numeric fractal type index"
@@ -169,9 +174,7 @@
       </div>
 
       <div class="row">
-        <label
-          title="Choose the color palette used for mapping iterations to RGB"
-        >
+        <label title="Choose the color palette used for mapping iterations to RGB">
           🎨:
           <select
             id="colorScheme"
@@ -185,8 +188,8 @@
             <option value="4">Forest</option>
             <option value="5">Neon</option>
             <option value="7">Inferno</option>
-            <option value="8">Rainbow 360 °</option>
-            <option value="9">Rainbow 720 °</option>
+            <option value="8">Rainbow 360°</option>
+            <option value="9">Rainbow 720°</option>
             <option value="10">Pastel Loop</option>
             <option value="11">Viridis-ish</option>
             <option value="12">Magma</option>
@@ -212,14 +215,22 @@
             <option value="32">Exponential 12 loops</option>
             <option value="33">Sawtooth 10 loops + offset</option>
           </select>
+
+          <input
+            id="colorSchemeOut"
+            class="numeric-input"
+            type="number"
+            min="0"
+            max="33"
+            step="1"
+            value="0"
+            title="Numeric color scheme index"
+          />
         </label>
       </div>
 
-      <!-- Global hue offset -->
       <div class="row">
-        <label
-          title="Shift the global hue of the palette (wraps the color wheel)"
-        >
+        <label title="Shift the global hue of the palette (wraps the color wheel)">
           Hue Offset:
           <input
             id="hueOffset"
@@ -243,7 +254,6 @@
         </label>
       </div>
 
-      <!-- Zoom -->
       <div class="row">
         <label title="Control zoom scale (size of the complex plane window)">
           Zoom:
@@ -269,7 +279,6 @@
         </label>
       </div>
 
-      <!-- Pan X -->
       <div class="row">
         <label title="Shift the view left/right in the complex plane">
           Pan X:
@@ -295,7 +304,6 @@
         </label>
       </div>
 
-      <!-- Pan Y -->
       <div class="row">
         <label title="Shift the view up/down in the complex plane">
           Pan Y:
@@ -321,11 +329,8 @@
         </label>
       </div>
 
-      <!-- Max Iter -->
       <div class="row">
-        <label
-          title="Higher values reveal more detail but increase render time"
-        >
+        <label title="Higher values reveal more detail but increase render time">
           Max Iter:
           <input
             id="maxIter"
@@ -349,11 +354,8 @@
         </label>
       </div>
 
-      <!-- Escape radius -->
       <div class="row">
-        <label
-          title="Escape threshold (distance where the orbit is considered divergent)"
-        >
+        <label title="Escape threshold (distance where the orbit is considered divergent)">
           Escape R:
           <input
             id="escapeR"
@@ -376,89 +378,74 @@
           />
         </label>
       </div>
+
       <hr />
-      <!-- Scale Mode bitmask -->
+
       <div class="row">
-        <label
-          title="Enable optional iterative coordinate warps, toggled as a bitmask"
-          >Scale Mode:</label
-        >
+        <label title="Enable optional iterative coordinate warps, toggled as a bitmask">
+          Scale Mode:
+        </label>
         <div class="scale-group">
           <label title="Multiply coordinates by s">
-            <input type="checkbox" name="scaleMode" value="1" /> Multiply</label
-          >
-          <label title="Divide coordinates by s"
-            ><input type="checkbox" name="scaleMode" value="2" /> Divide</label
-          >
-          <label title="Apply sin(s) warp"
-            ><input type="checkbox" name="scaleMode" value="4" /> Sine</label
-          >
-          <label title="Apply tan(s) warp"
-            ><input type="checkbox" name="scaleMode" value="8" /> Tangent</label
-          >
-          <label title="Apply cos(s) warp"
-            ><input type="checkbox" name="scaleMode" value="16" /> Cosine</label
-          >
-          <label title="Exponential scaling"
-            ><input type="checkbox" name="scaleMode" value="32" />
-            Exp-Zoom</label
-          >
-          <label title="Logarithmic shrink"
-            ><input type="checkbox" name="scaleMode" value="64" />
-            Log-Shrink</label
-          >
-          <label title="Stretch X and squash Y"
-            ><input type="checkbox" name="scaleMode" value="128" /> Aniso
-            Warp</label
-          >
-          <label title="Rotate coordinates by s radians"
-            ><input type="checkbox" name="scaleMode" value="256" />
-            Rotate</label
-          >
-          <label title="Twist radius/angle by s"
-            ><input type="checkbox" name="scaleMode" value="512" /> Radial
-            Twist</label
-          >
-          <label title="Hyperbolic warp"
-            ><input type="checkbox" name="scaleMode" value="1024" />
-            HyperWarp</label
-          >
-          <label title="Hyperbolic radial warp"
-            ><input type="checkbox" name="scaleMode" value="2048" />
-            RadialHyper</label
-          >
-          <label title="Add swirl proportional to s"
-            ><input type="checkbox" name="scaleMode" value="4096" />
-            Swirl</label
-          >
-          <label title="Modular wrap"
-            ><input type="checkbox" name="scaleMode" value="8192" />
-            Modular</label
-          >
-          <label title="Swap axes with scaling"
-            ><input type="checkbox" name="scaleMode" value="16384" />
-            AxisSwap</label
-          >
-          <label title="Blend sin and multiply warps"
-            ><input type="checkbox" name="scaleMode" value="32768" />
-            MixedWarp</label
-          >
-          <label title="Add jitter noise"
-            ><input type="checkbox" name="scaleMode" value="65536" />
-            Jitter</label
-          >
-          <label title="Apply signed power warp"
-            ><input type="checkbox" name="scaleMode" value="131072" />
-            PowerWarp</label
-          >
-          <label title="Smoothstep fade warp"
-            ><input type="checkbox" name="scaleMode" value="262144" />
-            SmoothFade</label
-          >
+            <input type="checkbox" name="scaleMode" value="1" /> Multiply
+          </label>
+          <label title="Divide coordinates by s">
+            <input type="checkbox" name="scaleMode" value="2" /> Divide
+          </label>
+          <label title="Apply sin(s) warp">
+            <input type="checkbox" name="scaleMode" value="4" /> Sine
+          </label>
+          <label title="Apply tan(s) warp">
+            <input type="checkbox" name="scaleMode" value="8" /> Tangent
+          </label>
+          <label title="Apply cos(s) warp">
+            <input type="checkbox" name="scaleMode" value="16" /> Cosine
+          </label>
+          <label title="Exponential scaling">
+            <input type="checkbox" name="scaleMode" value="32" /> Exp-Zoom
+          </label>
+          <label title="Logarithmic shrink">
+            <input type="checkbox" name="scaleMode" value="64" /> Log-Shrink
+          </label>
+          <label title="Stretch X and squash Y">
+            <input type="checkbox" name="scaleMode" value="128" /> Aniso Warp
+          </label>
+          <label title="Rotate coordinates by s radians">
+            <input type="checkbox" name="scaleMode" value="256" /> Rotate
+          </label>
+          <label title="Twist radius/angle by s">
+            <input type="checkbox" name="scaleMode" value="512" /> Radial Twist
+          </label>
+          <label title="Hyperbolic warp">
+            <input type="checkbox" name="scaleMode" value="1024" /> HyperWarp
+          </label>
+          <label title="Hyperbolic radial warp">
+            <input type="checkbox" name="scaleMode" value="2048" /> RadialHyper
+          </label>
+          <label title="Add swirl proportional to s">
+            <input type="checkbox" name="scaleMode" value="4096" /> Swirl
+          </label>
+          <label title="Modular wrap">
+            <input type="checkbox" name="scaleMode" value="8192" /> Modular
+          </label>
+          <label title="Swap axes with scaling">
+            <input type="checkbox" name="scaleMode" value="16384" /> AxisSwap
+          </label>
+          <label title="Blend sin and multiply warps">
+            <input type="checkbox" name="scaleMode" value="32768" /> MixedWarp
+          </label>
+          <label title="Add jitter noise">
+            <input type="checkbox" name="scaleMode" value="65536" /> Jitter
+          </label>
+          <label title="Apply signed power warp">
+            <input type="checkbox" name="scaleMode" value="131072" /> PowerWarp
+          </label>
+          <label title="Smoothstep fade warp">
+            <input type="checkbox" name="scaleMode" value="262144" /> SmoothFade
+          </label>
         </div>
       </div>
 
-      <!-- Gamma -->
       <div class="row">
         <label title="Iteration-based parameter used by warp modes">
           Gamma:
@@ -466,7 +453,7 @@
             id="gamma"
             type="range"
             min="-50"
-            max="50.0"
+            max="50"
             step="0.0001"
             value="1.0"
             title="Gamma modifier"
@@ -476,15 +463,16 @@
             class="numeric-input"
             type="number"
             min="-50"
-            max="50.0"
+            max="50"
             step="0.0001"
             value="1.0"
             title="Exact numeric gamma"
           />
         </label>
       </div>
+
       <hr />
-      <!-- Epsilon -->
+
       <div class="row">
         <label title="Convergence tolerance for Newton-like fractals">
           Epsilon:
@@ -511,21 +499,29 @@
       </div>
 
       <div class="row">
-        <label
-          for="thresholdBasis"
-          title="What field the threshold masking operates on"
-        >
-          Threshold basis
+        <label title="What field the threshold masking operates on">
+          Threshold basis:
           <select id="thresholdBasis" title="Choose threshold basis">
             <option value="0">Inner</option>
             <option value="1">Outer</option>
-            <option value="1">Height (normalized)</option>
+            <option value="2">Height (normalized)</option>
           </select>
+
+          <input
+            id="thresholdBasisOut"
+            class="numeric-input"
+            type="number"
+            min="0"
+            max="2"
+            step="1"
+            value="0"
+            title="Numeric threshold basis"
+          />
         </label>
       </div>
 
       <div class="row">
-        <label for="lowThresh" title="Lower clamp for threshold mask">
+        <label title="Lower clamp for threshold mask">
           low
           <input
             id="lowThresh"
@@ -537,7 +533,7 @@
             title="Lower threshold"
           />
           <input
-            id="lowVal"
+            id="lowThreshOut"
             class="numeric-input"
             type="number"
             min="0"
@@ -550,7 +546,7 @@
       </div>
 
       <div class="row">
-        <label for="highThresh" title="Upper clamp for threshold mask">
+        <label title="Upper clamp for threshold mask">
           high
           <input
             id="highThresh"
@@ -562,7 +558,7 @@
             title="Upper threshold"
           />
           <input
-            id="highVal"
+            id="highThreshOut"
             class="numeric-input"
             type="number"
             min="0"
@@ -577,10 +573,7 @@
       <div class="row">
         <label title="Controls final canvas alpha compositing mode">
           Alpha mode:
-          <select
-            id="alphaMode"
-            title="How transparency is applied to rendered pixels"
-          >
+          <select id="alphaMode" title="How transparency is applied to rendered pixels">
             <option value="0">0 - Opaque (no transparency)</option>
             <option value="1">1 - Fade out</option>
             <option value="2">2 - Reverse fade out</option>
@@ -589,18 +582,25 @@
       </div>
 
       <div class="row">
-        <label
-          title="Toggle convergence-based termination for Newton or hybrid maps"
-        >
+        <label title="Render output mode">
+          Render mode:
+          <select id="renderMode" title="Fractal rendering, slab view, or raw debug output">
+            <option value="fractal">Fractal</option>
+            <option value="slab">Slab</option>
+            <option value="raw">Raw</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="row">
+        <label title="Toggle convergence-based termination for Newton or hybrid maps">
           <input id="convergenceTest" type="checkbox" />
           Convergence Test
         </label>
       </div>
 
       <div class="row">
-        <label
-          title="Whether the iteration should escape when diverging or converge toward a root"
-        >
+        <label title="Whether the iteration should escape when diverging or converge toward a root">
           Escape Mode:
           <select id="escapeMode" title="Divergence or convergence mode">
             <option value="0">Converge</option>
@@ -620,25 +620,21 @@
       </div>
 
       <hr />
-      <!-- Hidden layer controls -->
-      <div class="row" style="display: none">
+
+      <div
+        class="row"
+        title="Enables multi-layer gamma-stepped stacks. Turning this ON auto-sets Displacement=None, Lighting OFF, and Render mode=Fractal."
+      >
         <label>
           <input type="checkbox" id="layerMode" />
-          Render Gamma Steps (disables Displacement/Lighting)
+          Layer Mode (gamma-stepped stacks)
         </label>
       </div>
 
-      <div class="row" style="display: none">
-        <label>
+      <div class="row">
+        <label title="Number of layers (only used when Layer Mode is enabled)">
           Layers:
-          <input
-            id="nLayers"
-            type="range"
-            min="1"
-            max="128"
-            step="1"
-            value="1"
-          />
+          <input id="nLayers" type="range" min="1" max="128" step="1" value="1" />
           <input
             id="nLayersOut"
             class="numeric-input"
@@ -651,7 +647,52 @@
         </label>
       </div>
 
-      <!-- Bowl -->
+      <div class="row">
+        <label title="Gamma increment per layer: gamma(li) = gamma + layerGammaStep * li">
+          Gamma Step:
+          <input
+            id="layerGammaStep"
+            type="range"
+            min="-5"
+            max="5"
+            step="0.0001"
+            value="0.001"
+          />
+          <input
+            id="layerGammaStepOut"
+            class="numeric-input"
+            type="number"
+            min="-5"
+            max="5"
+            step="0.0001"
+            value="0.1"
+          />
+        </label>
+      </div>
+
+      <div class="row">
+        <label title="World-space separation per layer for stacked rendering">
+          Layer Separation:
+          <input
+            id="layerSeparation"
+            type="range"
+            min="-10"
+            max="10"
+            step="0.001"
+            value="0.0"
+          />
+          <input
+            id="layerSeparationOut"
+            class="numeric-input"
+            type="number"
+            min="-10"
+            max="10"
+            step="0.001"
+            value="0.0"
+          />
+        </label>
+      </div>
+
       <div class="row">
         <label title="Enable radial bowl displacement for lighting/extrusion">
           <input type="checkbox" id="bowlOn" />
@@ -684,11 +725,8 @@
         </label>
       </div>
 
-      <!-- Quad scale -->
       <div class="row">
-        <label
-          title="Scale the on-screen quad used for rendering (for multi-pass / stacked zoom modes)"
-        >
+        <label title="Scale the on-screen quad used for rendering (for multi-pass / stacked zoom modes)">
           Quad Scale
           <input
             id="quadScale"
@@ -706,17 +744,14 @@
             min="1"
             max="1000"
             step="1"
-            value="1.00"
+            value="1"
             title="Exact numeric quad scale"
           />
         </label>
       </div>
 
-      <!-- Displacement -->
       <div class="row">
-        <label
-          title="Choose the type of height displacement applied to lighting / extrusion"
-        >
+        <label title="Choose the type of height displacement applied to lighting / extrusion">
           Displacement mode
           <select id="dispMode" title="Displacement height mapping mode">
             <option value="0">None</option>
@@ -731,6 +766,7 @@
       </div>
 
       <hr />
+
       <div class="row">
         <label title="Resolution of the displacement sampling grid">
           Grid Divs:
@@ -800,33 +836,28 @@
             min="0.001"
             max="100"
             step="0.001"
-            value="3.0"
+            value="3"
             title="Exact numeric curve exponent"
           />
         </label>
       </div>
 
       <hr />
+
       <div class="row">
-        <label
-          class="slider-row"
-          title="Enable a max-slope clamp to prevent artifacts"
-        >
+        <label class="slider-row" title="Enable a max-slope clamp to prevent artifacts">
           <span>Disp limit ON</span>
           <input id="dispLimitOn" type="checkbox" />
         </label>
       </div>
 
       <div class="row">
-        <label
-          class="slider-row"
-          title="Maximum surface slope allowed (degrees)"
-        >
+        <label class="slider-row" title="Maximum surface slope allowed (degrees)">
           <span>Max Slope (deg)</span>
           <input
             id="slopeLimit"
             type="range"
-            min="0.0"
+            min="0"
             max="91"
             step="0.001"
             value="45"
@@ -836,7 +867,7 @@
             id="slopeLimitOut"
             class="numeric-input"
             type="number"
-            min="0.0"
+            min="0"
             max="91"
             step="0.001"
             value="45"
@@ -846,15 +877,12 @@
       </div>
 
       <div class="row">
-        <label
-          class="slider-row"
-          title="Maximum height discontinuity allowed (normalized units)"
-        >
+        <label class="slider-row" title="Maximum height discontinuity allowed (normalized units)">
           <span>Max Wall Height (norm)</span>
           <input
             id="wallJump"
             type="range"
-            min="0.0"
+            min="0"
             max="1"
             step="0.001"
             value="0.05"
@@ -864,7 +892,7 @@
             id="wallJumpOut"
             class="numeric-input"
             type="number"
-            min="0.0"
+            min="0"
             max="1"
             step="0.001"
             value="0.05"
@@ -874,7 +902,7 @@
       </div>
 
       <hr />
-      <!-- Lighting -->
+
       <div class="row">
         <label title="Enable Phong-style shading based on displacement height">
           Lighting ON
@@ -901,7 +929,7 @@
             min="-50"
             max="50"
             step="0.1"
-            value="0.0"
+            value="0"
             title="Numeric light X"
           />
         </label>
@@ -926,7 +954,7 @@
             min="-50"
             max="50"
             step="0.1"
-            value="0.0"
+            value="0"
             title="Numeric light Y"
           />
         </label>
@@ -951,7 +979,7 @@
             min="-50"
             max="50"
             step="0.1"
-            value="50.0"
+            value="50"
             title="Numeric light Z"
           />
         </label>
@@ -982,7 +1010,6 @@
         </label>
       </div>
 
-      <!-- Hidden split values -->
       <div class="row" style="display: none">
         <label>
           Max Pixels/Split:

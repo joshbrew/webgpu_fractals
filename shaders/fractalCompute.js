@@ -1,14 +1,13 @@
 // fractalTileComputeGPU.js
-import computeWGSL from './fractalCompute.wgsl';
+import computeWGSL from "./fractalCompute.wgsl";
 
 /**
  * @typedef {Object} FractalParams
- * (fields consumed by the WGSL compute; documented for clarity)
  * @property {number} gridSize
  * @property {number} splitCount
  * @property {number} maxIter
  * @property {number} fractalType
- * @property {number} scaleMode
+ * @property {number|string|Array<string|number>|Object<string,boolean>} scaleMode
  * @property {number} zoom
  * @property {number} dx
  * @property {number} dy
@@ -27,12 +26,13 @@ import computeWGSL from './fractalCompute.wgsl';
  * @property {number} width
  * @property {number} height
  * @property {GPUTexture} fractalTex
+ * @property {GPUTextureView} storageView
  * @property {GPUTextureView[]} layerViews
- * @property {Map<number, GPUBindGroup>} layerBindGroups
+ * @property {GPUBindGroup|null} storageBindGroup
  */
 
 /* ------------------------------------------------------------------ */
-/*  Fractal registry & SCALE helpers (copied from your list)         */
+/*  Fractal registry & SCALE helpers                                  */
 /* ------------------------------------------------------------------ */
 
 export const FRACTALS = {
@@ -110,34 +110,55 @@ export const FRACTALS = {
   Julia: 71,
 };
 
-
 export const SCALE = {
-  Multiply: 1, Divide: 2, Sine: 4, Tangent: 8, Cosine: 16, ExpZoom: 32, LogShrink: 64,
-  AnisoWarp: 128, Rotate: 256, RadialTwist: 512, HyperWarp: 1024, RadialHyper: 2048,
-  Swirl: 4096, Modular: 8192, AxisSwap: 16384, MixedWarp: 32768, Jitter: 65536,
-  PowerWarp: 131072, SmoothFade: 262144
+  Multiply: 1,
+  Divide: 2,
+  Sine: 4,
+  Tangent: 8,
+  Cosine: 16,
+  ExpZoom: 32,
+  LogShrink: 64,
+  AnisoWarp: 128,
+  Rotate: 256,
+  RadialTwist: 512,
+  HyperWarp: 1024,
+  RadialHyper: 2048,
+  Swirl: 4096,
+  Modular: 8192,
+  AxisSwap: 16384,
+  MixedWarp: 32768,
+  Jitter: 65536,
+  PowerWarp: 131072,
+  SmoothFade: 262144,
 };
 
 export function packScaleMask(mask = 0) {
-  if (typeof mask === 'number') return mask >>> 0;
+  if (typeof mask === "number") return mask >>> 0;
+
   let bits = 0;
-  if (typeof mask === 'string') {
-    mask.trim().split(/[|,+\s]+/).forEach(tok => {
-      if (!tok) return;
-      const val = SCALE[tok] ?? parseInt(tok, 10);
-      if (Number.isFinite(val)) bits |= val;
-    });
+  if (typeof mask === "string") {
+    mask
+      .trim()
+      .split(/[|,+\s]+/)
+      .forEach((tok) => {
+        if (!tok) return;
+        const val = SCALE[tok] ?? parseInt(tok, 10);
+        if (Number.isFinite(val)) bits |= val;
+      });
     return bits >>> 0;
   }
+
   if (Array.isArray(mask)) {
     for (const m of mask) bits |= packScaleMask(m);
     return bits >>> 0;
   }
-  if (mask && typeof mask === 'object') {
+
+  if (mask && typeof mask === "object") {
     for (const k in mask) {
       if (mask[k]) bits |= packScaleMask(k);
     }
   }
+
   return bits >>> 0;
 }
 
@@ -152,55 +173,79 @@ export class FractalTileComputeGPU {
    * @param {GPUBindGroupLayout} [storageLayout] - storage texture (group 1)
    * @param {number} [uniformStride=256]
    */
-  constructor(device, uniformsLayout = undefined, storageLayout = undefined, uniformStride = 256) {
+  constructor(
+    device,
+    uniformsLayout = undefined,
+    storageLayout = undefined,
+    uniformStride = 256,
+  ) {
     this.device = device;
     this.uniformStride = uniformStride >>> 0;
 
-    this._uniformsLayout = uniformsLayout ?? device.createBindGroupLayout({
-      entries: [{
-        binding: 0,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: { type: 'uniform', hasDynamicOffset: true, minBindingSize: this.uniformStride }
-      }]
-    });
+    this._uniformsLayout =
+      uniformsLayout ??
+      device.createBindGroupLayout({
+        entries: [
+          {
+            binding: 0,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: {
+              type: "uniform",
+              hasDynamicOffset: true,
+              minBindingSize: this.uniformStride,
+            },
+          },
+        ],
+      });
 
-    this._storageLayout = storageLayout ?? device.createBindGroupLayout({
-      entries: [{
-        binding: 0,
-        visibility: GPUShaderStage.COMPUTE,
-        storageTexture: { access: 'write-only', format: 'rgba8unorm', viewDimension: '2d-array' }
-      }]
-    });
+    this._storageLayout =
+      storageLayout ??
+      device.createBindGroupLayout({
+        entries: [
+          {
+            binding: 0,
+            visibility: GPUShaderStage.COMPUTE,
+            storageTexture: {
+              access: "write-only",
+              format: "rgba8unorm",
+              viewDimension: "2d-array",
+            },
+          },
+        ],
+      });
 
-    // internal layout tracking so we only reallocate when necessary
     this._layout = { gridSize: 0, splitCount: 0, layers: 0 };
 
     /** @type {FractalChunk[]} */
     this.chunks = [];
 
-    // WGSL module + pipeline cache
     this._module = device.createShaderModule({ code: computeWGSL });
     /** @type {Map<string, GPUComputePipeline>} */
     this._pipeCache = new Map();
   }
 
   _pipeline(entryPoint) {
-    const key = entryPoint || 'main';
+    const key = entryPoint || "main";
     let p = this._pipeCache.get(key);
     if (p) return p;
+
     p = this.device.createComputePipeline({
       layout: this.device.createPipelineLayout({
-        bindGroupLayouts: [this._uniformsLayout, this._storageLayout]
+        bindGroupLayouts: [this._uniformsLayout, this._storageLayout],
       }),
-      compute: { module: this._module, entryPoint: key }
+      compute: { module: this._module, entryPoint: key },
     });
+
     this._pipeCache.set(key, p);
     return p;
   }
 
   /**
    * Ensure chunk textures exist for (gridSize, splitCount, layers).
-   * Textures are allocated as 2D-array where each array layer represents a fractal 'layer'.
+   * Textures are allocated as 2D-array where each array layer represents one output layer.
+   *
+   * IMPORTANT: storageView is created with arrayLayerCount=layers so the shader can write
+   * any layerIndex. layerViews remain single-layer views for convenience elsewhere.
    *
    * @param {number} gridSize
    * @param {number} splitCount
@@ -208,23 +253,28 @@ export class FractalTileComputeGPU {
    * @returns {FractalChunk[]}
    */
   _ensureTextures(gridSize, splitCount, layers = 1) {
-    // If nothing changed, reuse
-    if (this._layout.gridSize === gridSize &&
-        this._layout.splitCount === splitCount &&
-        this._layout.layers === layers &&
-        Array.isArray(this.chunks) && this.chunks.length > 0) {
+    const L = Math.max(1, layers | 0);
+
+    if (
+      this._layout.gridSize === gridSize &&
+      this._layout.splitCount === splitCount &&
+      this._layout.layers === L &&
+      Array.isArray(this.chunks) &&
+      this.chunks.length > 0
+    ) {
       return this.chunks;
     }
 
-    // destroy previous textures
     for (const c of this.chunks) {
-      try { if (c.fractalTex) c.fractalTex.destroy(); } catch (e) { /* ignore */ }
+      try {
+        if (c.fractalTex) c.fractalTex.destroy();
+      } catch {}
     }
     this.chunks.length = 0;
 
-    const G = gridSize;
+    const G = gridSize | 0;
     const tileH = G;
-    const tileW = Math.min(G, Math.max(1, Math.floor(splitCount / tileH)));
+    const tileW = Math.min(G, Math.max(1, Math.floor((splitCount | 0) / tileH)));
     const numX = Math.ceil(G / tileW);
 
     for (let tx = 0; tx < numX; ++tx) {
@@ -232,20 +282,24 @@ export class FractalTileComputeGPU {
       const w = Math.min(tileW, G - offX);
       if (!w) continue;
 
-      // allocate texture with 'layers' array-layers
       const fractalTex = this.device.createTexture({
-        size: [w, tileH, layers],
-        format: 'rgba8unorm',
-        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+        size: [w, tileH, L],
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
       });
 
-      // create per-layer single-layer views for easy bindGroup creation
-      const layerViews = new Array(layers);
-      for (let L = 0; L < layers; ++L) {
-        layerViews[L] = fractalTex.createView({
-          dimension: '2d-array',
-          baseArrayLayer: L,
-          arrayLayerCount: 1
+      const storageView = fractalTex.createView({
+        dimension: "2d-array",
+        baseArrayLayer: 0,
+        arrayLayerCount: L,
+      });
+
+      const layerViews = new Array(L);
+      for (let li = 0; li < L; ++li) {
+        layerViews[li] = fractalTex.createView({
+          dimension: "2d-array",
+          baseArrayLayer: li,
+          arrayLayerCount: 1,
         });
       }
 
@@ -255,18 +309,32 @@ export class FractalTileComputeGPU {
         width: w,
         height: tileH,
         fractalTex,
+        storageView,
         layerViews,
-        layerBindGroups: new Map()
+        storageBindGroup: null,
       });
     }
 
-    this._layout = { gridSize, splitCount, layers };
+    this._layout = { gridSize, splitCount, layers: L };
     return this.chunks;
+  }
+
+  _ensureStorageBindGroup(chunk) {
+    let bg = chunk.storageBindGroup;
+    if (bg) return bg;
+
+    bg = this.device.createBindGroup({
+      layout: this._storageLayout,
+      entries: [{ binding: 0, resource: chunk.storageView }],
+    });
+    chunk.storageBindGroup = bg;
+    return bg;
   }
 
   /**
    * Pack the dynamic uniform block for a tile.
-   * Field order must match the WGSL struct.
+   * Field order must match the WGSL Params struct.
+   *
    * @param {FractalParams} params
    * @param {FractalChunk} tileInfo
    * @param {number} layerIdx
@@ -278,36 +346,58 @@ export class FractalTileComputeGPU {
     const dv = new DataView(buf);
     let o = 0;
 
-    dv.setUint32(o, params.gridSize, true); o += 4;
-    dv.setUint32(o, params.maxIter, true); o += 4;
-    dv.setUint32(o, params.fractalType ?? FRACTALS.Mandelbrot, true); o += 4;
-    dv.setUint32(o, params.scaleMode ?? 0, true); o += 4;
-    dv.setFloat32(o, params.zoom ?? 1.0, true); o += 4;
-    dv.setFloat32(o, params.dx ?? 0.0, true); o += 4;
-    dv.setFloat32(o, params.dy ?? 0.0, true); o += 4;
-    dv.setFloat32(o, params.escapeR ?? 4.0, true); o += 4;
-    dv.setFloat32(o, params.gamma ?? 1.0, true); o += 4;
-    dv.setUint32(o, layerIdx >>> 0, true); o += 4;
+    const gridSize = params.gridSize >>> 0;
+    const maxIter = (params.maxIter ?? 0) >>> 0;
+    const fractalType = (params.fractalType ?? FRACTALS.Mandelbrot) >>> 0;
+    const scaleMode = packScaleMask(params.scaleMode ?? 0);
 
-    dv.setFloat32(o, params.epsilon ?? 1e-6, true); o += 4;
-    dv.setUint32(o, params.convergenceTest ? 1 : 0, true); o += 4;
-    dv.setUint32(o, params.escapeMode ?? 0, true); o += 4;
-    dv.setUint32(o, tileInfo.offsetX >>> 0, true); o += 4;
-    dv.setUint32(o, tileInfo.offsetY >>> 0, true); o += 4;
-    dv.setUint32(o, tileInfo.width >>> 0, true); o += 4;
-    dv.setUint32(o, tileInfo.height >>> 0, true); o += 4;
-    dv.setFloat32(o, aspect, true); o += 4;
+    dv.setUint32(o, gridSize, true);
+    o += 4;
+    dv.setUint32(o, maxIter, true);
+    o += 4;
+    dv.setUint32(o, fractalType, true);
+    o += 4;
+    dv.setUint32(o, scaleMode, true);
+    o += 4;
 
-    // leftover bytes stay zero (padding)
+    dv.setFloat32(o, +params.zoom || 1.0, true);
+    o += 4;
+    dv.setFloat32(o, +params.dx || 0.0, true);
+    o += 4;
+    dv.setFloat32(o, +params.dy || 0.0, true);
+    o += 4;
+    dv.setFloat32(o, Number.isFinite(+params.escapeR) ? +params.escapeR : 4.0, true);
+    o += 4;
+
+    dv.setFloat32(o, Number.isFinite(+params.gamma) ? +params.gamma : 1.0, true);
+    o += 4;
+    dv.setUint32(o, layerIdx >>> 0, true);
+    o += 4;
+
+    dv.setFloat32(o, Number.isFinite(+params.epsilon) ? +params.epsilon : 1e-6, true);
+    o += 4;
+    dv.setUint32(o, params.convergenceTest ? 1 : 0, true);
+    o += 4;
+    dv.setUint32(o, (params.escapeMode ?? 0) >>> 0, true);
+    o += 4;
+
+    dv.setUint32(o, tileInfo.offsetX >>> 0, true);
+    o += 4;
+    dv.setUint32(o, tileInfo.offsetY >>> 0, true);
+    o += 4;
+    dv.setUint32(o, tileInfo.width >>> 0, true);
+    o += 4;
+    dv.setUint32(o, tileInfo.height >>> 0, true);
+    o += 4;
+
+    dv.setFloat32(o, +aspect || 1.0, true);
+    o += 4;
+
     return buf;
   }
 
   /**
-   * Compute a single layer (writes to each chunk's corresponding array-layer).
-   *
-   * Note: callers can pass `requestedLayers` to ensure textures are allocated
-   *       with enough array-layers before the write (useful when generating
-   *       series of layers or a layered texture).
+   * Compute a single layer (writes to the array-layer = layerIndex).
    *
    * @param {FractalParams} paramsState
    * @param {number} layerIndex
@@ -316,27 +406,38 @@ export class FractalTileComputeGPU {
    * @param {number} [requestedLayers=1]
    * @returns {Promise<FractalChunk[]>}
    */
-  async compute(paramsState, layerIndex, aspect = 1, entryPoint = 'main', requestedLayers = 1) {
-    // Ensure textures exist and have requested number of layers
-    const chunks = this._ensureTextures(paramsState.gridSize, paramsState.splitCount, Math.max(1, requestedLayers|0));
+  async compute(
+    paramsState,
+    layerIndex,
+    aspect = 1,
+    entryPoint = "main",
+    requestedLayers = 1,
+  ) {
+    const layers = Math.max(1, requestedLayers | 0);
+    const L = layerIndex >>> 0;
+    if (L >= layers) {
+      throw new Error(`compute: layerIndex ${L} out of range for layers=${layers}`);
+    }
 
+    const chunks = this._ensureTextures(paramsState.gridSize, paramsState.splitCount, layers);
     const N = chunks.length;
     if (N === 0) return chunks;
 
-    // big UBO with dynamic offsets (one block per chunk)
     const bigUBO = this.device.createBuffer({
       size: this.uniformStride * N,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
     for (let i = 0; i < N; ++i) {
-      const block = this._pack(paramsState, chunks[i], layerIndex >>> 0, aspect);
+      const block = this._pack(paramsState, chunks[i], L, aspect);
       this.device.queue.writeBuffer(bigUBO, i * this.uniformStride, block);
     }
 
     const uBG = this.device.createBindGroup({
       layout: this._uniformsLayout,
-      entries: [{ binding: 0, resource: { buffer: bigUBO, size: this.uniformStride } }]
+      entries: [
+        { binding: 0, resource: { buffer: bigUBO, size: this.uniformStride } },
+      ],
     });
 
     const pipeline = this._pipeline(entryPoint);
@@ -346,21 +447,15 @@ export class FractalTileComputeGPU {
 
     for (let i = 0; i < N; ++i) {
       const c = chunks[i];
-      const key = layerIndex >>> 0;
-
-      let bg = c.layerBindGroups.get(key);
-      if (!bg) {
-        const view = c.layerViews[key];
-        bg = this.device.createBindGroup({
-          layout: this._storageLayout,
-          entries: [{ binding: 0, resource: view }]
-        });
-        c.layerBindGroups.set(key, bg);
-      }
+      const sBG = this._ensureStorageBindGroup(c);
 
       pass.setBindGroup(0, uBG, [i * this.uniformStride]);
-      pass.setBindGroup(1, bg);
-      pass.dispatchWorkgroups(Math.ceil(c.width / 8), Math.ceil(c.height / 8), 1);
+      pass.setBindGroup(1, sBG);
+      pass.dispatchWorkgroups(
+        Math.ceil(c.width / 8),
+        Math.ceil(c.height / 8),
+        1,
+      );
     }
 
     pass.end();
@@ -368,20 +463,108 @@ export class FractalTileComputeGPU {
     try {
       this.device.queue.submit([enc.finish()]);
       await this.device.queue.onSubmittedWorkDone();
-    } catch (err) {
-      // Surface GPU errors (OOM / device lost) so callers can handle them
-      console.error('FractalTileComputeGPU.compute: GPU submit failed', err);
-      throw err;
+    } finally {
+      try {
+        bigUBO.destroy();
+      } catch {}
     }
 
     return chunks;
   }
 
   /**
-   * Compute `count` layers consecutively into the texture array, interpolating
-   * gamma across the range [gammaStart .. gammaStart+gammaRange].
+   * Compute N layers from explicit per-layer parameter overrides.
    *
-   * This convenience method ensures the internal textures have `count` layers.
+   * Each entry in layerParamsList is merged onto paramsState:
+   *   finalParams = { ...paramsState, ...layerParamsList[L] }
+   * and written into array-layer L.
+   *
+   * @param {FractalParams} paramsState
+   * @param {Array<Partial<FractalParams>>} layerParamsList
+   * @param {number} [aspect=1]
+   * @param {string} [entryPoint='main']
+   * @returns {Promise<FractalChunk[]>}
+   */
+  async computeLayers(paramsState, layerParamsList, aspect = 1, entryPoint = "main") {
+    const layers = Math.max(1, (layerParamsList?.length ?? 0) | 0);
+    const chunks = this._ensureTextures(paramsState.gridSize, paramsState.splitCount, layers);
+    const N = chunks.length;
+    if (N === 0) return chunks;
+
+    const pipeline = this._pipeline(entryPoint);
+
+    const totalBlocks = N * layers;
+    const bigUBO = this.device.createBuffer({
+      size: this.uniformStride * totalBlocks,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    let blockIdx = 0;
+    for (let L = 0; L < layers; ++L) {
+      const ov = layerParamsList[L] || {};
+      const packParams = { ...paramsState, ...ov };
+
+      for (let i = 0; i < N; ++i) {
+        const block = this._pack(packParams, chunks[i], L, aspect);
+        this.device.queue.writeBuffer(
+          bigUBO,
+          blockIdx * this.uniformStride,
+          block,
+        );
+        blockIdx++;
+      }
+    }
+
+    const uBG = this.device.createBindGroup({
+      layout: this._uniformsLayout,
+      entries: [
+        { binding: 0, resource: { buffer: bigUBO, size: this.uniformStride } },
+      ],
+    });
+
+    const enc = this.device.createCommandEncoder();
+    const pass = enc.beginComputePass();
+    pass.setPipeline(pipeline);
+
+    for (let L = 0; L < layers; ++L) {
+      for (let i = 0; i < N; ++i) {
+        const c = chunks[i];
+        const sBG = this._ensureStorageBindGroup(c);
+
+        const dyn = (L * N + i) * this.uniformStride;
+        pass.setBindGroup(0, uBG, [dyn]);
+        pass.setBindGroup(1, sBG);
+        pass.dispatchWorkgroups(
+          Math.ceil(c.width / 8),
+          Math.ceil(c.height / 8),
+          1,
+        );
+      }
+    }
+
+    pass.end();
+
+    try {
+      this.device.queue.submit([enc.finish()]);
+      await this.device.queue.onSubmittedWorkDone();
+    } finally {
+      try {
+        bigUBO.destroy();
+      } catch {}
+    }
+
+    return chunks;
+  }
+
+  /**
+   * Convenience: generate a layer series, with optional per-layer overrides.
+   *
+   * gamma is interpolated across [gammaStart .. gammaStart + gammaRange] unless
+   * the override for a layer provides its own gamma.
+   *
+   * layerOverrides can be:
+   * - Array<Partial<FractalParams>> of length count
+   * - function (layerIndex, t01, layers) => Partial<FractalParams>
    *
    * @param {FractalParams} paramsState
    * @param {number} gammaStart
@@ -389,34 +572,55 @@ export class FractalTileComputeGPU {
    * @param {number} count
    * @param {number} [aspect=1]
    * @param {string} [entryPoint='main']
+   * @param {Array<Partial<FractalParams>>|((layerIndex:number,t01:number,layers:number)=>Partial<FractalParams>)} [layerOverrides]
    * @returns {Promise<FractalChunk[]>}
    */
-  async computeLayerSeries(paramsState, gammaStart, gammaRange, count, aspect = 1, entryPoint = 'main') {
-    const requestedLayers = Math.max(1, count >>> 0);
-    this._ensureTextures(paramsState.gridSize, paramsState.splitCount, requestedLayers);
+  async computeLayerSeries(
+    paramsState,
+    gammaStart,
+    gammaRange,
+    count,
+    aspect = 1,
+    entryPoint = "main",
+    layerOverrides = undefined,
+  ) {
+    const layers = Math.max(1, count >>> 0);
 
-    const originalGamma = paramsState.gamma;
-    try {
-      for (let i = 0; i < requestedLayers; ++i) {
-        const t = (requestedLayers === 1) ? 0 : (i / (requestedLayers - 1));
-        paramsState.gamma = gammaStart + t * gammaRange;
-        await this.compute(paramsState, i, aspect, entryPoint, requestedLayers);
+    /** @type {Array<Partial<FractalParams>>} */
+    const list = new Array(layers);
+
+    for (let L = 0; L < layers; ++L) {
+      const t = layers === 1 ? 0 : L / (layers - 1);
+      const gamma = gammaStart + t * gammaRange;
+
+      let ov = null;
+      if (typeof layerOverrides === "function") {
+        ov = layerOverrides(L, t, layers);
+      } else if (Array.isArray(layerOverrides)) {
+        ov = layerOverrides[L] || null;
       }
-    } finally {
-      paramsState.gamma = originalGamma;
+
+      if (ov && typeof ov === "object") {
+        list[L] = ("gamma" in ov) ? ov : { ...ov, gamma };
+      } else {
+        list[L] = { gamma };
+      }
     }
 
+    return this.computeLayers(paramsState, list, aspect, entryPoint);
+  }
+
+  getChunks() {
     return this.chunks;
   }
 
-  /** Return chunks array (read-only-ish) */
-  getChunks() { return this.chunks; }
-
-  /** Destroy owned GPU resources */
   destroy() {
     for (const c of this.chunks) {
-      try { if (c.fractalTex) c.fractalTex.destroy(); } catch (e) { /* ignore */ }
-      if (c.layerBindGroups) c.layerBindGroups.clear();
+      try {
+        if (c.fractalTex) c.fractalTex.destroy();
+      } catch {}
+      c.storageBindGroup = null;
+      c.storageView = null;
       c.layerViews = null;
     }
     this.chunks.length = 0;
@@ -424,7 +628,6 @@ export class FractalTileComputeGPU {
     this._pipeCache.clear();
   }
 
-  /** Clear pipeline cache (useful when shader module is replaced) */
   clearPipelineCache() {
     this._pipeCache.clear();
   }

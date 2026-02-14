@@ -1,11 +1,18 @@
-// initRender.js
+// render.js
 // SDF compute only when needed: displacement OR lighting; auto-free SDF/flag textures when SDFs are not required
 // nLayers support: compute multi-layer fractal arrays; no per-layer SDFs when nLayers > 1
+// layerMode: disables SDF/displacement and enables multi-layer fractal stacks with stepped gamma
 
 import { FractalTileComputeGPU } from "./shaders/fractalCompute.js";
 import { SdfComputeGPU } from "./shaders/fsdfCompute.js";
-import { RenderPipelineGPU } from "./shaders/fractalRender.js";
+import RenderPipelineGPUDefault, {
+  RenderPipelineGPU as RenderPipelineGPUNamed,
+} from "./shaders/fractalRender.js";
 import { QueryComputeGPU } from "./shaders/fheightQueryCompute.js";
+
+import SlabMeshPipelineGPU from "./shaders/fSlabCompute.js";
+
+const RenderPipelineGPU = RenderPipelineGPUNamed || RenderPipelineGPUDefault;
 
 /* ======================================================================
    Shared UI/param state
@@ -19,8 +26,13 @@ export const renderGlobals = {
     gridSize: 1542,
     splitCount: 8000000,
     layerIndex: 0,
+
     layers: 100,
-    nLayers: undefined,
+    nLayers: 1,
+
+    renderMode: "fractal",
+    layerMode: false,
+
     maxIter: 150,
     fractalType: 0,
     scaleMode: 1,
@@ -31,6 +43,15 @@ export const renderGlobals = {
     zMin: 0.0,
     dz: 0.01,
     gamma: 1.0,
+
+    // stepped gamma across layers
+    // - if layerGammaStep != 0: gamma(li) steps across layers; base gamma is treated as the floor
+    // - else if layerGammaRange != 0: gamma ramps by range; base gamma is treated as the floor
+    // - else: optional ramp toward layerGammaStart but clamped so base gamma remains the floor
+    layerGammaStart: 1.0,
+    layerGammaStep: 0.001,
+    layerGammaRange: 0.0,
+
     epsilon: 1e-6,
     convergenceTest: false,
     escapeMode: 0,
@@ -46,6 +67,10 @@ export const renderGlobals = {
     bowlOn: false,
     bowlDepth: 0.25,
     quadScale: 1.0,
+
+    worldOffset: 0.0,
+    worldStart: 0.0,
+
     lightingOn: false,
     lightPos: [0, 0, 5],
     specPower: 32.0,
@@ -54,6 +79,19 @@ export const renderGlobals = {
     alphaMode: 0,
     basis: 0,
     normalMode: 2,
+
+    // slab renderer knobs (optional, safe defaults)
+    fieldMode: 0,
+    meshStep: 1,
+    capBias: 0.0,
+    gradScale: 1.0,
+    thickness: 0.25,
+    feather: 0.0,
+
+    // slab contour debug toggles (packed into slab alphaMode bits)
+    contourOn: true,
+    contourOnly: true,
+    contourFront: true,
   },
 };
 
@@ -61,9 +99,11 @@ const F = { C: 1, D: 2, R: 4, G: 8 };
 const DIRTY_MAP = {
   gridSize: F.C | F.D,
   splitCount: F.C | F.D,
+
   layers: F.C,
   nLayers: F.C,
   layerIndex: F.C,
+
   maxIter: F.C,
   fractalType: F.C,
   scaleMode: F.C,
@@ -71,10 +111,22 @@ const DIRTY_MAP = {
   dx: F.C,
   dy: F.C,
   escapeR: F.C,
+  zMin: F.C,
+  dz: F.C,
+
   gamma: F.C,
+  layerGammaStart: F.C,
+  layerGammaStep: F.C,
+  layerGammaRange: F.C,
+
   epsilon: F.C,
   convergenceTest: F.C,
   escapeMode: F.C,
+
+  renderMode: F.R | F.D,
+
+  // toggling layerMode must force: recompute (layer count changes), SDF teardown, and render rebind
+  layerMode: F.C | F.D | F.R,
 
   dispAmp: F.D,
   dispMode: F.D,
@@ -87,6 +139,10 @@ const DIRTY_MAP = {
   normalMode: F.D,
   slopeLimit: F.D,
 
+  // these affect the layer-space sampling and must trigger fractal compute as well
+  worldOffset: F.C | F.D | F.R,
+  worldStart: F.C | F.D | F.R,
+
   hueOffset: F.R,
   scheme: F.R,
   colorScheme: F.R,
@@ -96,28 +152,131 @@ const DIRTY_MAP = {
   dispLimitOn: F.R,
   gridDivs: F.R | F.G,
 
-  lowT: F.R,
-  highT: F.R,
-  basis: F.R,
+  lowT: F.R | F.D,
+  highT: F.R | F.D,
+  basis: F.R | F.D,
+
+  alphaMode: F.R | F.G,
+
+  // slab renderer knobs
+  fieldMode: F.D,
+  meshStep: F.D,
+  capBias: F.D,
+  gradScale: F.D,
+  thickness: F.R,
+  feather: F.R,
+
+  // slab contour debug toggles
+  contourOn: F.R,
+  contourOnly: F.R,
+  contourFront: F.R,
 };
 
 const pending = { paramsState: {} };
 let dirtyBits = 0;
+let hasPending = false;
 
 export function setState(partial) {
+  if (!partial || typeof partial !== "object") return;
+
   Object.assign(pending.paramsState, partial);
-  for (const k in partial) dirtyBits |= DIRTY_MAP[k] || 0;
+  hasPending = true;
+
+  for (const k in partial) {
+    const bits = DIRTY_MAP[k];
+    dirtyBits |= bits != null ? bits : F.R;
+  }
 }
 
 function flushPending() {
-  if (!dirtyBits) return;
-  Object.assign(renderGlobals.paramsState, pending.paramsState);
+  if (!hasPending) return;
+
+  const ps = renderGlobals.paramsState;
+  const prevLayerMode = !!ps.layerMode;
+
+  Object.assign(ps, pending.paramsState);
   pending.paramsState = {};
+  hasPending = false;
+
+  const nextLayerMode = !!ps.layerMode;
+
+  if (nextLayerMode && !prevLayerMode) {
+    ps.dispMode = 0;
+    ps.lightingOn = false;
+
+    const rm = (ps.renderMode == null ? "" : String(ps.renderMode)).trim().toLowerCase();
+    if (rm === "slab" || rm === "1") ps.renderMode = "fractal";
+
+    renderGlobals.computeDirty = true;
+    renderGlobals.displacementDirty = true;
+    renderGlobals.cameraDirty = true;
+  }
+
   renderGlobals.computeDirty ||= !!(dirtyBits & F.C);
   renderGlobals.displacementDirty ||= !!(dirtyBits & F.D);
   renderGlobals.cameraDirty ||= !!(dirtyBits & F.R);
   renderGlobals.gridDirty ||= !!(dirtyBits & F.G);
+
   dirtyBits = 0;
+}
+
+/* ======================================================================
+   Layer helpers
+   ====================================================================== */
+function _safeGamma(g) {
+  const x = Number.isFinite(g) ? g : 1.0;
+  return x <= 0 ? 1e-6 : x;
+}
+
+function requestedLayersFromParams(params) {
+  const p = params || renderGlobals.paramsState;
+  if (!p || !p.layerMode) return 1;
+
+  const raw = p.nLayers ?? p.layers ?? 1;
+  const n = Math.floor(Number(raw) || 0);
+  return Math.max(1, n);
+}
+
+function resolveGammaSeries(params, count) {
+  const p = params || {};
+  const baseGamma = _safeGamma(Number.isFinite(+p.gamma) ? +p.gamma : 1.0);
+
+  if (count <= 1) return { gammaStart: baseGamma, gammaRange: 0.0 };
+
+  const step = Number.isFinite(+p.layerGammaStep) ? +p.layerGammaStep : 0.0;
+  const rangeExplicit = Number.isFinite(+p.layerGammaRange) ? +p.layerGammaRange : 0.0;
+  const gStartRaw = Number.isFinite(+p.layerGammaStart) ? +p.layerGammaStart : baseGamma;
+
+  if (step !== 0) {
+    const total = step * (count - 1);
+    const gammaStart = total >= 0 ? baseGamma : baseGamma - total;
+    return { gammaStart, gammaRange: total };
+  }
+
+  if (rangeExplicit !== 0) {
+    const total = rangeExplicit;
+    const gammaStart = total >= 0 ? baseGamma : baseGamma - total;
+    return { gammaStart, gammaRange: total };
+  }
+
+  const target = _safeGamma(gStartRaw);
+  const clampedTarget = target >= baseGamma ? target : baseGamma;
+  const total = clampedTarget - baseGamma;
+  return { gammaStart: baseGamma, gammaRange: total };
+}
+
+function gammaForLayerIndex(gammaStart, gammaRange, li, count) {
+  if (count <= 1) return _safeGamma(gammaStart);
+  const denom = count - 1;
+  const t = denom > 0 ? li / denom : 0;
+  return _safeGamma(gammaStart + t * gammaRange);
+}
+
+function needsSdf(params) {
+  const p = params || renderGlobals.paramsState;
+  const req = requestedLayersFromParams(p);
+  if (req > 1) return false;
+  return !!(p.dispMode && p.dispMode !== 0) || !!p.lightingOn;
 }
 
 /* ======================================================================
@@ -141,6 +300,31 @@ function randomTag() {
   return Math.random().toString(36).slice(2, 8);
 }
 
+function _pickFn(obj, names) {
+  for (let i = 0; i < names.length; i++) {
+    const k = names[i];
+    const fn = obj && obj[k];
+    if (typeof fn === "function") return fn.bind(obj);
+  }
+  return null;
+}
+
+function _assertPipelineApi(renderPipeline) {
+  if (!renderPipeline) throw new Error("Render pipeline missing");
+
+  const hasSetChunks = typeof renderPipeline.setChunks === "function";
+  if (!hasSetChunks) throw new TypeError("renderPipeline.setChunks is not a function");
+
+  const hasRender =
+    typeof renderPipeline.render === "function" ||
+    typeof renderPipeline.renderFrame === "function" ||
+    typeof renderPipeline.draw === "function";
+
+  if (!hasRender && typeof renderPipeline.renderBlitToView !== "function") {
+    throw new TypeError("renderPipeline has no render/renderFrame/draw/renderBlitToView");
+  }
+}
+
 /* ======================================================================
    Main initRender
    ====================================================================== */
@@ -151,20 +335,21 @@ export async function initRender() {
   const format = navigator.gpu.getPreferredCanvasFormat();
 
   function parseAlphaModeToNumeric(mode) {
-    if (mode === undefined || mode === null) {
-      return Number(renderGlobals.paramsState.alphaMode || 0);
-    }
+    if (mode === undefined || mode === null) return Number(renderGlobals.paramsState.alphaMode || 0);
+
     if (typeof mode === "number" && Number.isFinite(mode)) {
       const n = Math.floor(mode);
       if (n === 0) return 0;
       if (n === 2) return 2;
       return 1;
     }
+
     if (typeof mode === "string") {
       const t = mode.trim().toLowerCase();
       if (t === "0" || t === "opaque") return 0;
       if (t === "2") return 2;
       if (t === "1" || t === "fade" || t === "premultiplied") return 1;
+
       const maybe = parseInt(t, 10);
       if (!Number.isNaN(maybe)) {
         if (maybe === 0) return 0;
@@ -173,6 +358,7 @@ export async function initRender() {
       }
       return 1;
     }
+
     return Number(renderGlobals.paramsState.alphaMode || 0);
   }
 
@@ -180,34 +366,21 @@ export async function initRender() {
     return numericMode === 0 ? "opaque" : "premultiplied";
   }
 
+  function slabAlphaBitsFromParams(params) {
+    let bits = 0;
+    if (params && params.contourOn) bits |= 1;
+    if (params && params.contourOnly) bits |= 2;
+    if (params && params.contourFront) bits |= 4;
+    return bits >>> 0;
+  }
+
   const initialNumeric =
     typeof window !== "undefined" && window.__pendingAlphaMode !== undefined
       ? parseAlphaModeToNumeric(window.__pendingAlphaMode)
       : parseAlphaModeToNumeric(renderGlobals.paramsState.alphaMode);
+
   renderGlobals.paramsState.alphaMode = initialNumeric;
   let currentAlphaMode = canvasAlphaStringForNumeric(initialNumeric);
-
-  window.setAlphaMode = function setAlphaMode(mode) {
-    const numeric = parseAlphaModeToNumeric(mode);
-    renderGlobals.paramsState.alphaMode = numeric;
-    const newCanvasMode = canvasAlphaStringForNumeric(numeric);
-    if (newCanvasMode !== currentAlphaMode) {
-      currentAlphaMode = newCanvasMode;
-      window.__currentCanvasAlphaMode = currentAlphaMode;
-      try {
-        context.configure({
-          device,
-          format,
-          alphaMode: currentAlphaMode,
-          size: [canvas.width, canvas.height],
-        });
-      } catch (e) {
-        console.warn("setAlphaMode: context.configure failed:", e);
-      }
-    }
-    renderGlobals.cameraDirty = true;
-    renderGlobals.gridDirty = true;
-  };
 
   const uniformStride = 256;
   const MAX_PIXELS_PER_CHUNK = 8000000;
@@ -230,100 +403,270 @@ export async function initRender() {
     renderGlobals.cameraDirty = true;
   }
 
-  const fractalCompute = new FractalTileComputeGPU(
-    device,
-    undefined,
-    undefined,
-    uniformStride,
-  );
+  const fractalCompute = new FractalTileComputeGPU(device, undefined, undefined, uniformStride);
   const sdfCompute = new SdfComputeGPU(device, uniformStride);
-  const renderPipeline = new RenderPipelineGPU(
-    device,
-    context,
-    undefined,
-    undefined,
-    {
-      renderUniformStride: 256,
-      initialGridDivs: renderGlobals.paramsState.gridDivs,
-      quadScale: renderGlobals.paramsState.quadScale,
-    },
-  );
+
+  const renderPipeline = new RenderPipelineGPU(device, context, undefined, undefined, {
+    renderUniformStride: 256,
+    initialGridDivs: renderGlobals.paramsState.gridDivs,
+    quadScale: renderGlobals.paramsState.quadScale,
+    canvasAlphaMode: currentAlphaMode,
+  });
+
+  _assertPipelineApi(renderPipeline);
+
+  const slabPipeline = new SlabMeshPipelineGPU(device, context, {
+    uniformStride,
+    canvasAlphaMode: currentAlphaMode,
+  });
 
   const queryCompute = new QueryComputeGPU(
     device,
     undefined,
     renderPipeline.sampler,
     renderPipeline.renderUniformBuffer,
-    {
-      uniformQuerySize: 16,
-      queryResultBytes: 280,
-    },
+    { uniformQuerySize: 16, queryResultBytes: 280 },
   );
 
   let chunkInfos = [];
   let sdfReady = false;
+
+  let slabWallsDirty = true;
+  let _slabSetChunksSrc = null;
+  let _slabSetChunksLayers = 0;
+
   let resizeTimer = 0;
   let frameHandle = 0;
   let exporting = false;
 
+  let _noSdfCacheSrc = null;
+  let _noSdfCache = null;
+
+  function invalidateChunkCaches() {
+    _noSdfCacheSrc = null;
+    _noSdfCache = null;
+  }
+
   function requestedLayers() {
-    return Math.max(
-      1,
-      Math.floor(
-        renderGlobals.paramsState.nLayers ??
-          renderGlobals.paramsState.layers ??
-          1,
-      ),
-    );
+    return requestedLayersFromParams(renderGlobals.paramsState);
   }
 
   function availableFractalLayers(chunks = []) {
     if (!Array.isArray(chunks) || chunks.length === 0) return 1;
+
     let maxLayers = 1;
     for (const c of chunks) {
-      if (Array.isArray(c.fractalLayerViews) && c.fractalLayerViews.length) {
-        maxLayers = Math.max(maxLayers, c.fractalLayerViews.length);
-      } else if (Array.isArray(c.layerViews) && c.layerViews.length) {
-        maxLayers = Math.max(maxLayers, c.layerViews.length);
-      } else if (c.fractalView) {
-        maxLayers = Math.max(maxLayers, 1);
-      }
+      const a =
+        (Array.isArray(c.fractalLayerViews) && c.fractalLayerViews) ||
+        (Array.isArray(c.layerViews) && c.layerViews) ||
+        (Array.isArray(c.fractalViews) && c.fractalViews) ||
+        null;
+
+      if (a && a.length) maxLayers = Math.max(maxLayers, a.length);
+      else if (c.fractalView) maxLayers = Math.max(maxLayers, 1);
     }
     return Math.max(1, maxLayers);
+  }
+
+  function clampLayerIndex(li, n) {
+    const nn = Math.max(1, n | 0);
+    const x = Number.isFinite(+li) ? (+li | 0) : 0;
+    if (x < 0) return 0;
+    if (x >= nn) return nn - 1;
+    return x;
+  }
+
+  function normalizeFractalChunkLayers(chunks, count) {
+    if (!Array.isArray(chunks) || chunks.length === 0) return;
+
+    const n = Math.max(1, count | 0);
+
+    for (const c of chunks) {
+      let views =
+        (Array.isArray(c.fractalLayerViews) && c.fractalLayerViews) ||
+        (Array.isArray(c.layerViews) && c.layerViews) ||
+        (Array.isArray(c.fractalViews) && c.fractalViews) ||
+        null;
+
+      if (!views && c.fractalView) views = [c.fractalView];
+      if (!Array.isArray(views)) views = views ? [views] : [];
+
+      if (n > 1) {
+        const base = views[0] || c.fractalView || null;
+        const arr = new Array(n);
+        for (let i = 0; i < n; i++) arr[i] = views[i] || base;
+        c.fractalLayerViews = arr;
+        c.layerViews = arr;
+        c.fractalView = c.fractalView || arr[0] || null;
+      } else {
+        const one = views[0] || c.fractalView || null;
+        c.fractalLayerViews = [one].filter((v) => v != null);
+        c.layerViews = c.fractalLayerViews;
+        c.fractalView = one;
+      }
+    }
   }
 
   function effectiveSplitCount(requestedSplit) {
     const req = Math.max(1, Math.floor(requestedSplit || 0));
     const eff = Math.min(req, MAX_PIXELS_PER_CHUNK);
-    if (eff !== req) {
-      console.debug(
-        "splitCount clamped: requested=" + req + ", effective=" + eff,
-      );
-    }
+    if (eff !== req) console.debug("splitCount clamped: requested=" + req + ", effective=" + eff);
     return eff;
   }
 
+  function normRenderMode(v) {
+    const s = (v == null ? "" : String(v)).trim().toLowerCase();
+    if (s === "slab" || s === "1") return "slab";
+    if (s === "raw" || s === "blit" || s === "debug" || s === "2") return "raw";
+    return "fractal";
+  }
+
+  function modeNeedsSdf(mode, params = renderGlobals.paramsState) {
+    return mode === "fractal" && needsSdf(params);
+  }
+
+  async function ensureSlabChunks(layersToUse) {
+    if (!Array.isArray(chunkInfos) || chunkInfos.length === 0) return;
+    layersToUse = Math.max(1, layersToUse | 0);
+
+    if (_slabSetChunksSrc === chunkInfos && _slabSetChunksLayers === layersToUse) return;
+
+    await slabPipeline.setChunks(chunkInfos, layersToUse);
+    _slabSetChunksSrc = chunkInfos;
+    _slabSetChunksLayers = layersToUse;
+  }
+
+  function cleanupTempFallbacks(chunks = []) {
+    for (const c of chunks) {
+      if (c._tmpSdfTex) {
+        try {
+          c._tmpSdfTex.destroy();
+        } catch {}
+        delete c._tmpSdfTex;
+      }
+      if (c._tmpFlagTex) {
+        try {
+          c._tmpFlagTex.destroy();
+        } catch {}
+        delete c._tmpFlagTex;
+      }
+      if (c._usingTmpSdfFallback) delete c._usingTmpSdfFallback;
+    }
+  }
+
+  function chunksWithoutSdf(chunks = []) {
+    if (_noSdfCacheSrc === chunks && _noSdfCache) return _noSdfCache;
+
+    const out = (chunks || []).map((c) => {
+      const clone = Object.assign({}, c);
+
+      delete clone.sdfView;
+      delete clone.sdfLayerViews;
+      delete clone.sdfViews;
+      delete clone.sdfTex;
+      delete clone.sdfTexture;
+
+      delete clone.flagView;
+      delete clone.flagLayerViews;
+      delete clone.flagViews;
+      delete clone.flagTex;
+      delete clone.flagTexture;
+
+      delete clone._tmpSdfTex;
+      delete clone._tmpFlagTex;
+      delete clone._usingTmpSdfFallback;
+
+      return clone;
+    });
+
+    _noSdfCacheSrc = chunks;
+    _noSdfCache = out;
+    return out;
+  }
+
+  function freeSdfData(chunks = []) {
+    for (const c of chunks) {
+      try {
+        if (c.sdfTex) {
+          try {
+            c.sdfTex.destroy();
+          } catch {}
+        }
+      } catch {}
+
+      try {
+        if (c.flagTex) {
+          try {
+            c.flagTex.destroy();
+          } catch {}
+        }
+      } catch {}
+
+      try {
+        if (c._tmpSdfTex) {
+          try {
+            c._tmpSdfTex.destroy();
+          } catch {}
+        }
+      } catch {}
+
+      try {
+        if (c._tmpFlagTex) {
+          try {
+            c._tmpFlagTex.destroy();
+          } catch {}
+        }
+      } catch {}
+
+      delete c.sdfView;
+      delete c.sdfLayerViews;
+      delete c.sdfViews;
+      delete c.sdfTex;
+      delete c.sdfTexture;
+
+      delete c.flagView;
+      delete c.flagLayerViews;
+      delete c.flagViews;
+      delete c.flagTex;
+      delete c.flagTexture;
+
+      delete c._tmpSdfTex;
+      delete c._tmpFlagTex;
+      delete c._usingTmpSdfFallback;
+    }
+
+    sdfReady = false;
+    invalidateChunkCaches();
+  }
+
   async function computeFractalLayer(layerIndex, aspect = 1) {
-    let requested = Math.max(
-      1,
-      Math.floor(renderGlobals.paramsState.splitCount || 0),
-    );
+    let requested = Math.max(1, Math.floor(renderGlobals.paramsState.splitCount || 0));
     let eff = Math.min(requested, MAX_PIXELS_PER_CHUNK);
     eff = Math.max(eff, MIN_SPLIT);
+
     while (true) {
       try {
         const params = Object.assign({}, renderGlobals.paramsState, {
           splitCount: eff,
+          nLayers: 1,
+          layers: 1,
+          layerIndex: 0,
         });
-        const chunks = await fractalCompute.compute(params, layerIndex, aspect);
+
+        const chunks = await fractalCompute.compute(params, layerIndex, aspect, "main", 1);
         chunkInfos = chunks || [];
+
         for (const c of chunkInfos) {
-          if (!c.fractalView && c.layerViews && c.layerViews[0]) {
-            c.fractalView = c.layerViews[0];
-          }
+          if (!c.fractalView && c.layerViews && c.layerViews[0]) c.fractalView = c.layerViews[0];
+          if (!c.layerViews && c.fractalView) c.layerViews = [c.fractalView];
         }
+
         sdfReady = false;
+        slabWallsDirty = true;
+        invalidateChunkCaches();
+
         if (queryCompute._bgCache) queryCompute._bgCache.clear();
+
         let bad = false;
         for (const c of chunkInfos) {
           if (typeof c.width === "number" && typeof c.height === "number") {
@@ -335,6 +678,10 @@ export async function initRender() {
           }
         }
         if (bad) throw new Error("chunk slice too large");
+
+        _slabSetChunksSrc = null;
+        _slabSetChunksLayers = 0;
+
         return chunkInfos;
       } catch (err) {
         console.warn("computeFractalLayer failed:", err);
@@ -349,16 +696,21 @@ export async function initRender() {
                 fractalTex: device.createTexture({
                   size: [1, 1, 1],
                   format: "rgba8unorm",
-                  usage:
-                    GPUTextureUsage.TEXTURE_BINDING |
-                    GPUTextureUsage.COPY_DST,
+                  usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
                 }),
               },
             ];
-            chunkInfos[0].fractalView = chunkInfos[0].fractalTex.createView({
-              dimension: "2d",
-            });
+            chunkInfos[0].fractalView = chunkInfos[0].fractalTex.createView({ dimension: "2d" });
+            chunkInfos[0].layerViews = [chunkInfos[0].fractalView];
           }
+
+          sdfReady = false;
+          slabWallsDirty = true;
+          invalidateChunkCaches();
+
+          _slabSetChunksSrc = null;
+          _slabSetChunksLayers = 0;
+
           return chunkInfos;
         }
         const next = Math.max(MIN_SPLIT, Math.floor(eff / 2));
@@ -369,16 +721,20 @@ export async function initRender() {
 
   async function computeFractalLayerSeries(count, aspect = 1) {
     count = Math.max(1, count >>> 0);
-    const params = Object.assign({}, renderGlobals.paramsState, {
+
+    const base = Object.assign({}, renderGlobals.paramsState, {
       splitCount: effectiveSplitCount(renderGlobals.paramsState.splitCount),
+      nLayers: count,
+      layers: count,
     });
+
+    const { gammaStart, gammaRange } = resolveGammaSeries(base, count);
+    const baseParams = Object.assign({}, base, { gamma: gammaStart });
 
     let seriesChunks;
     if (typeof fractalCompute.computeLayerSeries === "function") {
-      const gammaStart = 1.0;
-      const gammaRange = 0.0;
       seriesChunks = await fractalCompute.computeLayerSeries(
-        params,
+        baseParams,
         gammaStart,
         gammaRange,
         count,
@@ -387,38 +743,39 @@ export async function initRender() {
       );
     } else {
       const merged = new Map();
+
       for (let li = 0; li < count; ++li) {
-        const chunks = await fractalCompute.compute(
-          params,
-          li,
-          aspect,
-          "main",
-          count,
-        );
+        const g = gammaForLayerIndex(gammaStart, gammaRange, li, count);
+        const paramsLi = g === baseParams.gamma ? baseParams : Object.assign({}, baseParams, { gamma: g });
+
+        const chunks = await fractalCompute.compute(paramsLi, li, aspect, "main", count);
+
         for (const c of chunks) {
           const key = `${c.offsetX}|${c.offsetY}|${c.width}|${c.height}`;
           let dst = merged.get(key);
           if (!dst) {
             dst = Object.assign({}, c);
-            dst.fractalLayerViews = [];
+            dst.fractalLayerViews = new Array(count);
             merged.set(key, dst);
           }
-          const view =
-            c.fractalView || (c.layerViews && c.layerViews[0]) || null;
+          const view = c.fractalView || (c.layerViews && c.layerViews[0]) || null;
           dst.fractalLayerViews[li] = view;
         }
       }
+
       seriesChunks = Array.from(merged.values());
     }
 
-    chunkInfos = (seriesChunks || []).map((c) => {
-      const out = Object.assign({}, c);
-      out.fractalLayerViews = out.fractalLayerViews || out.layerViews || [];
-      if (!out.fractalView) out.fractalView = out.fractalLayerViews[0] || null;
-      return out;
-    });
+    chunkInfos = (seriesChunks || []).map((c) => Object.assign({}, c));
+    normalizeFractalChunkLayers(chunkInfos, count);
 
     sdfReady = false;
+    slabWallsDirty = true;
+    invalidateChunkCaches();
+
+    _slabSetChunksSrc = null;
+    _slabSetChunksLayers = 0;
+
     if (queryCompute._bgCache) queryCompute._bgCache.clear();
     return chunkInfos;
   }
@@ -428,52 +785,62 @@ export async function initRender() {
       sdfReady = false;
       return chunkInfos;
     }
+
     cleanupTempFallbacks(chunkInfos);
+
     try {
       const params = Object.assign({}, renderGlobals.paramsState, {
         splitCount: effectiveSplitCount(renderGlobals.paramsState.splitCount),
+        nLayers: 1,
+        layers: 1,
+        layerIndex: 0,
       });
+
       await sdfCompute.compute(chunkInfos, params, layerIndex, aspect);
       await device.queue.onSubmittedWorkDone();
+
       sdfReady = true;
+      invalidateChunkCaches();
+
       if (queryCompute._bgCache) queryCompute._bgCache.clear();
       renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
 
-      const req = requestedLayers();
-      const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
-      await renderPipeline.setChunks(chunkInfos, layersToUse);
+      await renderPipeline.setChunks(sdfReady ? chunkInfos : chunksWithoutSdf(chunkInfos), 1, {
+        layerIndex: layerIndex >>> 0,
+        requireSdf: true,
+      });
+
       return chunkInfos;
     } catch (err) {
       sdfReady = false;
+      invalidateChunkCaches();
+
       console.warn("computeSdfLayer: SDF compute failed:", err);
+
       for (const c of chunkInfos) {
         try {
           if (
-            (c.sdfView ||
-              (c.sdfLayerViews && c.sdfLayerViews[layerIndex])) &&
-            (c.flagView ||
-              (c.flagLayerViews && c.flagLayerViews[layerIndex]))
+            (c.sdfView || (c.sdfLayerViews && c.sdfLayerViews[layerIndex])) &&
+            (c.flagView || (c.flagLayerViews && c.flagLayerViews[layerIndex]))
           ) {
             continue;
           }
+
           if (!c._tmpSdfTex) {
             c._tmpSdfTex = device.createTexture({
               size: [1, 1, 1],
               format: "rgba16float",
-              usage:
-                GPUTextureUsage.TEXTURE_BINDING |
-                GPUTextureUsage.COPY_DST,
+              usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
             });
           }
           if (!c._tmpFlagTex) {
             c._tmpFlagTex = device.createTexture({
               size: [1, 1, 1],
               format: "r32uint",
-              usage:
-                GPUTextureUsage.TEXTURE_BINDING |
-                GPUTextureUsage.COPY_DST,
+              usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
             });
           }
+
           c.sdfView = c._tmpSdfTex.createView({
             dimension: "2d-array",
             baseArrayLayer: 0,
@@ -481,6 +848,7 @@ export async function initRender() {
           });
           c.sdfLayerViews = c.sdfLayerViews || [];
           c.sdfLayerViews[layerIndex] = c.sdfView;
+
           c.flagView = c._tmpFlagTex.createView({
             dimension: "2d-array",
             baseArrayLayer: 0,
@@ -488,167 +856,264 @@ export async function initRender() {
           });
           c.flagLayerViews = c.flagLayerViews || [];
           c.flagLayerViews[layerIndex] = c.flagView;
+
           c._usingTmpSdfFallback = true;
         } catch (e2) {
-          console.warn(
-            "computeSdfLayer: temporary fallback creation failed for chunk:",
-            c,
-            e2,
-          );
+          console.warn("computeSdfLayer: temporary fallback creation failed for chunk:", c, e2);
         }
       }
+
       try {
         renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-        const req = requestedLayers();
-        const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
-        await renderPipeline.setChunks(chunkInfos, layersToUse);
+        await renderPipeline.setChunks(chunksWithoutSdf(chunkInfos), 1, {
+          layerIndex: layerIndex >>> 0,
+          requireSdf: false,
+        });
       } catch (ebg) {
-        console.warn(
-          "computeSdfLayer: renderPipeline.setChunks failed even with fallbacks:",
-          ebg,
-        );
+        console.warn("computeSdfLayer: renderPipeline.setChunks failed even with fallbacks:", ebg);
       }
+
       return chunkInfos;
     }
   }
 
-  function cleanupTempFallbacks(chunks = []) {
-    for (const c of chunks) {
-      if (c._tmpSdfTex) {
-        try {
-          c._tmpSdfTex.destroy();
-        } catch (e) {}
-        delete c._tmpSdfTex;
+  window.setAlphaMode = function setAlphaMode(mode) {
+    const numeric = parseAlphaModeToNumeric(mode);
+    renderGlobals.paramsState.alphaMode = numeric;
+
+    const newCanvasMode = canvasAlphaStringForNumeric(numeric);
+    if (newCanvasMode !== currentAlphaMode) {
+      currentAlphaMode = newCanvasMode;
+      window.__currentCanvasAlphaMode = currentAlphaMode;
+
+      slabPipeline.canvasAlphaMode = currentAlphaMode;
+      renderPipeline.canvasAlphaMode = currentAlphaMode;
+
+      try {
+        context.configure({
+          device,
+          format,
+          alphaMode: currentAlphaMode,
+          size: [canvas.width, canvas.height],
+        });
+      } catch (e) {
+        console.warn("setAlphaMode: context.configure failed:", e);
       }
-      if (c._tmpFlagTex) {
-        try {
-          c._tmpFlagTex.destroy();
-        } catch (e) {}
-        delete c._tmpFlagTex;
+
+      try {
+        const cw = canvas.clientWidth;
+        const ch = canvas.clientHeight;
+        slabPipeline.resize(cw, ch);
+        renderPipeline.resize(cw, ch);
+      } catch {}
+    }
+
+    renderGlobals.cameraDirty = true;
+    renderGlobals.gridDirty = true;
+  };
+
+  async function rebuildForCurrentState(aspect, forceFractalRecompute) {
+    const ps = renderGlobals.paramsState;
+    const mode = normRenderMode(ps.renderMode);
+
+    const req = requestedLayers();
+    ps.layerIndex = clampLayerIndex(ps.layerIndex, req);
+
+    if (forceFractalRecompute) {
+      if (req > 1) {
+        await computeFractalLayerSeries(req, aspect);
+        freeSdfData(chunkInfos);
+        sdfReady = false;
+
+        const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
+
+        if (mode === "slab") {
+          await ensureSlabChunks(layersToUse);
+          slabWallsDirty = true;
+        } else {
+          renderPipeline.gridDivs = ps.gridDivs;
+          await renderPipeline.setChunks(chunksWithoutSdf(chunkInfos), layersToUse, {
+            layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
+            requireSdf: false,
+          });
+        }
+
+        return;
       }
-      if (c._usingTmpSdfFallback) delete c._usingTmpSdfFallback;
+
+      await computeFractalLayer(ps.layerIndex, aspect);
+
+      if (mode === "slab") {
+        freeSdfData(chunkInfos);
+        sdfReady = false;
+
+        await ensureSlabChunks(1);
+        slabWallsDirty = true;
+      } else if (modeNeedsSdf(mode, ps)) {
+        await computeSdfLayer(ps.layerIndex, aspect);
+      } else {
+        freeSdfData(chunkInfos);
+        sdfReady = false;
+      }
+
+      if (mode !== "slab") {
+        renderPipeline.gridDivs = ps.gridDivs;
+        const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
+        await renderPipeline.setChunks(requireSdf ? chunkInfos : chunksWithoutSdf(chunkInfos), 1, {
+          layerIndex: clampLayerIndex(ps.layerIndex, 1),
+          requireSdf,
+        });
+      }
+
+      return;
+    }
+
+    if (req > 1) {
+      freeSdfData(chunkInfos);
+      sdfReady = false;
+
+      const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
+
+      if (mode === "slab") {
+        await ensureSlabChunks(layersToUse);
+        slabWallsDirty = true;
+      } else {
+        renderPipeline.gridDivs = ps.gridDivs;
+        await renderPipeline.setChunks(chunksWithoutSdf(chunkInfos), layersToUse, {
+          layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
+          requireSdf: false,
+        });
+      }
+
+      return;
+    }
+
+    if (mode === "slab") {
+      freeSdfData(chunkInfos);
+      sdfReady = false;
+
+      await ensureSlabChunks(1);
+      slabWallsDirty = true;
+    } else if (modeNeedsSdf(mode, ps)) {
+      await computeSdfLayer(ps.layerIndex, aspect);
+    } else {
+      freeSdfData(chunkInfos);
+      sdfReady = false;
+    }
+
+    if (mode !== "slab") {
+      renderPipeline.gridDivs = ps.gridDivs;
+      const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
+      await renderPipeline.setChunks(requireSdf ? chunkInfos : chunksWithoutSdf(chunkInfos), 1, {
+        layerIndex: clampLayerIndex(ps.layerIndex, 1),
+        requireSdf,
+      });
     }
   }
 
-  function needsSdf(params = renderGlobals.paramsState) {
-    return !!(params.dispMode && params.dispMode !== 0) || !!params.lightingOn;
-  }
+  async function renderFrame() {
+    const ps = renderGlobals.paramsState;
+    const req = requestedLayers();
+    ps.layerIndex = clampLayerIndex(ps.layerIndex, req);
 
-  function chunksWithoutSdf(chunks = []) {
-    return (chunks || []).map((c) => {
-      const clone = Object.assign({}, c);
-      delete clone.sdfView;
-      delete clone.sdfLayerViews;
-      delete clone.sdfViews;
-      delete clone.sdfTex;
-      delete clone.sdfTexture;
-      delete clone.flagView;
-      delete clone.flagLayerViews;
-      delete clone.flagViews;
-      delete clone.flagTex;
-      delete clone.flagTexture;
-      delete clone._tmpSdfTex;
-      delete clone._tmpFlagTex;
-      delete clone._usingTmpSdfFallback;
-      return clone;
+    const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
+    const mode = normRenderMode(ps.renderMode);
+
+    const camState = { cameraPos, lookTarget, upDir, fov };
+
+    if (mode === "slab") {
+      const slabBits = slabAlphaBitsFromParams(ps);
+
+      const localParams = Object.assign({}, ps, {
+        nLayers: layersToUse,
+        layers: layersToUse,
+        layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
+        alphaMode: slabBits,
+      });
+
+      await ensureSlabChunks(layersToUse);
+
+      await slabPipeline.render(localParams, camState, {
+        runCompute: slabWallsDirty,
+        layers: layersToUse,
+      });
+
+      slabWallsDirty = false;
+      await device.queue.onSubmittedWorkDone();
+      return;
+    }
+
+    const localParams = Object.assign({}, ps, {
+      nLayers: layersToUse,
+      layers: layersToUse,
+      layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
     });
-  }
 
-  function freeSdfData(chunks = []) {
-    for (const c of chunks) {
-      try {
-        if (c.sdfTex) {
-          try {
-            c.sdfTex.destroy();
-          } catch (e) {}
-        }
-      } catch (e) {}
-      try {
-        if (c.flagTex) {
-          try {
-            c.flagTex.destroy();
-          } catch (e) {}
-        }
-      } catch (e) {}
-      try {
-        if (c._tmpSdfTex) {
-          try {
-            c._tmpSdfTex.destroy();
-          } catch (e) {}
-        }
-      } catch (e) {}
-      try {
-        if (c._tmpFlagTex) {
-          try {
-            c._tmpFlagTex.destroy();
-          } catch (e) {}
-        }
-      } catch (e) {}
+    const writeRenderUniform = _pickFn(renderPipeline, ["writeRenderUniform", "writeRenderUniforms", "writeUniforms"]);
+    if (writeRenderUniform) writeRenderUniform(localParams);
 
-      delete c.sdfView;
-      delete c.sdfLayerViews;
-      delete c.sdfViews;
-      delete c.sdfTex;
-      delete c.sdfTexture;
-      delete c.flagView;
-      delete c.flagLayerViews;
-      delete c.flagViews;
-      delete c.flagTex;
-      delete c.flagTexture;
-      delete c._tmpSdfTex;
-      delete c._tmpFlagTex;
-      delete c._usingTmpSdfFallback;
+    const writeThreshUniform = _pickFn(renderPipeline, ["writeThreshUniform", "writeThresholdUniform", "writeThresh", "writeThreshold"]);
+    if (writeThreshUniform) writeThreshUniform(localParams);
+
+    if (renderGlobals.gridDirty) {
+      renderPipeline.gridDivs = ps.gridDivs;
+      renderPipeline.gridStripes = null;
+      renderGlobals.gridDirty = false;
     }
-    sdfReady = false;
+
+    const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
+    const chunksToUse = requireSdf ? chunkInfos : chunksWithoutSdf(chunkInfos);
+    await renderPipeline.setChunks(chunksToUse, layersToUse, {
+      layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
+      requireSdf,
+    });
+
+    const renderFn = _pickFn(renderPipeline, ["render", "renderFrame", "draw"]);
+    const blitFn = _pickFn(renderPipeline, ["renderBlitToView"]);
+
+    if (mode === "raw" && blitFn) {
+      const viewTex = context.getCurrentTexture().createView();
+      await blitFn(localParams, viewTex);
+    } else if (renderFn) {
+      await renderFn(localParams, camState);
+    } else if (blitFn) {
+      const viewTex = context.getCurrentTexture().createView();
+      await blitFn(localParams, viewTex);
+    }
+
+    await device.queue.onSubmittedWorkDone();
   }
 
   async function handleResizeImmediate() {
     const cw = canvas.clientWidth;
     const ch = canvas.clientHeight;
-    const pw = Math.floor(cw * (window.devicePixelRatio || 1));
-    const ph = Math.floor(ch * (window.devicePixelRatio || 1));
+    const dpr = window.devicePixelRatio || 1;
+
+    const pw = Math.floor(cw * dpr);
+    const ph = Math.floor(ch * dpr);
+
     canvas.width = pw;
     canvas.height = ph;
-    context.configure({
-      device,
-      format,
-      alphaMode: currentAlphaMode,
-      size: [pw, ph],
-    });
+
+    slabPipeline.canvasAlphaMode = currentAlphaMode;
+    renderPipeline.canvasAlphaMode = currentAlphaMode;
+
+    slabPipeline.resize(cw, ch);
     renderPipeline.resize(cw, ch);
+
     renderGlobals.computeDirty = true;
     renderGlobals.displacementDirty = true;
     renderGlobals.cameraDirty = true;
     renderGlobals.gridDirty = true;
+
+    slabWallsDirty = true;
+    _slabSetChunksSrc = null;
+    _slabSetChunksLayers = 0;
+
     const aspect = pw / ph || 1;
 
     try {
-      const req = requestedLayers();
-      if (req > 1) {
-        await computeFractalLayerSeries(req, aspect);
-        freeSdfData(chunkInfos);
-        const layersToUse = Math.min(
-          req,
-          availableFractalLayers(chunkInfos),
-        );
-        renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-        const chunksToUse = chunksWithoutSdf(chunkInfos);
-        await renderPipeline.setChunks(chunksToUse, layersToUse);
-        sdfReady = false;
-        renderGlobals.displacementDirty = false;
-      } else {
-        await computeFractalLayer(renderGlobals.paramsState.layerIndex, aspect);
-        if (needsSdf(renderGlobals.paramsState)) {
-          await computeSdfLayer(renderGlobals.paramsState.layerIndex, aspect);
-        } else {
-          freeSdfData(chunkInfos);
-          renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-          const noSdfChunks = chunksWithoutSdf(chunkInfos);
-          await renderPipeline.setChunks(noSdfChunks, 1);
-          sdfReady = false;
-        }
-      }
-
+      await rebuildForCurrentState(aspect, true);
       cleanupTempFallbacks(chunkInfos);
       await renderFrame();
 
@@ -666,9 +1131,7 @@ export async function initRender() {
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       resizeTimer = 0;
-      handleResizeImmediate().catch((e) =>
-        console.error("debounced resize failed:", e),
-      );
+      handleResizeImmediate().catch((e) => console.error("debounced resize failed:", e));
     }, 150);
   }
 
@@ -684,10 +1147,7 @@ export async function initRender() {
   }
   function onMouseMove(e) {
     yaw += e.movementX * 0.002;
-    pitch = Math.max(
-      -Math.PI / 2,
-      Math.min(Math.PI / 2, pitch - e.movementY * 0.002),
-    );
+    pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch - e.movementY * 0.002));
     updateLookTarget();
   }
 
@@ -711,30 +1171,6 @@ export async function initRender() {
       document.removeEventListener("keyup", onKeyUp);
     }
   });
-
-  async function renderFrame() {
-    const req = requestedLayers();
-    const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
-    const localParams = Object.assign({}, renderGlobals.paramsState, {
-      nLayers: layersToUse,
-    });
-
-    renderPipeline.writeRenderUniform(localParams);
-    renderPipeline.writeThreshUniform(localParams);
-
-    if (renderGlobals.gridDirty) {
-      renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-      renderPipeline.gridStripes = null;
-      renderGlobals.gridDirty = false;
-    }
-
-    const chunksToUse = sdfReady ? chunkInfos : chunksWithoutSdf(chunkInfos);
-    await renderPipeline.setChunks(chunksToUse, layersToUse);
-
-    const camState = { cameraPos, lookTarget, upDir, fov };
-    await renderPipeline.render(localParams, camState);
-    await device.queue.onSubmittedWorkDone();
-  }
 
   async function updateMovement(dt) {
     const ps = renderGlobals.paramsState;
@@ -760,6 +1196,7 @@ export async function initRender() {
     let dy = 0;
     let dz = 0;
     let moved = false;
+
     if (keys["KeyW"]) {
       dx += forward[0] * speed;
       dy += forward[1] * speed;
@@ -813,107 +1250,31 @@ export async function initRender() {
     yaw = 0;
     fov = (45 * Math.PI) / 180;
     updateLookTarget();
-  }
+  };
 
   async function updateComputeAndDisplacement(aspect) {
     if (renderGlobals.computeDirty) {
-      const req = requestedLayers();
-
-      if (req > 1) {
-        await computeFractalLayerSeries(req, aspect);
-        freeSdfData(chunkInfos);
-        const layersToUse = Math.min(
-          req,
-          availableFractalLayers(chunkInfos),
-        );
-        renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-        const chunksToUse = chunksWithoutSdf(chunkInfos);
-        await renderPipeline.setChunks(chunksToUse, layersToUse);
-        sdfReady = false;
-      } else {
-        await computeFractalLayer(renderGlobals.paramsState.layerIndex, aspect);
-        if (needsSdf(renderGlobals.paramsState)) {
-          await computeSdfLayer(renderGlobals.paramsState.layerIndex, aspect);
-        } else {
-          freeSdfData(chunkInfos);
-          renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-          const noSdfChunks = chunksWithoutSdf(chunkInfos);
-          await renderPipeline.setChunks(noSdfChunks, 1);
-          sdfReady = false;
-        }
-      }
-
+      await rebuildForCurrentState(aspect, true);
       renderGlobals.computeDirty = false;
       renderGlobals.displacementDirty = false;
       renderGlobals.cameraDirty = true;
-    } else if (renderGlobals.displacementDirty) {
-      const req = requestedLayers();
+      return;
+    }
 
-      if (req > 1) {
-        freeSdfData(chunkInfos);
-        renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-        const layersToUse = Math.min(
-          req,
-          availableFractalLayers(chunkInfos),
-        );
-        const chunksToUse = chunksWithoutSdf(chunkInfos);
-        await renderPipeline.setChunks(chunksToUse, layersToUse);
-        sdfReady = false;
-      } else {
-        if (needsSdf(renderGlobals.paramsState)) {
-          await computeSdfLayer(
-            renderGlobals.paramsState.layerIndex,
-            aspect,
-          );
-        } else {
-          freeSdfData(chunkInfos);
-          renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-          const noSdfChunks = chunksWithoutSdf(chunkInfos);
-          await renderPipeline.setChunks(noSdfChunks, 1);
-          sdfReady = false;
-        }
-      }
+    if (renderGlobals.displacementDirty) {
+      await rebuildForCurrentState(aspect, false);
       renderGlobals.displacementDirty = false;
       renderGlobals.cameraDirty = true;
     }
   }
 
-  let lastTime = performance.now();
-  async function frame(now) {
-    const dt = (now - lastTime) * 0.001;
-    lastTime = now;
-    await device.queue.onSubmittedWorkDone();
-    flushPending();
-
-    if (exporting) {
-      frameHandle = requestAnimationFrame(frame);
-      return;
-    }
-
-    const aspect =
-      canvas.width > 0 && canvas.height > 0
-        ? canvas.width / canvas.height
-        : 1.0;
-
-    await updateComputeAndDisplacement(aspect);
-
-    if (await updateMovement(dt)) renderGlobals.cameraDirty = true;
-    if (renderGlobals.cameraDirty) {
-      await renderFrame();
-      renderGlobals.cameraDirty = false;
-    }
-    frameHandle = requestAnimationFrame(frame);
-  }
-
-  // --------------------------------------------------------------------
-  // PNG export helpers
-  // --------------------------------------------------------------------
   function downloadBlob(blob, filename) {
     if (!blob) return;
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
+    document.body.insertAdjacentHTML("beforeend", "");
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -924,11 +1285,8 @@ export async function initRender() {
     return new Promise((resolve, reject) => {
       try {
         canvasEl.toBlob((blob) => {
-          if (!blob) {
-            reject(new Error("canvas.toBlob returned null"));
-          } else {
-            resolve(blob);
-          }
+          if (!blob) reject(new Error("canvas.toBlob returned null"));
+          else resolve(blob);
         }, "image/png");
       } catch (e) {
         reject(e);
@@ -951,229 +1309,6 @@ export async function initRender() {
     })();
   }
 
-  // Full-res render into an offscreen texture using the same chunk layout
-  // and a blit-style vertex shader that maps the atlas to clip space.
-  async function renderFullResToTexture(targetTexture, paramsState, targetSize) {
-    await device.queue.onSubmittedWorkDone();
-
-    const camState = { cameraPos, lookTarget, upDir, fov };
-    const aspect = 1.0;
-    if (typeof renderPipeline.updateCamera === "function") {
-      renderPipeline.updateCamera(camState, aspect);
-    }
-
-    const nLayers = Math.max(
-      1,
-      Math.floor(paramsState.nLayers ?? paramsState.layers ?? 1),
-    );
-
-    if (!renderPipeline.gridStripes) {
-      const req = requestedLayers();
-      const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
-      const localParams = Object.assign({}, renderGlobals.paramsState, {
-        nLayers: layersToUse,
-      });
-      renderPipeline.writeRenderUniform(localParams);
-      renderPipeline.writeThreshUniform(localParams);
-      const chunksToUse = sdfReady ? chunkInfos : chunksWithoutSdf(chunkInfos);
-      await renderPipeline.setChunks(chunksToUse, layersToUse);
-      await renderPipeline.render(localParams, camState);
-      await device.queue.onSubmittedWorkDone();
-    }
-
-    const encoder = device.createCommandEncoder();
-    const viewTex = targetTexture.createView();
-
-    const depthTex = device.createTexture({
-      size: [targetSize, targetSize, 1],
-      format: "depth24plus",
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
-    });
-    const depthView = depthTex.createView();
-
-    const texelWorld = (2 * paramsState.quadScale) / paramsState.gridSize;
-
-    for (let i = 0; i < renderPipeline.chunks.length; ++i) {
-      const info = renderPipeline.chunks[i];
-      const modelBuf = renderPipeline.modelBuffers[i];
-      if (!info || !modelBuf) continue;
-
-      const w = info.width * texelWorld;
-      const h = info.height * texelWorld;
-      const x = -paramsState.quadScale + info.offsetX * texelWorld;
-      const y = -paramsState.quadScale + (info.offsetY ?? 0) * texelWorld;
-
-      const modelMat = new Float32Array([
-        w, 0, 0, 0,
-        0, h, 0, 0,
-        0, 0, 1, 0,
-        x, y, 0, 1,
-      ]);
-      const u0 = info.offsetX / paramsState.gridSize;
-      const v0 = 0;
-      const su = info.width / paramsState.gridSize;
-      const sv = 1;
-      const uvOS = new Float32Array([u0, v0, su, sv]);
-
-      device.queue.writeBuffer(modelBuf, 0, modelMat);
-      device.queue.writeBuffer(modelBuf, 64, uvOS);
-    }
-
-    const getBg0ForLayer = (info, layer) => {
-      if (info._renderBg0PerLayer && info._renderBg0PerLayer.has(layer)) {
-        return info._renderBg0PerLayer.get(layer);
-      }
-      return info._renderBg0;
-    };
-    const getBg1 = (info) => info._renderBg1;
-
-    const orderedLayers = [];
-    for (let l = nLayers - 1; l >= 0; --l) orderedLayers.push(l);
-
-    renderPipeline.writeThreshUniform(paramsState);
-
-    const alphaMode = paramsState.alphaMode ?? 0;
-
-    if (alphaMode === 1 || alphaMode === 2) {
-      const prepass = encoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view: viewTex,
-            loadOp: "clear",
-            storeOp: "store",
-            clearValue: { r: 0, g: 0, b: 0, a: 1 },
-          },
-        ],
-        depthStencilAttachment: {
-          view: depthView,
-          depthLoadOp: "clear",
-          depthStoreOp: "store",
-          depthClearValue: 1,
-        },
-      });
-
-      prepass.setPipeline(renderPipeline.renderPipelineDepth);
-
-      for (const layer of orderedLayers) {
-        const layerParams = Object.assign({}, paramsState, {
-          layerIndex: layer,
-        });
-        renderPipeline.writeRenderUniform(layerParams);
-
-        for (let i = 0; i < renderPipeline.chunks.length; ++i) {
-          const info = renderPipeline.chunks[i];
-          const bg0 = getBg0ForLayer(info, layer);
-          const bg1 = getBg1(info);
-          if (!bg0 || !bg1) continue;
-
-          prepass.setBindGroup(0, bg0);
-          prepass.setBindGroup(1, bg1);
-
-          for (const stripe of renderPipeline.gridStripes) {
-            prepass.setVertexBuffer(0, stripe.vbuf);
-            prepass.setIndexBuffer(stripe.ibuf, "uint32");
-            prepass.drawIndexed(stripe.indexCount, 1, 0, 0, 0);
-          }
-        }
-      }
-
-      prepass.end();
-
-      const blendPass = encoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view: viewTex,
-            loadOp: "load",
-            storeOp: "store",
-          },
-        ],
-        depthStencilAttachment: {
-          view: depthView,
-          depthLoadOp: "load",
-          depthStoreOp: "store",
-        },
-      });
-
-      blendPass.setPipeline(renderPipeline.renderPipelineTransparent);
-
-      for (const layer of orderedLayers) {
-        const layerParams = Object.assign({}, paramsState, {
-          layerIndex: layer,
-        });
-        renderPipeline.writeRenderUniform(layerParams);
-
-        for (let i = 0; i < renderPipeline.chunks.length; ++i) {
-          const info = renderPipeline.chunks[i];
-          const bg0 = getBg0ForLayer(info, layer);
-          const bg1 = getBg1(info);
-          if (!bg0 || !bg1) continue;
-
-          blendPass.setBindGroup(0, bg0);
-          blendPass.setBindGroup(1, bg1);
-
-          for (const stripe of renderPipeline.gridStripes) {
-            blendPass.setVertexBuffer(0, stripe.vbuf);
-            blendPass.setIndexBuffer(stripe.ibuf, "uint32");
-            blendPass.drawIndexed(stripe.indexCount, 1, 0, 0, 0);
-          }
-        }
-      }
-
-      blendPass.end();
-    } else {
-      const rpass = encoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view: viewTex,
-            loadOp: "clear",
-            storeOp: "store",
-            clearValue: { r: 0, g: 0, b: 0, a: 1 },
-          },
-        ],
-        depthStencilAttachment: {
-          view: depthView,
-          depthLoadOp: "clear",
-          depthStoreOp: "store",
-          depthClearValue: 1,
-        },
-      });
-
-      rpass.setPipeline(renderPipeline.renderPipelineOpaque);
-
-      for (const layer of orderedLayers) {
-        const layerParams = Object.assign({}, paramsState, {
-          layerIndex: layer,
-        });
-        renderPipeline.writeRenderUniform(layerParams);
-
-        for (let i = 0; i < renderPipeline.chunks.length; ++i) {
-          const info = renderPipeline.chunks[i];
-          const bg0 = getBg0ForLayer(info, layer);
-          const bg1 = getBg1(info);
-          if (!bg0 || !bg1) continue;
-
-          rpass.setBindGroup(0, bg0);
-          rpass.setBindGroup(1, bg1);
-
-          for (const stripe of renderPipeline.gridStripes) {
-            rpass.setVertexBuffer(0, stripe.vbuf);
-            rpass.setIndexBuffer(stripe.ibuf, "uint32");
-            rpass.drawIndexed(stripe.indexCount, 1, 0, 0, 0);
-          }
-        }
-      }
-
-      rpass.end();
-    }
-
-    device.queue.submit([encoder.finish()]);
-    await device.queue.onSubmittedWorkDone();
-
-    try {
-      depthTex.destroy();
-    } catch (e) {}
-  }
-
   async function exportFractalCanvas() {
     try {
       const canvasEl = document.getElementById("gpu-canvas");
@@ -1193,162 +1328,113 @@ export async function initRender() {
       await device.queue.onSubmittedWorkDone();
       flushPending();
 
-      const targetRes = Math.max(
-        64,
-        Math.floor(renderGlobals.paramsState.gridSize || 1024),
-      );
+      const targetRes = Math.max(64, Math.floor(renderGlobals.paramsState.gridSize || 1024));
+      const dpr = window.devicePixelRatio || 1;
+
+      const oldW = canvas.width;
+      const oldH = canvas.height;
+
+      const oldCW = oldW / dpr;
+      const oldCH = oldH / dpr;
+
+      canvas.width = targetRes;
+      canvas.height = targetRes;
+
+      slabPipeline.canvasAlphaMode = currentAlphaMode;
+      renderPipeline.canvasAlphaMode = currentAlphaMode;
+
+      slabPipeline.resize(targetRes / dpr, targetRes / dpr);
+      renderPipeline.resize(targetRes / dpr, targetRes / dpr);
 
       const exportAspect = 1.0;
       await updateComputeAndDisplacement(exportAspect);
+      await renderFrame();
 
-      const captureTexture = device.createTexture({
-        size: [targetRes, targetRes, 1],
-        format,
-        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
-      });
+      const blob = await copyWebGPUTo2D(canvas);
 
-      const reqLayers = requestedLayers();
-      const layersToUse = Math.min(
-        reqLayers,
-        availableFractalLayers(chunkInfos),
-      );
+      canvas.width = oldW;
+      canvas.height = oldH;
 
-      const paramsForExport = Object.assign({}, renderGlobals.paramsState, {
-        nLayers: layersToUse,
-      });
+      slabPipeline.resize(oldCW, oldCH);
+      renderPipeline.resize(oldCW, oldCH);
 
-      await renderFullResToTexture(captureTexture, paramsForExport, targetRes);
-
-      const bytesPerPixel = 4;
-      const bytesPerRow = ((targetRes * bytesPerPixel + 255) & ~255);
-      const bufferSize = bytesPerRow * targetRes;
-
-      const readBuffer = device.createBuffer({
-        size: bufferSize,
-        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-      });
-
-      const encoder = device.createCommandEncoder();
-      encoder.copyTextureToBuffer(
-        { texture: captureTexture },
-        {
-          buffer: readBuffer,
-          bytesPerRow,
-          rowsPerImage: targetRes,
-        },
-        { width: targetRes, height: targetRes, depthOrArrayLayers: 1 },
-      );
-      device.queue.submit([encoder.finish()]);
-      await device.queue.onSubmittedWorkDone();
-
-      await readBuffer.mapAsync(GPUMapMode.READ);
-      const mapped = readBuffer.getMappedRange();
-      const src = new Uint8Array(mapped);
-      const pixels = new Uint8ClampedArray(
-        targetRes * targetRes * bytesPerPixel,
-      );
-
-      const isBGRA = format === "bgra8unorm";
-
-      let dst = 0;
-      for (let y = 0; y < targetRes; y++) {
-        const rowStart = y * bytesPerRow;
-        for (let x = 0; x < targetRes; x++) {
-          const si = rowStart + x * 4;
-          if (isBGRA) {
-            pixels[dst++] = src[si + 2];
-            pixels[dst++] = src[si + 1];
-            pixels[dst++] = src[si + 0];
-            pixels[dst++] = src[si + 3];
-          } else {
-            pixels[dst++] = src[si + 0];
-            pixels[dst++] = src[si + 1];
-            pixels[dst++] = src[si + 2];
-            pixels[dst++] = src[si + 3];
-          }
-        }
-      }
-
-      readBuffer.unmap();
-      readBuffer.destroy();
-      captureTexture.destroy();
-
-      const tmpCanvas = document.createElement("canvas");
-      tmpCanvas.width = targetRes;
-      tmpCanvas.height = targetRes;
-      const ctx2d = tmpCanvas.getContext("2d");
-      if (!ctx2d) throw new Error("No 2D context for full-res capture");
-      const imageData = new ImageData(pixels, targetRes, targetRes);
-      ctx2d.putImageData(imageData, 0, 0);
-
-      const blob = await canvasToPngBlob(tmpCanvas);
       const tag = randomTag();
       downloadBlob(blob, "fractal-" + targetRes + "-" + tag + ".png");
     } catch (e) {
       console.error("exportFractalFullRes failed:", e);
     } finally {
       exporting = false;
+      renderGlobals.cameraDirty = true;
     }
   }
 
   updateLookTarget();
+
   {
     const cw = canvas.clientWidth;
     const ch = canvas.clientHeight;
     const pw = Math.floor(cw * (window.devicePixelRatio || 1));
     const ph = Math.floor(ch * (window.devicePixelRatio || 1));
+
     canvas.width = pw;
     canvas.height = ph;
-    context.configure({
-      device,
-      format,
-      alphaMode: currentAlphaMode,
-      size: [pw, ph],
-    });
+
+    slabPipeline.canvasAlphaMode = currentAlphaMode;
+    renderPipeline.canvasAlphaMode = currentAlphaMode;
+
+    slabPipeline.resize(cw, ch);
     renderPipeline.resize(cw, ch);
+
     renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
     renderPipeline.gridStripes = null;
+
     const aspect = pw / ph || 1;
 
-    const req = requestedLayers();
-    if (req > 1) {
-      await computeFractalLayerSeries(req, aspect);
-      freeSdfData(chunkInfos);
-      const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
-      renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-      const chunksToUse = chunksWithoutSdf(chunkInfos);
-      await renderPipeline.setChunks(chunksToUse, layersToUse);
-      sdfReady = false;
-      renderGlobals.displacementDirty = false;
-    } else {
-      await computeFractalLayer(renderGlobals.paramsState.layerIndex, aspect);
-      if (needsSdf(renderGlobals.paramsState)) {
-        await computeSdfLayer(renderGlobals.paramsState.layerIndex, aspect);
-        renderGlobals.displacementDirty = false;
-      } else {
-        freeSdfData(chunkInfos);
-        renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-        const noSdfChunks = chunksWithoutSdf(chunkInfos);
-        await renderPipeline.setChunks(noSdfChunks, 1);
-        sdfReady = false;
-      }
-    }
-
+    await rebuildForCurrentState(aspect, true);
     cleanupTempFallbacks(chunkInfos);
     await renderFrame();
 
     renderGlobals.computeDirty = false;
     renderGlobals.cameraDirty = false;
     renderGlobals.displacementDirty = false;
+    renderGlobals.gridDirty = false;
+  }
+
+  let lastTime = performance.now();
+  async function frame(now) {
+    const dt = (now - lastTime) * 0.001;
+    lastTime = now;
+
+    await device.queue.onSubmittedWorkDone();
+    flushPending();
+
+    if (exporting) {
+      frameHandle = requestAnimationFrame(frame);
+      return;
+    }
+
+    const aspect = canvas.width > 0 && canvas.height > 0 ? canvas.width / canvas.height : 1.0;
+
+    await updateComputeAndDisplacement(aspect);
+
+    if (await updateMovement(dt)) renderGlobals.cameraDirty = true;
+    if (renderGlobals.cameraDirty) {
+      await renderFrame();
+      renderGlobals.cameraDirty = false;
+    }
+
+    frameHandle = requestAnimationFrame(frame);
   }
 
   if (typeof window !== "undefined") {
     window.exportFractalCanvas = exportFractalCanvas;
     window.exportFractalFullRes = exportFractalFullRes;
+
     window.__fractalRuntime = {
       device,
       context,
       renderPipeline,
+      slabPipeline,
       fractalCompute,
       sdfCompute,
       queryCompute,
@@ -1362,42 +1448,51 @@ export async function initRender() {
     device,
     fractalCompute,
     sdfCompute,
+    slabPipeline,
     renderPipeline,
     queryCompute,
     destroy: () => {
       try {
         cancelAnimationFrame(frameHandle);
-      } catch (e) {}
+      } catch {}
+
       try {
         fractalCompute.destroy();
-      } catch (e) {}
+      } catch {}
+
       try {
         sdfCompute.destroy(chunkInfos || []);
-      } catch (e) {}
+      } catch {}
+
+      try {
+        slabPipeline.destroy();
+      } catch {}
+
       try {
         renderPipeline.destroy();
-      } catch (e) {}
+      } catch {}
+
       try {
         if (chunkInfos && chunkInfos.forEach) {
           chunkInfos.forEach((c) => {
             try {
               if (c.fractalTex) c.fractalTex.destroy();
-            } catch (e) {}
+            } catch {}
             try {
               if (c.sdfTex) c.sdfTex.destroy();
-            } catch (e) {}
+            } catch {}
             try {
               if (c.flagTex) c.flagTex.destroy();
-            } catch (e) {}
+            } catch {}
             try {
               if (c._tmpSdfTex) c._tmpSdfTex.destroy();
-            } catch (e) {}
+            } catch {}
             try {
               if (c._tmpFlagTex) c._tmpFlagTex.destroy();
-            } catch (e) {}
+            } catch {}
           });
         }
-      } catch (e) {}
+      } catch {}
     },
   };
 }
