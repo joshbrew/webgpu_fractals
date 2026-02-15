@@ -429,6 +429,9 @@ export async function initRender() {
       initialGridDivs: renderGlobals.paramsState.gridDivs,
       quadScale: renderGlobals.paramsState.quadScale,
       canvasAlphaMode: currentAlphaMode,
+
+      // normal FPS camera (no Y flip)
+      invertCameraY: false,
     },
   );
 
@@ -1275,14 +1278,58 @@ export async function initRender() {
 
   window.addEventListener("resize", scheduleResizeDebounced);
 
-  const keys = {};
-  function onKeyDown(e) {
-    keys[e.code] = true;
-    if (e.code === "Escape") document.exitPointerLock();
+  // ---------------------------------------------------------------------------
+  // Input (FPS fly camera)
+  // ---------------------------------------------------------------------------
+  const keys = Object.create(null);
+
+  const _BLOCK_CODES = new Set([
+    "Space",
+    "ShiftLeft",
+    "ShiftRight",
+    "ControlLeft",
+    "ControlRight",
+    "AltLeft",
+    "AltRight",
+    "MetaLeft",
+    "MetaRight",
+    "Tab",
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "KeyW",
+    "KeyA",
+    "KeyS",
+    "KeyD",
+    "KeyC",
+  ]);
+
+  function _shouldBlockKey(e) {
+    return _BLOCK_CODES.has(e.code) || e.key === " " || e.key === "Spacebar";
   }
+
+  function onKeyDown(e) {
+    if (_shouldBlockKey(e)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    keys[e.code] = true;
+    if (e.code === "Escape") {
+      try {
+        document.exitPointerLock();
+      } catch {}
+    }
+  }
+
   function onKeyUp(e) {
+    if (_shouldBlockKey(e)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     keys[e.code] = false;
   }
+
   function onMouseMove(e) {
     yaw += e.movementX * 0.002;
     pitch = Math.max(
@@ -1304,34 +1351,31 @@ export async function initRender() {
     const locked = document.pointerLockElement === canvas;
     if (locked) {
       document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("keydown", onKeyDown);
-      document.addEventListener("keyup", onKeyUp);
+      document.addEventListener("keydown", onKeyDown, { capture: true });
+      document.addEventListener("keyup", onKeyUp, { capture: true });
     } else {
       document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("keydown", onKeyDown);
-      document.removeEventListener("keyup", onKeyUp);
+      document.removeEventListener("keydown", onKeyDown, { capture: true });
+      document.removeEventListener("keyup", onKeyUp, { capture: true });
+      for (const k in keys) keys[k] = false;
     }
   });
 
   async function updateMovement(dt) {
     const ps = renderGlobals.paramsState;
-    const speed = 2.0 * dt * ps.quadScale;
 
-    const fx = lookTarget[0] - cameraPos[0];
-    const fy = lookTarget[1] - cameraPos[1];
-    const fz = lookTarget[2] - cameraPos[2];
-    const fl = Math.hypot(fx, fy, fz) || 1;
-    const forward = [fx / fl, fy / fl, fz / fl];
+    let baseSpeed = 2.0 * dt * ps.quadScale;
 
-    const right = [
-      forward[1] * upDir[2] - forward[2] * upDir[1],
-      forward[2] * upDir[0] - forward[0] * upDir[2],
-      forward[0] * upDir[1] - forward[1] * upDir[0],
-    ];
-    const rl = Math.hypot(...right) || 1;
-    right[0] /= rl;
-    right[1] /= rl;
-    right[2] /= rl;
+    // still block defaults, but allow these as speed mods while locked
+    if (keys["ShiftLeft"] || keys["ShiftRight"]) baseSpeed *= 3.0;
+    if (keys["ControlLeft"] || keys["ControlRight"]) baseSpeed *= 0.35;
+
+    // horizontal forward/right (ignores pitch) so W/S do not climb/dive
+    const sy = Math.sin(yaw);
+    const cy = Math.cos(yaw);
+
+    const forward = [sy, 0, -cy];
+    const right = [cy, 0, sy];
 
     let dx = 0;
     let dy = 0;
@@ -1339,37 +1383,36 @@ export async function initRender() {
     let moved = false;
 
     if (keys["KeyW"]) {
-      dx += forward[0] * speed;
-      dy += forward[1] * speed;
-      dz += forward[2] * speed;
+      dx += forward[0] * baseSpeed;
+      dz += forward[2] * baseSpeed;
       moved = true;
     }
     if (keys["KeyS"]) {
-      dx -= forward[0] * speed;
-      dy -= forward[1] * speed;
-      dz -= forward[2] * speed;
+      dx -= forward[0] * baseSpeed;
+      dz -= forward[2] * baseSpeed;
       moved = true;
     }
     if (keys["KeyA"]) {
-      dx -= right[0] * speed;
-      dy -= right[1] * speed;
-      dz -= right[2] * speed;
+      dx -= right[0] * baseSpeed;
+      dz -= right[2] * baseSpeed;
       moved = true;
     }
     if (keys["KeyD"]) {
-      dx += right[0] * speed;
-      dy += right[1] * speed;
-      dz += right[2] * speed;
+      dx += right[0] * baseSpeed;
+      dz += right[2] * baseSpeed;
       moved = true;
     }
+
+    // vertical is +Y / -Y
     if (keys["Space"]) {
-      dz += speed;
+      dy += baseSpeed;
       moved = true;
     }
-    if (keys["ShiftLeft"] || keys["ShiftRight"]) {
-      dz -= speed;
+    if (keys["KeyC"]) {
+      dy -= baseSpeed;
       moved = true;
     }
+
     if (!moved) return false;
 
     cameraPos[0] += dx;
@@ -1828,3 +1871,4 @@ export async function initRender() {
     },
   };
 }
+
