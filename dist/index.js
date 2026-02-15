@@ -2711,10 +2711,12 @@ fn vs_fullscreen(@builtin(vertex_index) vi : u32) -> VSOut {
     vec2<f32>( 3.0, -1.0),
     vec2<f32>(-1.0,  3.0)
   );
+
+  // Flip V so the offscreen render-target samples match the onscreen orientation.
   var uv = array<vec2<f32>, 3>(
-    vec2<f32>(0.0, 0.0),
-    vec2<f32>(2.0, 0.0),
-    vec2<f32>(0.0, 2.0)
+    vec2<f32>(0.0,  1.0),
+    vec2<f32>(2.0,  1.0),
+    vec2<f32>(0.0, -1.0)
   );
 
   var o : VSOut;
@@ -5451,8 +5453,8 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     dirtyBits = 0;
   }
   function _safeGamma(g) {
-    const x = Number.isFinite(g) ? g : 1;
-    return x <= 0 ? 1e-6 : x;
+    const x = Number.isFinite(+g) ? +g : 1;
+    return x;
   }
   function requestedLayersFromParams(params) {
     const p = params || renderGlobals.paramsState;
@@ -5505,9 +5507,6 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     }
     const device = await adapter.requestDevice();
     return device;
-  }
-  function randomTag() {
-    return Math.random().toString(36).slice(2, 8);
   }
   function _pickFn(obj, names) {
     for (let i = 0; i < names.length; i++) {
@@ -5571,6 +5570,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     const initialNumeric = typeof window !== "undefined" && window.__pendingAlphaMode !== void 0 ? parseAlphaModeToNumeric(window.__pendingAlphaMode) : parseAlphaModeToNumeric(renderGlobals.paramsState.alphaMode);
     renderGlobals.paramsState.alphaMode = initialNumeric;
     let currentAlphaMode = canvasAlphaStringForNumeric(initialNumeric);
+    if (typeof window !== "undefined") window.__currentCanvasAlphaMode = currentAlphaMode;
     const uniformStride = 256;
     const MAX_PIXELS_PER_CHUNK = 8e6;
     const MIN_SPLIT = 1024;
@@ -5580,6 +5580,8 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     const lookTarget = [0, 0, 0];
     const upDir = [0, 1, 0];
     let fov = 45 * Math.PI / 180;
+    let invertMouseY = true;
+    const mouseSens = 2e-3;
     function updateLookTarget() {
       const dx = Math.cos(pitch) * Math.sin(yaw);
       const dy = Math.sin(pitch);
@@ -5606,7 +5608,6 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         initialGridDivs: renderGlobals.paramsState.gridDivs,
         quadScale: renderGlobals.paramsState.quadScale,
         canvasAlphaMode: currentAlphaMode,
-        // normal FPS camera (no Y flip)
         invertCameraY: false
       }
     );
@@ -5622,6 +5623,20 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       renderPipeline.renderUniformBuffer,
       { uniformQuerySize: 16, queryResultBytes: 280 }
     );
+    const rpWriteRenderUniform = _pickFn(renderPipeline, [
+      "writeRenderUniform",
+      "writeRenderUniforms",
+      "writeUniforms"
+    ]);
+    const rpWriteThreshUniform = _pickFn(renderPipeline, [
+      "writeThreshUniform",
+      "writeThresholdUniform",
+      "writeThresh",
+      "writeThreshold"
+    ]);
+    const rpRenderFn = _pickFn(renderPipeline, ["render", "renderFrame", "draw"]);
+    const rpBlitFn = _pickFn(renderPipeline, ["renderBlitToView"]);
+    const rpRenderToView = _pickFn(renderPipeline, ["renderToView"]);
     let chunkInfos = [];
     let sdfReady = false;
     let slabWallsDirty = true;
@@ -6039,6 +6054,19 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         return chunkInfos;
       }
     }
+    function _configureContextForCanvasSize() {
+      try {
+        context.configure({
+          device,
+          format,
+          alphaMode: currentAlphaMode,
+          size: [canvas.width, canvas.height],
+          usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
+        });
+      } catch (e) {
+        console.warn("context.configure failed:", e);
+      }
+    }
     window.setAlphaMode = function setAlphaMode(mode) {
       const numeric = parseAlphaModeToNumeric(mode);
       renderGlobals.paramsState.alphaMode = numeric;
@@ -6048,17 +6076,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         window.__currentCanvasAlphaMode = currentAlphaMode;
         slabPipeline.canvasAlphaMode = currentAlphaMode;
         renderPipeline.canvasAlphaMode = currentAlphaMode;
-        try {
-          context.configure({
-            device,
-            format,
-            alphaMode: currentAlphaMode,
-            size: [canvas.width, canvas.height],
-            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
-          });
-        } catch (e) {
-          console.warn("setAlphaMode: context.configure failed:", e);
-        }
+        _configureContextForCanvasSize();
         try {
           const cw = canvas.clientWidth;
           const ch = canvas.clientHeight;
@@ -6069,6 +6087,9 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       }
       renderGlobals.cameraDirty = true;
       renderGlobals.gridDirty = true;
+    };
+    window.setInvertMouseY = function setInvertMouseY(v) {
+      invertMouseY = !!v;
     };
     async function rebuildForCurrentState(aspect, forceFractalRecompute) {
       const ps = renderGlobals.paramsState;
@@ -6213,19 +6234,8 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         layers: layersToUse,
         layerIndex: clampLayerIndex(ps.layerIndex, layersToUse)
       });
-      const writeRenderUniform = _pickFn(renderPipeline, [
-        "writeRenderUniform",
-        "writeRenderUniforms",
-        "writeUniforms"
-      ]);
-      if (writeRenderUniform) writeRenderUniform(localParams);
-      const writeThreshUniform = _pickFn(renderPipeline, [
-        "writeThreshUniform",
-        "writeThresholdUniform",
-        "writeThresh",
-        "writeThreshold"
-      ]);
-      if (writeThreshUniform) writeThreshUniform(localParams);
+      if (rpWriteRenderUniform) rpWriteRenderUniform(localParams);
+      if (rpWriteThreshUniform) rpWriteThreshUniform(localParams);
       if (renderGlobals.gridDirty) {
         renderPipeline.gridDivs = ps.gridDivs;
         renderPipeline.gridStripes = null;
@@ -6237,16 +6247,22 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
         requireSdf
       });
-      const renderFn = _pickFn(renderPipeline, ["render", "renderFrame", "draw"]);
-      const blitFn = _pickFn(renderPipeline, ["renderBlitToView"]);
-      if (mode === "raw" && blitFn) {
+      if (mode === "raw" && rpBlitFn) {
         const viewTex = context.getCurrentTexture().createView();
-        await blitFn(localParams, viewTex);
-      } else if (renderFn) {
-        await renderFn(localParams, camState);
-      } else if (blitFn) {
+        const aspect = canvas.width > 0 && canvas.height > 0 ? canvas.width / canvas.height : 1;
+        if (typeof renderPipeline.updateCamera === "function") {
+          renderPipeline.updateCamera(camState, aspect);
+        }
+        await rpBlitFn(localParams, viewTex);
+      } else if (rpRenderFn) {
+        await rpRenderFn(localParams, camState);
+      } else if (rpBlitFn) {
         const viewTex = context.getCurrentTexture().createView();
-        await blitFn(localParams, viewTex);
+        const aspect = canvas.width > 0 && canvas.height > 0 ? canvas.width / canvas.height : 1;
+        if (typeof renderPipeline.updateCamera === "function") {
+          renderPipeline.updateCamera(camState, aspect);
+        }
+        await rpBlitFn(localParams, viewTex);
       }
     }
     async function handleResizeImmediate() {
@@ -6259,6 +6275,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       canvas.height = ph;
       slabPipeline.canvasAlphaMode = currentAlphaMode;
       renderPipeline.canvasAlphaMode = currentAlphaMode;
+      _configureContextForCanvasSize();
       slabPipeline.resize(cw, ch);
       renderPipeline.resize(cw, ch);
       renderGlobals.computeDirty = true;
@@ -6338,10 +6355,11 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       keys[e.code] = false;
     }
     function onMouseMove(e) {
-      yaw += e.movementX * 2e-3;
+      yaw += e.movementX * mouseSens;
+      const ySign = invertMouseY ? 1 : -1;
       pitch = Math.max(
         -Math.PI / 2,
-        Math.min(Math.PI / 2, pitch - e.movementY * 2e-3)
+        Math.min(Math.PI / 2, pitch + ySign * e.movementY * mouseSens)
       );
       updateLookTarget();
     }
@@ -6558,15 +6576,15 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
         waitGPU: true
       });
-      const renderToView = _pickFn(renderPipeline, ["renderToView"]);
-      if (renderToView) {
-        await renderToView(localParams, camState, view, w, h);
+      if (rpRenderToView) {
+        await rpRenderToView(localParams, camState, view, w, h);
         return;
       }
-      const blitFn = _pickFn(renderPipeline, ["renderBlitToView"]);
-      if (!blitFn) throw new Error("renderPipeline.renderBlitToView missing");
-      renderPipeline.updateCamera(camState, aspect);
-      await blitFn(localParams, view);
+      if (!rpBlitFn) throw new Error("renderPipeline.renderBlitToView missing");
+      if (typeof renderPipeline.updateCamera === "function") {
+        renderPipeline.updateCamera(camState, aspect);
+      }
+      await rpBlitFn(localParams, view);
     }
     async function _exportCurrentExportTextureToPngBlob(w, h) {
       const { texture, format: format2, bytesPerRow } = _ensureExportGpuTargets(w, h);
@@ -6613,6 +6631,9 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       _exportReadback.unmap();
       ctx2d.putImageData(img, 0, 0);
       return canvasToPngBlob(_export2dCanvas);
+    }
+    function randomTag() {
+      return Math.random().toString(36).slice(2, 8);
     }
     async function exportFractalCanvas() {
       if (exporting) return;
@@ -6671,6 +6692,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       canvas.height = ph;
       slabPipeline.canvasAlphaMode = currentAlphaMode;
       renderPipeline.canvasAlphaMode = currentAlphaMode;
+      _configureContextForCanvasSize();
       slabPipeline.resize(cw, ch);
       renderPipeline.resize(cw, ch);
       renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;

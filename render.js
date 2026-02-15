@@ -226,9 +226,10 @@ function flushPending() {
    Layer helpers
    ====================================================================== */
 function _safeGamma(g) {
-  const x = Number.isFinite(g) ? g : 1.0;
-  return x <= 0 ? 1e-6 : x;
+  const x = Number.isFinite(+g) ? +g : 1.0;
+  return x;
 }
+
 
 function requestedLayersFromParams(params) {
   const p = params || renderGlobals.paramsState;
@@ -388,7 +389,9 @@ export async function initRender() {
       : parseAlphaModeToNumeric(renderGlobals.paramsState.alphaMode);
 
   renderGlobals.paramsState.alphaMode = initialNumeric;
+
   let currentAlphaMode = canvasAlphaStringForNumeric(initialNumeric);
+  if (typeof window !== "undefined") window.__currentCanvasAlphaMode = currentAlphaMode;
 
   const uniformStride = 256;
   const MAX_PIXELS_PER_CHUNK = 8000000;
@@ -400,6 +403,9 @@ export async function initRender() {
   const lookTarget = [0, 0, 0];
   const upDir = [0, 1, 0];
   let fov = (45 * Math.PI) / 180;
+
+  let invertMouseY = true;
+  const mouseSens = 0.002;
 
   function updateLookTarget() {
     const dx = Math.cos(pitch) * Math.sin(yaw);
@@ -429,8 +435,6 @@ export async function initRender() {
       initialGridDivs: renderGlobals.paramsState.gridDivs,
       quadScale: renderGlobals.paramsState.quadScale,
       canvasAlphaMode: currentAlphaMode,
-
-      // normal FPS camera (no Y flip)
       invertCameraY: false,
     },
   );
@@ -449,6 +453,21 @@ export async function initRender() {
     renderPipeline.renderUniformBuffer,
     { uniformQuerySize: 16, queryResultBytes: 280 },
   );
+
+  const rpWriteRenderUniform = _pickFn(renderPipeline, [
+    "writeRenderUniform",
+    "writeRenderUniforms",
+    "writeUniforms",
+  ]);
+  const rpWriteThreshUniform = _pickFn(renderPipeline, [
+    "writeThreshUniform",
+    "writeThresholdUniform",
+    "writeThresh",
+    "writeThreshold",
+  ]);
+  const rpRenderFn = _pickFn(renderPipeline, ["render", "renderFrame", "draw"]);
+  const rpBlitFn = _pickFn(renderPipeline, ["renderBlitToView"]);
+  const rpRenderToView = _pickFn(renderPipeline, ["renderToView"]);
 
   let chunkInfos = [];
   let sdfReady = false;
@@ -499,7 +518,7 @@ export async function initRender() {
 
   function clampLayerIndex(li, n) {
     const nn = Math.max(1, n | 0);
-    const x = Number.isFinite(+li) ? +li | 0 : 0;
+    const x = Number.isFinite(+li) ? (+li | 0) : 0;
     if (x < 0) return 0;
     if (x >= nn) return nn - 1;
     return x;
@@ -960,6 +979,20 @@ export async function initRender() {
     }
   }
 
+  function _configureContextForCanvasSize() {
+    try {
+      context.configure({
+        device,
+        format,
+        alphaMode: currentAlphaMode,
+        size: [canvas.width, canvas.height],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+      });
+    } catch (e) {
+      console.warn("context.configure failed:", e);
+    }
+  }
+
   window.setAlphaMode = function setAlphaMode(mode) {
     const numeric = parseAlphaModeToNumeric(mode);
     renderGlobals.paramsState.alphaMode = numeric;
@@ -972,17 +1005,7 @@ export async function initRender() {
       slabPipeline.canvasAlphaMode = currentAlphaMode;
       renderPipeline.canvasAlphaMode = currentAlphaMode;
 
-      try {
-        context.configure({
-          device,
-          format,
-          alphaMode: currentAlphaMode,
-          size: [canvas.width, canvas.height],
-          usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
-        });
-      } catch (e) {
-        console.warn("setAlphaMode: context.configure failed:", e);
-      }
+      _configureContextForCanvasSize();
 
       try {
         const cw = canvas.clientWidth;
@@ -994,6 +1017,10 @@ export async function initRender() {
 
     renderGlobals.cameraDirty = true;
     renderGlobals.gridDirty = true;
+  };
+
+  window.setInvertMouseY = function setInvertMouseY(v) {
+    invertMouseY = !!v;
   };
 
   async function rebuildForCurrentState(aspect, forceFractalRecompute) {
@@ -1178,20 +1205,8 @@ export async function initRender() {
       layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
     });
 
-    const writeRenderUniform = _pickFn(renderPipeline, [
-      "writeRenderUniform",
-      "writeRenderUniforms",
-      "writeUniforms",
-    ]);
-    if (writeRenderUniform) writeRenderUniform(localParams);
-
-    const writeThreshUniform = _pickFn(renderPipeline, [
-      "writeThreshUniform",
-      "writeThresholdUniform",
-      "writeThresh",
-      "writeThreshold",
-    ]);
-    if (writeThreshUniform) writeThreshUniform(localParams);
+    if (rpWriteRenderUniform) rpWriteRenderUniform(localParams);
+    if (rpWriteThreshUniform) rpWriteThreshUniform(localParams);
 
     if (renderGlobals.gridDirty) {
       renderPipeline.gridDivs = ps.gridDivs;
@@ -1209,17 +1224,24 @@ export async function initRender() {
       requireSdf,
     });
 
-    const renderFn = _pickFn(renderPipeline, ["render", "renderFrame", "draw"]);
-    const blitFn = _pickFn(renderPipeline, ["renderBlitToView"]);
-
-    if (mode === "raw" && blitFn) {
+    if (mode === "raw" && rpBlitFn) {
       const viewTex = context.getCurrentTexture().createView();
-      await blitFn(localParams, viewTex);
-    } else if (renderFn) {
-      await renderFn(localParams, camState);
-    } else if (blitFn) {
+      const aspect =
+        canvas.width > 0 && canvas.height > 0 ? canvas.width / canvas.height : 1.0;
+      if (typeof renderPipeline.updateCamera === "function") {
+        renderPipeline.updateCamera(camState, aspect);
+      }
+      await rpBlitFn(localParams, viewTex);
+    } else if (rpRenderFn) {
+      await rpRenderFn(localParams, camState);
+    } else if (rpBlitFn) {
       const viewTex = context.getCurrentTexture().createView();
-      await blitFn(localParams, viewTex);
+      const aspect =
+        canvas.width > 0 && canvas.height > 0 ? canvas.width / canvas.height : 1.0;
+      if (typeof renderPipeline.updateCamera === "function") {
+        renderPipeline.updateCamera(camState, aspect);
+      }
+      await rpBlitFn(localParams, viewTex);
     }
   }
 
@@ -1236,6 +1258,8 @@ export async function initRender() {
 
     slabPipeline.canvasAlphaMode = currentAlphaMode;
     renderPipeline.canvasAlphaMode = currentAlphaMode;
+
+    _configureContextForCanvasSize();
 
     slabPipeline.resize(cw, ch);
     renderPipeline.resize(cw, ch);
@@ -1278,9 +1302,6 @@ export async function initRender() {
 
   window.addEventListener("resize", scheduleResizeDebounced);
 
-  // ---------------------------------------------------------------------------
-  // Input (FPS fly camera)
-  // ---------------------------------------------------------------------------
   const keys = Object.create(null);
 
   const _BLOCK_CODES = new Set([
@@ -1331,10 +1352,11 @@ export async function initRender() {
   }
 
   function onMouseMove(e) {
-    yaw += e.movementX * 0.002;
+    yaw += e.movementX * mouseSens;
+    const ySign = invertMouseY ? 1 : -1;
     pitch = Math.max(
       -Math.PI / 2,
-      Math.min(Math.PI / 2, pitch - e.movementY * 0.002),
+      Math.min(Math.PI / 2, pitch + ySign * e.movementY * mouseSens),
     );
     updateLookTarget();
   }
@@ -1366,11 +1388,9 @@ export async function initRender() {
 
     let baseSpeed = 2.0 * dt * ps.quadScale;
 
-    // still block defaults, but allow these as speed mods while locked
     if (keys["ShiftLeft"] || keys["ShiftRight"]) baseSpeed *= 3.0;
     if (keys["ControlLeft"] || keys["ControlRight"]) baseSpeed *= 0.35;
 
-    // horizontal forward/right (ignores pitch) so W/S do not climb/dive
     const sy = Math.sin(yaw);
     const cy = Math.cos(yaw);
 
@@ -1403,7 +1423,6 @@ export async function initRender() {
       moved = true;
     }
 
-    // vertical is +Y / -Y
     if (keys["Space"]) {
       dy += baseSpeed;
       moved = true;
@@ -1602,17 +1621,17 @@ export async function initRender() {
       waitGPU: true,
     });
 
-    const renderToView = _pickFn(renderPipeline, ["renderToView"]);
-    if (renderToView) {
-      await renderToView(localParams, camState, view, w, h);
+    if (rpRenderToView) {
+      await rpRenderToView(localParams, camState, view, w, h);
       return;
     }
 
-    const blitFn = _pickFn(renderPipeline, ["renderBlitToView"]);
-    if (!blitFn) throw new Error("renderPipeline.renderBlitToView missing");
+    if (!rpBlitFn) throw new Error("renderPipeline.renderBlitToView missing");
 
-    renderPipeline.updateCamera(camState, aspect);
-    await blitFn(localParams, view);
+    if (typeof renderPipeline.updateCamera === "function") {
+      renderPipeline.updateCamera(camState, aspect);
+    }
+    await rpBlitFn(localParams, view);
   }
 
   async function _exportCurrentExportTextureToPngBlob(w, h) {
@@ -1669,6 +1688,10 @@ export async function initRender() {
 
     ctx2d.putImageData(img, 0, 0);
     return canvasToPngBlob(_export2dCanvas);
+  }
+
+  function randomTag() {
+    return Math.random().toString(36).slice(2, 8);
   }
 
   async function exportFractalCanvas() {
@@ -1744,6 +1767,8 @@ export async function initRender() {
 
     slabPipeline.canvasAlphaMode = currentAlphaMode;
     renderPipeline.canvasAlphaMode = currentAlphaMode;
+
+    _configureContextForCanvasSize();
 
     slabPipeline.resize(cw, ch);
     renderPipeline.resize(cw, ch);

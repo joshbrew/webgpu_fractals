@@ -59,10 +59,12 @@ fn vs_fullscreen(@builtin(vertex_index) vi : u32) -> VSOut {
     vec2<f32>( 3.0, -1.0),
     vec2<f32>(-1.0,  3.0)
   );
+
+  // Flip V so the offscreen render-target samples match the onscreen orientation.
   var uv = array<vec2<f32>, 3>(
-    vec2<f32>(0.0, 0.0),
-    vec2<f32>(2.0, 0.0),
-    vec2<f32>(0.0, 2.0)
+    vec2<f32>(0.0,  1.0),
+    vec2<f32>(2.0,  1.0),
+    vec2<f32>(0.0, -1.0)
   );
 
   var o : VSOut;
@@ -95,6 +97,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
   return vec4<f32>(rgb, 1.0);
 }
 `;
+
 
 export class RenderPipelineGPU {
   constructor(device, context, vsCode = vert, fsCode = frag, opts = {}) {
