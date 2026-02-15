@@ -1547,25 +1547,28 @@ export async function initRender() {
       requireSdf,
     });
 
-    const camState = { cameraPos, lookTarget, upDir, fov };
-    renderPipeline.updateCamera(camState, aspect);
-
     const { texture } = _ensureExportGpuTargets(w, h);
     const view = texture.createView();
+
+    const camState = { cameraPos, lookTarget, upDir, fov };
 
     const localParams = Object.assign({}, ps, {
       nLayers: layersToUse,
       layers: layersToUse,
       layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
-      cameraPos,
-      lookTarget,
-      upDir,
-      fov,
+      waitGPU: true,
     });
+
+    const renderToView = _pickFn(renderPipeline, ["renderToView"]);
+    if (renderToView) {
+      await renderToView(localParams, camState, view, w, h);
+      return;
+    }
 
     const blitFn = _pickFn(renderPipeline, ["renderBlitToView"]);
     if (!blitFn) throw new Error("renderPipeline.renderBlitToView missing");
 
+    renderPipeline.updateCamera(camState, aspect);
     await blitFn(localParams, view);
   }
 
@@ -1664,7 +1667,10 @@ export async function initRender() {
 
       const exportAspect = 1.0;
 
-      await updateComputeAndDisplacement(exportAspect);
+      await rebuildForCurrentState(exportAspect, true);
+      renderGlobals.computeDirty = false;
+      renderGlobals.displacementDirty = false;
+
       await _renderFractalToExportTexture(targetRes, targetRes);
 
       const blob = await _exportCurrentExportTextureToPngBlob(

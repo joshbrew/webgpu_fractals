@@ -883,14 +883,16 @@ export class RenderPipelineGPU {
       this._oitAccumTex = this.device.createTexture({
         size: [W, H, 1],
         format: this._oitAccumFormat,
-        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+        usage:
+          GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
       });
       this._oitAccumView = this._oitAccumTex.createView({ dimension: "2d" });
 
       this._oitRevealTex = this.device.createTexture({
         size: [W, H, 1],
         format: this._oitRevealFormat,
-        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+        usage:
+          GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
       });
       this._oitRevealView = this._oitRevealTex.createView({ dimension: "2d" });
 
@@ -1079,7 +1081,11 @@ export class RenderPipelineGPU {
             ],
           });
         } catch (e) {
-          console.error("setChunks: createBindGroup(bg1) failed for chunk", i, e);
+          console.error(
+            "setChunks: createBindGroup(bg1) failed for chunk",
+            i,
+            e,
+          );
           info._renderBg1 = null;
         }
 
@@ -1497,6 +1503,8 @@ export class RenderPipelineGPU {
     this.depthTexture = null;
     this._depthView = null;
 
+    this._destroyOffscreenDepth();
+
     try {
       if (this._fallbackSdfTex) this._fallbackSdfTex.destroy();
     } catch {}
@@ -1528,6 +1536,118 @@ export class RenderPipelineGPU {
     this._renderUBOCapLayers = 0;
 
     this._destroyOITTargets();
+  }
+
+  _destroyOffscreenDepth() {
+    try {
+      if (this._offDepthTex) this._offDepthTex.destroy();
+    } catch {}
+    this._offDepthTex = null;
+    this._offDepthView = null;
+    this._offDepthW = 0;
+    this._offDepthH = 0;
+  }
+
+  _ensureOffscreenDepth(w, h) {
+    const W = Math.max(1, w | 0);
+    const H = Math.max(1, h | 0);
+
+    if (
+      this._offDepthTex &&
+      this._offDepthView &&
+      (this._offDepthW | 0) === W &&
+      (this._offDepthH | 0) === H
+    ) {
+      return this._offDepthView;
+    }
+
+    this._destroyOffscreenDepth();
+
+    this._offDepthTex = this.device.createTexture({
+      size: [W, H, 1],
+      format: "depth24plus",
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+    this._offDepthView = this._offDepthTex.createView();
+    this._offDepthW = W;
+    this._offDepthH = H;
+    return this._offDepthView;
+  }
+
+  async renderToView(paramsState, camState, colorView, width, height) {
+    const p = paramsState || {};
+    const w = Math.max(1, width | 0);
+    const h = Math.max(1, height | 0);
+    const aspect = w > 0 && h > 0 ? w / h : 1;
+
+    this.updateCamera(camState, aspect);
+
+    const nLayers = Math.max(1, Math.floor(p.nLayers ?? p.layers ?? 1));
+    const alphaMode = _u32(p.alphaMode, 0);
+    const useOIT = alphaMode === 1 || alphaMode === 2;
+
+    this._ensureRenderUniformCapacity(nLayers);
+    this.writeThreshUniform(p);
+    await this._ensureGrid();
+    this._updateModelBuffersIfNeeded(p);
+
+    const encoder = this.device.createCommandEncoder();
+
+    if (useOIT) {
+      if (!this._ensureOITTargets(w, h)) return;
+
+      const oitDesc = this._rpDescOIT;
+      oitDesc.colorAttachments[0].view = this._oitAccumView;
+      oitDesc.colorAttachments[1].view = this._oitRevealView;
+
+      const oitPass = encoder.beginRenderPass(oitDesc);
+      oitPass.setPipeline(this.renderPipelineOIT);
+      this._drawAll(oitPass, p, nLayers);
+      oitPass.end();
+
+      const compositePipeline =
+        this.canvasAlphaMode === "opaque"
+          ? this._oitCompositePipelineOpaque
+          : this._oitCompositePipelinePremul;
+
+      const compDesc =
+        this.canvasAlphaMode === "opaque"
+          ? this._rpDescCompositeOpaque
+          : this._rpDescCompositePremul;
+
+      compDesc.colorAttachments[0].view = colorView;
+
+      const compPass = encoder.beginRenderPass(compDesc);
+      compPass.setPipeline(compositePipeline);
+      compPass.setBindGroup(0, this._oitBg);
+      compPass.draw(3, 1, 0, 0);
+      compPass.end();
+    } else {
+      const dview = this._ensureOffscreenDepth(w, h);
+
+      const desc = this._rpDescOpaque;
+      desc.colorAttachments[0].view = colorView;
+      desc.depthStencilAttachment.view = dview;
+
+      const pass = encoder.beginRenderPass(desc);
+      pass.setPipeline(this.renderPipelineOpaque);
+      this._drawAll(pass, p, nLayers);
+      pass.end();
+    }
+
+    this.device.queue.submit([encoder.finish()]);
+
+    if (p && p.waitGPU) {
+      await this.device.queue.onSubmittedWorkDone();
+    }
+  }
+
+  async renderToTexture(paramsState, camState, targetTexture) {
+    const tex = targetTexture;
+    const w = (tex && tex.width) | 0;
+    const h = (tex && tex.height) | 0;
+    const view = tex.createView();
+    await this.renderToView(paramsState, camState, view, w, h);
   }
 }
 

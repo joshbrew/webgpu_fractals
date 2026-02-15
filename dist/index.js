@@ -3597,7 +3597,11 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
               ]
             });
           } catch (e) {
-            console.error("setChunks: createBindGroup(bg1) failed for chunk", i, e);
+            console.error(
+              "setChunks: createBindGroup(bg1) failed for chunk",
+              i,
+              e
+            );
             info._renderBg1 = null;
           }
           info._modelBufIdx = i;
@@ -3895,6 +3899,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       }
       this.depthTexture = null;
       this._depthView = null;
+      this._destroyOffscreenDepth();
       try {
         if (this._fallbackSdfTex) this._fallbackSdfTex.destroy();
       } catch {
@@ -3926,6 +3931,86 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       this.renderUniformBuffer = null;
       this._renderUBOCapLayers = 0;
       this._destroyOITTargets();
+    }
+    _destroyOffscreenDepth() {
+      try {
+        if (this._offDepthTex) this._offDepthTex.destroy();
+      } catch {
+      }
+      this._offDepthTex = null;
+      this._offDepthView = null;
+      this._offDepthW = 0;
+      this._offDepthH = 0;
+    }
+    _ensureOffscreenDepth(w, h) {
+      const W = Math.max(1, w | 0);
+      const H = Math.max(1, h | 0);
+      if (this._offDepthTex && this._offDepthView && (this._offDepthW | 0) === W && (this._offDepthH | 0) === H) {
+        return this._offDepthView;
+      }
+      this._destroyOffscreenDepth();
+      this._offDepthTex = this.device.createTexture({
+        size: [W, H, 1],
+        format: "depth24plus",
+        usage: GPUTextureUsage.RENDER_ATTACHMENT
+      });
+      this._offDepthView = this._offDepthTex.createView();
+      this._offDepthW = W;
+      this._offDepthH = H;
+      return this._offDepthView;
+    }
+    async renderToView(paramsState, camState, colorView, width, height) {
+      const p = paramsState || {};
+      const w = Math.max(1, width | 0);
+      const h = Math.max(1, height | 0);
+      const aspect = w > 0 && h > 0 ? w / h : 1;
+      this.updateCamera(camState, aspect);
+      const nLayers = Math.max(1, Math.floor(p.nLayers ?? p.layers ?? 1));
+      const alphaMode = _u32(p.alphaMode, 0);
+      const useOIT = alphaMode === 1 || alphaMode === 2;
+      this._ensureRenderUniformCapacity(nLayers);
+      this.writeThreshUniform(p);
+      await this._ensureGrid();
+      this._updateModelBuffersIfNeeded(p);
+      const encoder = this.device.createCommandEncoder();
+      if (useOIT) {
+        if (!this._ensureOITTargets(w, h)) return;
+        const oitDesc = this._rpDescOIT;
+        oitDesc.colorAttachments[0].view = this._oitAccumView;
+        oitDesc.colorAttachments[1].view = this._oitRevealView;
+        const oitPass = encoder.beginRenderPass(oitDesc);
+        oitPass.setPipeline(this.renderPipelineOIT);
+        this._drawAll(oitPass, p, nLayers);
+        oitPass.end();
+        const compositePipeline = this.canvasAlphaMode === "opaque" ? this._oitCompositePipelineOpaque : this._oitCompositePipelinePremul;
+        const compDesc = this.canvasAlphaMode === "opaque" ? this._rpDescCompositeOpaque : this._rpDescCompositePremul;
+        compDesc.colorAttachments[0].view = colorView;
+        const compPass = encoder.beginRenderPass(compDesc);
+        compPass.setPipeline(compositePipeline);
+        compPass.setBindGroup(0, this._oitBg);
+        compPass.draw(3, 1, 0, 0);
+        compPass.end();
+      } else {
+        const dview = this._ensureOffscreenDepth(w, h);
+        const desc = this._rpDescOpaque;
+        desc.colorAttachments[0].view = colorView;
+        desc.depthStencilAttachment.view = dview;
+        const pass = encoder.beginRenderPass(desc);
+        pass.setPipeline(this.renderPipelineOpaque);
+        this._drawAll(pass, p, nLayers);
+        pass.end();
+      }
+      this.device.queue.submit([encoder.finish()]);
+      if (p && p.waitGPU) {
+        await this.device.queue.onSubmittedWorkDone();
+      }
+    }
+    async renderToTexture(paramsState, camState, targetTexture) {
+      const tex = targetTexture;
+      const w = (tex && tex.width) | 0;
+      const h = (tex && tex.height) | 0;
+      const view = tex.createView();
+      await this.renderToView(paramsState, camState, view, w, h);
     }
   };
   var fractalRender_default = RenderPipelineGPU;
@@ -6436,21 +6521,23 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
         requireSdf
       });
-      const camState = { cameraPos, lookTarget, upDir, fov };
-      renderPipeline.updateCamera(camState, aspect);
       const { texture } = _ensureExportGpuTargets(w, h);
       const view = texture.createView();
+      const camState = { cameraPos, lookTarget, upDir, fov };
       const localParams = Object.assign({}, ps, {
         nLayers: layersToUse,
         layers: layersToUse,
         layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
-        cameraPos,
-        lookTarget,
-        upDir,
-        fov
+        waitGPU: true
       });
+      const renderToView = _pickFn(renderPipeline, ["renderToView"]);
+      if (renderToView) {
+        await renderToView(localParams, camState, view, w, h);
+        return;
+      }
       const blitFn = _pickFn(renderPipeline, ["renderBlitToView"]);
       if (!blitFn) throw new Error("renderPipeline.renderBlitToView missing");
+      renderPipeline.updateCamera(camState, aspect);
       await blitFn(localParams, view);
     }
     async function _exportCurrentExportTextureToPngBlob(w, h) {
@@ -6529,7 +6616,9 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
           Math.floor(renderGlobals.paramsState.gridSize || 1024)
         );
         const exportAspect = 1;
-        await updateComputeAndDisplacement(exportAspect);
+        await rebuildForCurrentState(exportAspect, true);
+        renderGlobals.computeDirty = false;
+        renderGlobals.displacementDirty = false;
         await _renderFractalToExportTexture(targetRes, targetRes);
         const blob = await _exportCurrentExportTextureToPngBlob(
           targetRes,
