@@ -1,9 +1,14 @@
+// shaders/fractalCompute.wgsl
 // Compute WGSL (entry point: main)
 struct Params {
   gridSize: u32,
   maxIter: u32,
   fractalType: u32,
-  scaleMode: u32,
+  _padA: u32,
+
+  // 16 ordered ops (0 ends early), packed as 4 vec4<u32> for 16-byte alignment
+  scaleOps: array<vec4<u32>, 4>,
+
   zoom: f32,
   dx: f32,
   dy: f32,
@@ -17,13 +22,19 @@ struct Params {
   tileOffsetY: u32,
   tileWidth: u32,
   tileHeight: u32,
-  aspect: f32,       
+  aspect: f32,
   _pad0: u32,
   _pad1: u32,
   _pad2: u32,        // adjust so struct size remains multiple of 16 (or fits your uniformBufferSize)
 };
 @group(0) @binding(0) var<uniform> params: Params;
 @group(1) @binding(0) var storageTex: texture_storage_2d_array<rgba8unorm, write>;
+
+fn scaleOpAt(i: u32) -> u32 {
+  let v = params.scaleOps[i >> 2u];
+  let j = i32(i & 3u);
+  return v[j];
+}
 
 // Helpers:
 fn shipPower(ax: f32, ay: f32, p: f32) -> vec2<f32> {
@@ -71,158 +82,155 @@ fn getInitialZ(typ: u32, x0: f32, y0: f32) -> InitialZ {
 // Main fractal step returning new z and new px,py:
 struct FractalResult { nx: f32, ny: f32, npx: f32, npy: f32 };
 
-fn computeFractal(typ: u32, qx: f32, qy: f32, px: f32, py: f32,
-                  cx: f32, cy: f32, gamma: f32, iter: u32, scaleMode: u32) -> FractalResult {
-                    
+fn computeFractal(
+  typ: u32,
+  qx: f32, qy: f32, px: f32, py: f32,
+  cx: f32, cy: f32,
+  gamma: f32,
+  iter: u32,
+) -> FractalResult {
+
   let s = 1.0 + f32(iter) * (gamma - 1.0);
   var ccx = cx;
   var ccy = cy;
-  let mask = scaleMode;
 
-// bit 0 → Multiply
-if ((mask & 1u) != 0u) {
-    ccx = ccx * s;
-    ccy = ccy * s;
-}
+  for (var ti: u32 = 0u; ti < 16u; ti = ti + 1u) {
+    let op = scaleOpAt(ti);
+    if (op == 0u) {
+      break;
+    }
 
-// bit 1 → Divide
-if ((mask & 2u) != 0u) {
-    ccx = ccx / s;
-    ccy = ccy / s;
-}
+    switch(op) {
+      case 1u: { // Multiply
+        ccx = ccx * s;
+        ccy = ccy * s;
+      }
 
-// bit 2 → Sine warp
-if ((mask & 4u) != 0u) {
-    let m = sin(s);
-    ccx = ccx * m;
-    ccy = ccy * m;
-}
+      case 2u: { // Divide
+        ccx = ccx / s;
+        ccy = ccy / s;
+      }
 
-// bit 3 → Tangent warp
-if ((mask & 8u) != 0u) {
-    let m = tan(s);
-    ccx = ccx * m;
-    ccy = ccy * m;
-}
+      case 3u: { // Sine warp
+        let m = sin(s);
+        ccx = ccx * m;
+        ccy = ccy * m;
+      }
 
-// bit 4 → Cosine warp
-if ((mask & 16u) != 0u) {
-    let m = cos(s);
-    ccx = ccx * m;
-    ccy = ccy * m;
-}
+      case 4u: { // Tangent warp
+        let m = tan(s);
+        ccx = ccx * m;
+        ccy = ccy * m;
+      }
 
-// bit 5 → Exponential zoom
-if ((mask & 32u) != 0u) {
-    let m = exp(s);
-    ccx = ccx * m;
-    ccy = ccy * m;
-}
+      case 5u: { // Cosine warp
+        let m = cos(s);
+        ccx = ccx * m;
+        ccy = ccy * m;
+      }
 
-// bit 6 → Logarithmic shrink
-if ((mask & 64u) != 0u) {
-    let m = log(s + 1e-3);
-    ccx = ccx * m;
-    ccy = ccy * m;
-}
+      case 6u: { // Exponential zoom
+        let m = exp(s);
+        ccx = ccx * m;
+        ccy = ccy * m;
+      }
 
-// bit 7 → Anisotropic warp (x·s, y÷s)
-if ((mask & 128u) != 0u) {
-    ccx = ccx * s;
-    ccy = ccy / s;
-}
+      case 7u: { // Logarithmic shrink
+        let m = log(s + 1e-3);
+        ccx = ccx * m;
+        ccy = ccy * m;
+      }
 
-// bit 8 → Rotate by s radians
-if ((mask & 256u) != 0u) {
-    let θ = s;
-    let x0 = ccx * cos(θ) - ccy * sin(θ);
-    let y0 = ccx * sin(θ) + ccy * cos(θ);
-    ccx = x0;
-    ccy = y0;
-}
+      case 8u: { // Anisotropic warp (x·s, y÷s)
+        ccx = ccx * s;
+        ccy = ccy / s;
+      }
 
-// bit 9 → Radial twist (r^s, θ·s)
-if ((mask & 512u) != 0u) {
-    let r0  = sqrt(ccx*ccx + ccy*ccy);
-    let θ0  = atan2(ccy, ccx);
-    let rp  = pow(r0, s);
-    let θp  = θ0 * s;
-    ccx = rp * cos(θp);
-    ccy = rp * sin(θp);
-}
+      case 9u: { // Rotate by s radians
+        let θ = s;
+        let x0 = ccx * cos(θ) - ccy * sin(θ);
+        let y0 = ccx * sin(θ) + ccy * cos(θ);
+        ccx = x0;
+        ccy = y0;
+      }
 
-// bit 10 → Hyperbolic warp (sinh, cosh)
-if ((mask & 1024u) != 0u) {
-    ccx = ccx * sinh(s);
-    ccy = ccy * cosh(s);
-}
+      case 10u: { // Radial twist (r^s, θ·s)
+        let r0  = sqrt(ccx*ccx + ccy*ccy);
+        let θ0  = atan2(ccy, ccx);
+        let rp  = pow(r0, s);
+        let θp  = θ0 * s;
+        ccx = rp * cos(θp);
+        ccy = rp * sin(θp);
+      }
 
-// bit 11 → Radial hyperbolic (sinh(r*s))
-if ((mask & 2048u) != 0u) {
-    let r0  = sqrt(ccx*ccx + ccy*ccy);
-    let θ0  = atan2(ccy, ccx);
-    let rp  = sinh(r0 * s);
-    ccx = rp * cos(θ0);
-    ccy = rp * sin(θ0);
-}
+      case 11u: { // Hyperbolic warp (sinh, cosh)
+        ccx = ccx * sinh(s);
+        ccy = ccy * cosh(s);
+      }
 
-// bit 12 → Swirl (θ + r*s)
-if ((mask & 4096u) != 0u) {
-    let r0  = sqrt(ccx*ccx + ccy*ccy);
-    let θ0  = atan2(ccy, ccx);
-    let θp  = θ0 + r0 * s;
-    ccx = r0 * cos(θp);
-    ccy = r0 * sin(θp);
-}
+      case 12u: { // Radial hyperbolic (sinh(r*s))
+        let r0  = sqrt(ccx*ccx + ccy*ccy);
+        let θ0  = atan2(ccy, ccx);
+        let rp  = sinh(r0 * s);
+        ccx = rp * cos(θ0);
+        ccy = rp * sin(θ0);
+      }
 
-// bit 13 → Modular wrap
-if ((mask & 8192u) != 0u) {
-    let m0 = fract(s * 0.5) * 2.0;      // s mod 2
-    let ux = ccx * m0 + 1.0;
-    let uy = ccy * m0 + 1.0;
-    ccx = fract(ux * 0.5) * 2.0 - 1.0;
-    ccy = fract(uy * 0.5) * 2.0 - 1.0;
-}
+      case 13u: { // Swirl (θ + r*s)
+        let r0  = sqrt(ccx*ccx + ccy*ccy);
+        let θ0  = atan2(ccy, ccx);
+        let θp  = θ0 + r0 * s;
+        ccx = r0 * cos(θp);
+        ccy = r0 * sin(θp);
+      }
 
-// bit 14 → Axis swap & scale
-if ((mask & 16384u) != 0u) {
-    let tx = ccy * s;
-    let ty = ccx * s;
-    ccx = tx;
-    ccy = ty;
-}
+      case 14u: { // Modular wrap
+        let m0 = fract(s * 0.5) * 2.0;      // s mod 2
+        let ux = ccx * m0 + 1.0;
+        let uy = ccy * m0 + 1.0;
+        ccx = fract(ux * 0.5) * 2.0 - 1.0;
+        ccy = fract(uy * 0.5) * 2.0 - 1.0;
+      }
 
-// bit 15 → Mixed warp (blend multiply & sine)
-if ((mask & 32768u) != 0u) {
-    let α   = fract(s * 0.1);
-    let m1x = ccx * s;
-    let m2x = ccx * sin(s);
-    let m1y = ccy * s;
-    let m2y = ccy * sin(s);
-    ccx = mix(m1x, m2x, α);
-    ccy = mix(m1y, m2y, α);
-}
+      case 15u: { // Axis swap & scale
+        let tx = ccy * s;
+        let ty = ccx * s;
+        ccx = tx;
+        ccy = ty;
+      }
 
-// bit 16 → Jitter noise
-if ((mask & 65536u) != 0u) {
-    let jx = fract(sin(ccx * s) * 43758.5453) - 0.5;
-    let jy = fract(sin(ccy * s) * 97531.2468) - 0.5;
-    ccx = ccx + jx * s * 0.2;
-    ccy = ccy + jy * s * 0.2;
-}
+      case 16u: { // Mixed warp (blend multiply & sine)
+        let α   = fract(s * 0.1);
+        let m1x = ccx * s;
+        let m2x = ccx * sin(s);
+        let m1y = ccy * s;
+        let m2y = ccy * sin(s);
+        ccx = mix(m1x, m2x, α);
+        ccy = mix(m1y, m2y, α);
+      }
 
-// bit 17 → Signed power warp
-if ((mask & 131072u) != 0u) {
-    ccx = sign(ccx) * pow(abs(ccx), s);
-    ccy = sign(ccy) * pow(abs(ccy), s);
-}
+      case 17u: { // Jitter noise
+        let jx = fract(sin(ccx * s) * 43758.5453) - 0.5;
+        let jy = fract(sin(ccy * s) * 97531.2468) - 0.5;
+        ccx = ccx + jx * s * 0.2;
+        ccy = ccy + jy * s * 0.2;
+      }
 
-// bit 18 → Smoothstep fade
-if ((mask & 262144u) != 0u) {
-    let t0 = smoothstep(0.0, 1.0, s);
-    ccx = ccx * t0;
-    ccy = ccy * t0;
-}
+      case 18u: { // Signed power warp
+        ccx = sign(ccx) * pow(abs(ccx), s);
+        ccy = sign(ccy) * pow(abs(ccy), s);
+      }
+
+      case 19u: { // Smoothstep fade
+        let t0 = smoothstep(0.0, 1.0, s);
+        ccx = ccx * t0;
+        ccy = ccy * t0;
+      }
+
+      default: {}
+    }
+  }
+
   let a = abs(qx);
   let b = abs(qy);
   var nx: f32 = 0.0;
@@ -346,8 +354,6 @@ if ((mask & 262144u) != 0u) {
       ny = (2.0*qx*qy)*invv + ccy;
     }
     case 21u: { // Burning Ship deep zoom
-      // specific centre and sub; here we replicate JS: but needs cx,cy or ccx,ccy
-      // Example:
       let centerRe = -1.7443359375;
       let centerIm = -0.017451171875;
       let sub = 0.04;
@@ -398,16 +404,14 @@ if ((mask & 262144u) != 0u) {
       npy = qy;
     }
     /* =============================================================== */
-    /* 28 –  Stretched‑Celtic‑Spiral                                   */
-    /*     A perpendicular‑Celtic variant with an anisotropic          */
-    /*     stretch and an iteration‑driven spiral twist.               */
+    /* 28 -  Stretched-Celtic-Spiral                                   */
     /* =============================================================== */
     case 28u: {
         let k = 1.5;                    /* stretch factor              */
         let sx = qx * k;
         let sy = qy / k;
 
-        /* perpendicular‑Celtic core                                   */
+        /* perpendicular-Celtic core                                   */
         var tx = abs(sx*sx - sy*sy);
         var ty = -2.0*abs(sx)*sy;
 
@@ -422,9 +426,7 @@ if ((mask & 262144u) != 0u) {
     }
 
     /* =============================================================== */
-    /* 29 –  Polar‑Flame fractal                                       */
-    /*     A simple “flame”‑style map in polar coordinates:            */
-    /*         r  ← r² + c₀,   θ ← 2θ + c₁                             */
+    /* 29 -  Polar-Flame fractal                                       */
     /* =============================================================== */
     case 29u: {
         let r      = length(vec2<f32>(qx, qy)) + 1e-9;
@@ -441,8 +443,6 @@ if ((mask & 262144u) != 0u) {
         ny = r2 * sin(theta2) + cy;
     }
     case 30u, 31u, 32u, 33u, 34u, 35u: { // inv 3..8
-      // p = type-27 maybe? but in JS they had invPowerP
-      // Here assume mapping typ->p: e.g. 30->3,31->4,... so p = f32(typ-27)?
       let p = f32(typ - 27u); // 30->3, 31->4, ..., 35->8
       let pr = invPower(qx, qy, p);
       nx = pr.x + ccx;
@@ -503,19 +503,15 @@ if ((mask & 262144u) != 0u) {
       ny = qy - divy + ccy;
     }
     case 42u: { // Nova 2 (inverse variant)
-      // 1) 1/z
       let r2_inv = 1.0/(qx*qx + qy*qy + 1e-9);
       let izRe = qx * r2_inv;
       let izIm = -qy * r2_inv;
-      // 2) (1/z)^2, (1/z)^4
       let zx2 = izRe*izRe - izIm*izIm;
       let zy2 = 2.0*izRe*izIm;
       let zx4 = zx2*zx2 - zy2*zy2;
       let zy4 = 2.0*zx2*zy2;
-      // 3) forward Quad-Nova step on 1/z
       let fRe = 1.3333333*izRe - 0.3333333*zx4 + ccx;
       let fIm = 1.3333333*izIm - 0.3333333*zy4 + ccy;
-      // 4) invert back
       let den = 1.0/(fRe*fRe + fIm*fIm + 1e-9);
       nx = fRe*den;
       ny = -fIm*den;
@@ -549,92 +545,72 @@ if ((mask & 262144u) != 0u) {
       ny = qy - divy + ccy;
     }
 case 45u: { // Flower Nova
-  // seed z0 = c on first iteration
   var zx0 = qx;
   var zy0 = qy;
   if (iter == 0u) {
     zx0 = cx;
     zy0 = cy;
   }
-  // build z^2
   let zx2 = zx0*zx0 - zy0*zy0;
   let zy2 = 2.0*zx0*zy0;
-  // build z^3 and z^4
   let zx3 = zx2*zx0 - zy2*zy0;
   let zy3 = zx2*zy0 + zy2*zx0;
   let zx4 = zx3*zx0 - zy3*zy0;
   let zy4 = zx3*zy0 + zy3*zx0;
-  // Newton-style divisor = 4*z^3
   let denx = 4.0*zx3;
   let deny = 4.0*zy3;
   let den2 = denx*denx + deny*deny + 1e-9;
-  // numerator = z^4 – 1
   let numx = zx4 - 1.0;
   let numy = zy4;
-  // (z^4–1)/(4z^3)
   let divx = (numx*denx + numy*deny) / den2;
   let divy = (numy*denx - numx*deny) / den2;
-  // forward candidate: z – (...) + c·s
   let fx = zx0 - divx + ccx;
   let fy = zy0 - divy + ccy;
-  // NEGATE the result
   nx = -fx;
   ny = -fy;
   break;
 }
 case 46u: { // Scatter-Nova
-  // seed z0 = c on first iteration
   var zx0 = qx;
   var zy0 = qy;
   if (iter == 0u) {
     zx0 = cx;
     zy0 = cy;
   }
-  // build z^2
   let zx2 = zx0*zx0 - zy0*zy0;
   let zy2 = 2.0*zx0*zy0;
-  // build z^3 and z^4
   let zx3 = zx2*zx0 - zy2*zy0;
   let zy3 = zx2*zy0 + zy2*zx0;
   let zx4 = zx3*zx0 - zy3*zy0;
   let zy4 = zx3*zy0 + zy3*zx0;
-  // denominator = 4*z^3
   let denx = 4.0*zx3;
   let deny = 4.0*zy3;
   let den2 = denx*denx + deny*deny + 1e-9;
-  // numerator = z^4 – 1
   let numx = zx4 - 1.0;
   let numy = zy4;
-  // (z^4–1)/(4z^3)
   let divx = (numx*denx + numy*deny) / den2;
   let divy = (numy*denx - numx*deny) / den2;
-  // forward Newton candidate: z – (...) + c·s
   let fx = zx0 - divx + ccx;
   let fy = zy0 - divy + ccy;
-  // invert: z_{n+1} = 1 / f
   let invR2 = 1.0 / (fx*fx + fy*fy + 1e-9);
   nx = fx * invR2;
   ny = -fy * invR2;
   break;
 }
 
-
-// 47: Twisted-Flower Nova — flower nova with an iteration-dependent angular twist
+// 47: Twisted-Flower Nova
 case 47u: {
-    // seed exactly like Flower-Nova
     var zx0 = qx;
     var zy0 = qy;
     if (iter == 0u) {
         zx0 = cx; zy0 = cy;
     }
-    // compute z^2, z^3, z^4
     let zx2 = zx0*zx0 - zy0*zy0;
     let zy2 = 2.0*zx0*zy0;
     let zx3 = zx2*zx0 - zy2*zy0;
     let zy3 = zx2*zy0 + zy2*zx0;
     let zx4 = zx3*zx0 - zy3*zy0;
     let zy4 = zx3*zy0 + zy3*zx0;
-    // Newton-style divisor and numerator
     let denx = 4.0*zx3;
     let deny = 4.0*zy3;
     let den2 = denx*denx + deny*deny + 1e-9;
@@ -642,10 +618,8 @@ case 47u: {
     let numy = zy4;
     let divx = (numx*denx + numy*deny) / den2;
     let divy = (numy*denx - numx*deny) / den2;
-    // forward candidate
     let fx = zx0 - divx + ccx;
     let fy = zy0 - divy + ccy;
-    // twist it: convert to polar, add a sin-based perturbation
     let r = length(vec2<f32>(fx, fy));
     let theta = atan2(fy, fx);
     let twist = theta + gamma * 2.0 * 3.14159265 * sin(f32(iter) * 0.2);
@@ -656,12 +630,10 @@ case 47u: {
     break;
 }
 
-// 48: Lobed-Scatter Nova — scatter nova with petal-like lobes
+// 48: Lobed-Scatter Nova
 case 48u: {
-    // seed like Scatter-Nova
     var zx0 = qx; var zy0 = qy;
     if (iter == 0u) { zx0 = cx; zy0 = cy; }
-    // same numerator/denominator as case 46
     let zx2 = zx0*zx0 - zy0*zy0;
     let zy2 = 2.0*zx0*zy0;
     let zx3 = zx2*zx0 - zy2*zy0;
@@ -677,14 +649,12 @@ case 48u: {
     let divy = (numy*denx - numx*deny) / den2;
     let fx = zx0 - divx + ccx;
     let fy = zy0 - divy + ccy;
-    // invert (scatter nova core)
     let invR2 = 1.0 / (fx*fx + fy*fy + 1e-9);
     var sx = fx * invR2;
     var sy = -fy * invR2;
-    // petal lobes: modulate radius by cos(lobes*angle)
     let ang = atan2(sy, sx);
     let r0  = length(vec2<f32>(sx, sy));
-    let lobes = 5.0 + sin(gamma * 10.0);  // 5–15 lobes
+    let lobes = 5.0 + sin(gamma * 10.0);
     let petal = 1.0 + 0.3 * cos(ang * lobes + f32(iter) * 0.15);
     nx = sx * petal;
     ny = sy * petal;
@@ -694,14 +664,12 @@ case 48u: {
 }
 // 49: Hybrid-FlScatter Nova
 case 49u: {
-    // seed exactly like Flower/Scatter
     var zx0 = qx;
     var zy0 = qy;
     if (iter == 0u) {
         zx0 = cx;
         zy0 = cy;
     }
-    // Flower part
     let zx2 = zx0*zx0 - zy0*zy0;
     let zy2 = 2.0*zx0*zy0;
     let zx3 = zx2*zx0 - zy2*zy0;
@@ -715,11 +683,9 @@ case 49u: {
     let invDenF = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);
     let fxF = zx0 - ((numxF*denxF + numyF*denyF) * invDenF) + ccx;
     let fyF = zy0 - ((numyF*denxF - numxF*denyF) * invDenF) + ccy;
-    // Scatter part
     let invR2 = 1.0 / (fxF*fxF + fyF*fyF + 1e-9);
     let sx    = fxF * invR2;
     let sy    = -fyF * invR2;
-    // blend
     let blend = 0.5 + 0.5 * sin(gamma * 3.14159265 + f32(iter) * 0.05);
     nx = mix(fxF, sx, blend);
     ny = mix(fyF, sy, blend);
@@ -727,7 +693,7 @@ case 49u: {
     break;
 }
 
-// 50: Fractional-Nova (p ≈ 3.7)
+// 50: Fractional-Nova
 case 50u: {
     var zx0 = qx;
     var zy0 = qy;
@@ -738,15 +704,12 @@ case 50u: {
     let p   = 3.7;
     let r0  = length(vec2<f32>(zx0, zy0));
     let theta0 = atan2(zy0, zx0);
-    // z^p
     let rp  = pow(r0, p);
     let xp  = rp * cos(p * theta0);
     let yp  = rp * sin(p * theta0);
-    // z^(p-1)
     let rm1 = pow(r0, p - 1.0);
     let xm1 = rm1 * cos((p - 1.0) * theta0);
     let ym1 = rm1 * sin((p - 1.0) * theta0);
-    // Newton step
     let denx = p * xm1;
     let deny = p * ym1;
     let d2   = denx*denx + deny*deny + 1e-9;
@@ -758,7 +721,7 @@ case 50u: {
     break;
 }
 
-// 51: Kaleido-Nova (n-fold mirrored petals)
+// 51: Kaleido-Nova
 case 51u: {
     var zx0 = qx;
     var zy0 = qy;
@@ -766,7 +729,6 @@ case 51u: {
         zx0 = cx;
         zy0 = cy;
     }
-    // Flower-Nova base
     let zx2   = zx0*zx0 - zy0*zy0;
     let zy2   = 2.0*zx0*zy0;
     let zx3   = zx2*zx0 - zy2*zy0;
@@ -781,14 +743,11 @@ case 51u: {
     let fx    = zx0 - ((numxF*denxF + numyF*denyF) * invDen) + ccx;
     let fy    = zy0 - ((numyF*denxF - numxF*denyF) * invDen) + ccy;
 
-    // kaleidoscope mirror
     let sect   = 7.0;
     let slice  = 2.0 * 3.14159265 / sect;
     let angle  = atan2(fy, fx);
-    // manual mod: a2 = angle % slice
     let aDiv  = floor(angle / slice);
     let a2    = angle - aDiv * slice;
-    // reflect
     var aMir: f32;
     if (a2 < slice * 0.5) {
         aMir = a2;
@@ -803,33 +762,28 @@ case 51u: {
     break;
 }
 
-// 52: Cross-Nova (alternate seeds between c and dx,dy)
+// 52: Cross-Nova
 case 52u: {
-    // seed exactly like the others
     var zx0 = qx;
     var zy0 = qy;
     if (iter == 0u) {
         zx0 = cx;
         zy0 = cy;
     }
-    // pick sx, sy without select
     var sx = cx;
     var sy = cy;
     if ((iter & 1u) == 1u) {
         sx = params.dx;
         sy = params.dy;
     }
-    // shift z by the difference
     let ux0 = zx0 + (sx - cx);
     let uy0 = zy0 + (sy - cy);
-    // build powers
     let ux2 = ux0*ux0 - uy0*uy0;
     let uy2 = 2.0*ux0*uy0;
     let ux3 = ux2*ux0 - uy2*uy0;
     let uy3 = ux2*uy0 + uy2*ux0;
     let ux4 = ux3*ux0 - uy3*uy0;
     let uy4 = ux3*uy0 + uy3*ux0;
-    // Newton numerator/denominator
     let numx = ux4 - 1.0;
     let numy = uy4;
     let denx = 4.0*ux3;
@@ -837,7 +791,6 @@ case 52u: {
     let invD = 1.0 / (denx*denx + deny*deny + 1e-9);
     let divx = (numx*denx + numy*deny) * invD;
     let divy = (numy*denx - numx*deny) * invD;
-    // next z
     let fx = ux0 - divx + ccx;
     let fy = uy0 - divy + ccy;
     nx = fx;
@@ -847,7 +800,7 @@ case 52u: {
     break;
 }
 
-// 53: Mirror-Nova (flip axes each step)
+// 53: Mirror-Nova
 case 53u: {
     var zx0 = qx;
     var zy0 = qy;
@@ -855,7 +808,6 @@ case 53u: {
         zx0 = cx;
         zy0 = cy;
     }
-    // Flower-Nova base
     let zx2   = zx0*zx0 - zy0*zy0;
     let zy2   = 2.0*zx0*zy0;
     let zx3   = zx2*zx0 - zy2*zy0;
@@ -879,7 +831,7 @@ case 53u: {
     break;
 }
 
-// 54: Spiro-Nova (Lissajous perturb)
+// 54: Spiro-Nova
 case 54u: {
     var zx0 = qx;
     var zy0 = qy;
@@ -887,7 +839,6 @@ case 54u: {
         zx0 = cx;
         zy0 = cy;
     }
-    // Flower-Nova base
     let zx2   = zx0*zx0 - zy0*zy0;
     let zy2   = 2.0*zx0*zy0;
     let zx3   = zx2*zx0 - zy2*zy0;
@@ -902,15 +853,12 @@ case 54u: {
     let fx    = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;
     let fy    = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;
 
-    // spiro perturb
     let theta   = atan2(fy, fx);
     let r0      = length(vec2<f32>(fx, fy));
-    // manual "mod" for gamma*5.0 % 4.0
     let tmpA    = gamma * 5.0;
     let aDiv    = floor(tmpA / 4.0);
     let freqA   = tmpA - aDiv * 4.0;
     let aFreq   = 3.0 + freqA;
-    // manual "mod" for gamma*7.0 % 5.0
     let tmpB    = gamma * 7.0;
     let bDiv    = floor(tmpB / 5.0);
     let freqB   = tmpB - bDiv * 5.0;
@@ -923,7 +871,7 @@ case 54u: {
     break;
 }
 
-// 55: Vibrant-Nova (radial wave bloom)
+// 55: Vibrant-Nova
 case 55u: {
     var zx0 = qx;
     var zy0 = qy;
@@ -931,7 +879,6 @@ case 55u: {
         zx0 = cx;
         zy0 = cy;
     }
-    // Flower-Nova base
     let zx2   = zx0*zx0 - zy0*zy0;
     let zy2   = 2.0*zx0*zy0;
     let zx3   = zx2*zx0 - zy2*zy0;
@@ -955,25 +902,20 @@ case 55u: {
     npx = qx; npy = qy;
     break;
 }
-// 56: Julia-Nova Hybrid — blends a fixed Julia seed with Newton steps
+// 56: Julia-Nova Hybrid
 case 56u: {
-    // julia constant from pan (dx,dy)
     let jx = params.dx;
     let jy = params.dy;
-    // seed z₀ = c for iter 0, else previous z
     var zx0 = qx;
     var zy0 = qy;
     if (iter == 0u) {
         zx0 = cx;
         zy0 = cy;
     }
-    // apply Newton on z, then add julia twist
-    // build z^2, z^3
     let zx2 = zx0*zx0 - zy0*zy0;
     let zy2 = 2.0*zx0*zy0;
     let zx3 = zx2*zx0 - zy2*zy0;
     let zy3 = zx2*zy0 + zy2*zx0;
-    // numerator/denominator for z^3−1 / (3·z²)
     let numx = zx3 - 1.0;
     let numy = zy3;
     let denx = 3.0*zx2;
@@ -983,7 +925,6 @@ case 56u: {
     let divy = (numy*denx - numx*deny) * invD;
     let fx = zx0 - divx + ccx;
     let fy = zy0 - divy + ccy;
-    // julia twist: z ← z + α·(z₀ - j)
     let alpha = 0.3 + 0.2 * sin(gamma * 6.28);
     nx = fx + alpha * (fx - jx);
     ny = fy + alpha * (fy - jy);
@@ -991,11 +932,10 @@ case 56u: {
     break;
 }
 
-// 57: Inverse-Spiral Nova — scatter-nova with a logarithmic spiral warp
+// 57: Inverse-Spiral Nova
 case 57u: {
     var zx0 = qx; var zy0 = qy;
     if (iter == 0u) { zx0 = cx; zy0 = cy; }
-    // do scatter-nova core (case 46)
     let zx2 = zx0*zx0 - zy0*zy0;
     let zy2 = 2.0*zx0*zy0;
     let zx3 = zx2*zx0 - zy2*zy0;
@@ -1009,7 +949,6 @@ case 57u: {
     let fy   = zy0 - (numy*denx - numx*deny)*invD + ccy;
     let invR2= 1.0/(fx*fx + fy*fy + 1e-9);
     var sx   = fx * invR2; var sy = -fy * invR2;
-    // warp into logarithmic spiral: radius ← r·exp(β·θ)
     let θ = atan2(sy, sx);
     let r = length(vec2<f32>(sx, sy));
     let beta = 0.1 + 0.05*sin(f32(iter)*0.2);
@@ -1020,24 +959,21 @@ case 57u: {
     break;
 }
 
-// 58: Wavefront Nova — introduces a radial sine-wave front each few iterations
+// 58: Wavefront Nova
 case 58u: {
     var zx0 = qx; var zy0 = qy;
     if (iter == 0u) { zx0 = cx; zy0 = cy; }
-    // build z^2, z^3, z^4
     let zx2 = zx0*zx0 - zy0*zy0;
     let zy2 = 2.0*zx0*zy0;
     let zx3 = zx2*zx0 - zy2*zy0;
     let zy3 = zx2*zy0 + zy2*zx0;
     let zx4 = zx3*zx0 - zy3*zy0;
     let zy4 = zx3*zy0 + zy3*zx0;
-    // Newton step divisor/numerator
     let denx = 4.0*zx3; let deny = 4.0*zy3;
     let numx = zx4 - 1.0; let numy = zy4;
     let invD = 1.0/(denx*denx + deny*deny + 1e-9);
     let fx   = zx0 - (numx*denx + numy*deny)*invD + ccx;
     let fy   = zy0 - (numy*denx - numx*deny)*invD + ccy;
-    // apply a circular wavefront that pulses every N steps
     let r0    = length(vec2<f32>(fx, fy));
     let phase = sin(f32(iter) * 0.3 + gamma * 12.0);
     let offset= 0.2 * phase * sin(8.0 * r0);
@@ -1049,14 +985,12 @@ case 58u: {
     break;
 }
 
-// 59: Vortex-Nova — a smooth swirl after a Flower-Nova iteration
+// 59: Vortex-Nova
 case 59u: {
-    // seed like Flower-Nova
     var zx0 = qx; var zy0 = qy;
     if (iter == 0u) {
         zx0 = cx; zy0 = cy;
     }
-    // Flower-Nova forward step
     let zx2 = zx0*zx0 - zy0*zy0;
     let zy2 = 2.0*zx0*zy0;
     let zx3 = zx2*zx0 - zy2*zy0;
@@ -1071,10 +1005,9 @@ case 59u: {
     let fx = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;
     let fy = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;
 
-    // apply a vortex swirl: rotate by angle ∝ exp(-r)
     let r   = length(vec2<f32>(fx, fy));
     let baseAngle = atan2(fy, fx);
-    let swirlAmt  = 1.5 * exp(-r * 2.0);      // adjust decay
+    let swirlAmt  = 1.5 * exp(-r * 2.0);
     let angle2    = baseAngle + swirlAmt;
     nx = r * cos(angle2);
     ny = r * sin(angle2);
@@ -1083,14 +1016,12 @@ case 59u: {
     break;
 }
 
-// 60: Sine-Ring Nova — Flower-Nova + smooth sinusoidal rings
+// 60: Sine-Ring Nova
 case 60u: {
-    // seed like Flower-Nova
     var zx0 = qx; var zy0 = qy;
     if (iter == 0u) {
         zx0 = cx; zy0 = cy;
     }
-    // Flower-Nova forward step
     let zx2 = zx0*zx0 - zy0*zy0;
     let zy2 = 2.0*zx0*zy0;
     let zx3 = zx2*zx0 - zy2*zy0;
@@ -1105,10 +1036,9 @@ case 60u: {
     let fx0    = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;
     let fy0    = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;
 
-    // radial sine rings
     let r0    = length(vec2<f32>(fx0, fy0));
     let θ     = atan2(fy0, fx0);
-    let freq  = 10.0 + 5.0 * sin(gamma * 6.2831853);  // 5–15 rings
+    let freq  = 10.0 + 5.0 * sin(gamma * 6.2831853);
     let amp   = 0.1 + 0.05 * cos(f32(iter) * 0.1);
     let ring  = r0 + amp * sin(freq * r0);
     nx = ring * cos(θ);
@@ -1118,14 +1048,12 @@ case 60u: {
     break;
 }
 
-// 57: Inverse-Spiral Nova — less jumpy, gentler spiral warp
+// 61: Inverse-Spiral Nova (gentler)
 case 61u: {
-    // seed
     var zx0 = qx; var zy0 = qy;
     if (iter == 0u) {
         zx0 = cx; zy0 = cy;
     }
-    // do the “scatter” core (same as case 46) to get sx, sy:
     let zx2 = zx0*zx0 - zy0*zy0;
     let zy2 = 2.0*zx0*zy0;
     let zx3 = zx2*zx0 - zy2*zy0;
@@ -1141,12 +1069,9 @@ case 61u: {
     let sx   = fx0 * invR2;
     let sy   = -fy0 * invR2;
 
-    // smooth spiral warp
     let θ    = atan2(sy, sx);
     let r    = length(vec2<f32>(sx, sy));
-    // normalize θ to [–1,1]
     let t    = θ / 3.14159265;
-    // gentle exponent factor in [0.8,1.2]
     let beta = 1.0 + 0.2 * t;
     let rw   = pow(r, beta);
 
@@ -1155,12 +1080,10 @@ case 61u: {
     npx = qx; npy = qy;
     break;
 }
-// 62: Inverse-Vortex Nova — swirl first, then invert
+// 62: Inverse-Vortex Nova
 case 62u: {
-    // same seed + Flower‐Nova forward as case 59
     var zx0 = qx; var zy0 = qy;
     if (iter == 0u) { zx0 = cx; zy0 = cy; }
-    // Flower‐Nova step
     let zx2 = zx0*zx0 - zy0*zy0;
     let zy2 = 2.0*zx0*zy0;
     let zx3 = zx2*zx0 - zy2*zy0;
@@ -1175,7 +1098,6 @@ case 62u: {
     let fx0    = zx0 - ((numxF*denxF + numyF*denyF)*invDF) + ccx;
     let fy0    = zy0 - ((numyF*denxF - numxF*denyF)*invDF) + ccy;
 
-    // swirl warp
     let r   = length(vec2<f32>(fx0, fy0));
     let θ   = atan2(fy0, fx0);
     let swirlAmt = 1.5 * exp(-r * 2.0);
@@ -1183,7 +1105,6 @@ case 62u: {
     var vx  = r * cos(θ2);
     var vy  = r * sin(θ2);
 
-    // inverse 1/z
     let invR2 = 1.0 / (vx*vx + vy*vy + 1e-9);
     nx = vx * invR2;
     ny = -vy * invR2;
@@ -1191,9 +1112,8 @@ case 62u: {
     break;
 }
 
-// 63: Inverse‐Sine‐Ring Nova — ring warp then invert
+// 63: Inverse-Sine-Ring Nova
 case 63u: {
-    // seed + Flower‐Nova forward as case 60
     var zx0 = qx; var zy0 = qy;
     if (iter == 0u) { zx0 = cx; zy0 = cy; }
     let zx2 = zx0*zx0 - zy0*zy0;
@@ -1210,7 +1130,6 @@ case 63u: {
     let fx0    = zx0 - ((numxF*denxF + numyF*denyF)*invDF) + ccx;
     let fy0    = zy0 - ((numyF*denxF - numxF*denyF)*invDF) + ccy;
 
-    // sine‐ring warp
     let r0   = length(vec2<f32>(fx0, fy0));
     let θ    = atan2(fy0, fx0);
     let freq = 10.0 + 5.0 * sin(gamma * 6.2831853);
@@ -1221,7 +1140,6 @@ case 63u: {
     let sx = rx * cos(ry);
     let sy = rx * sin(ry);
 
-    // inverse 1/z
     let invR2 = 1.0 / (sx*sx + sy*sy + 1e-9);
     nx = sx * invR2;
     ny = -sy * invR2;
@@ -1229,13 +1147,11 @@ case 63u: {
     break;
 }
 
-// 64: Inverse-Mirror Nova — flip axes then 1/z
+// 64: Inverse-Mirror Nova
 case 64u: {
-    // seed like Mirror-Nova
     var zx0 = qx; var zy0 = qy;
     if (iter == 0u) { zx0 = cx; zy0 = cy; }
 
-    // Flower-Nova base
     let zx2   = zx0*zx0 - zy0*zy0;
     let zy2   = 2.0*zx0*zy0;
     let zx3   = zx2*zx0 - zy2*zy0;
@@ -1250,7 +1166,6 @@ case 64u: {
     let fx0   = zx0 - ((numxF*denxF + numyF*denyF)*invDF) + ccx;
     let fy0   = zy0 - ((numyF*denxF - numxF*denyF)*invDF) + ccy;
 
-    // mirror flip
     var mx: f32; var my: f32;
     if ((iter & 1u) == 0u) {
         mx = -fx0; my = fy0;
@@ -1258,7 +1173,6 @@ case 64u: {
         mx =  fx0; my = -fy0;
     }
 
-    // invert
     let invR2 = 1.0 / (mx*mx + my*my + 1e-9);
     nx = mx * invR2;
     ny = -my * invR2;
@@ -1266,13 +1180,11 @@ case 64u: {
     break;
 }
 
-// 65: Inverse-Vibrant Nova — wave bloom then 1/z
+// 65: Inverse-Vibrant Nova
 case 65u: {
-    // seed like Vibrant-Nova
     var zx0 = qx; var zy0 = qy;
     if (iter == 0u) { zx0 = cx; zy0 = cy; }
 
-    // Flower-Nova base
     let zx2   = zx0*zx0 - zy0*zy0;
     let zy2   = 2.0*zx0*zy0;
     let zx3   = zx2*zx0 - zy2*zy0;
@@ -1287,34 +1199,28 @@ case 65u: {
     let fx0   = zx0 - ((numxF*denxF + numyF*denyF)*invDF) + ccx;
     let fy0   = zy0 - ((numyF*denxF - numxF*denyF)*invDF) + ccy;
 
-    // radial wave bloom
     let r0     = length(vec2<f32>(fx0, fy0));
     let theta  = atan2(fy0, fx0);
     let wave   = 1.0 + 0.3 * sin(6.0*theta + f32(iter)*0.2 + gamma*10.0);
     let vx     = r0 * wave * cos(theta);
     let vy     = r0 * wave * sin(theta);
 
-    // invert
     let invR2  = 1.0 / (vx*vx + vy*vy + 1e-9);
     nx = vx * invR2;
     ny = -vy * invR2;
     npx = qx; npy = qy;
     break;
 }
-case 66u: {                // Golden‑Ratio Rational
+case 66u: {                // Golden-Ratio Rational
     let phi  = 1.61803398875;
-    //  c_repulsive  = (−φ  ,  +φ)
-    //  c_attractive = ( φ−1,  0.5 φ)
     let crx = -phi;
     let cry =  phi;
     let cax =  phi - 1.0;
     let cay =  0.5 * phi;
 
-    // z² = (qx² − qy²)  +  i(2 qx qy)
     let zx2 = qx*qx - qy*qy;
     let zy2 = 2.0 * qx * qy;
 
-    // (z² + c_rep) / (z² + c_att)
     let numx = zx2 + crx;
     let numy = zy2 + cry;
     let denx = zx2 + cax;
@@ -1328,34 +1234,27 @@ case 66u: {                // Golden‑Ratio Rational
     ny = divy + ccy;
 }
 
-case 67u: {                // SinCos‑Kernel
-    /* sin(z) = sin(x)cosh(y)  +  i cos(x)sinh(y)
-       cos(z) = cos(x)cosh(y)  −  i sin(x)sinh(y)                        */
+case 67u: {                // SinCos-Kernel
     let sinx = sin(qx) * cosh(qy);
     let siny =  cos(qx) * sinh(qy);
     let cosx = cos(qx) * cosh(qy);
     let cosy = -sin(qx) * sinh(qy);
 
-    // product: sin(z) * cos(z)
     let prodx = sinx*cosx - siny*cosy;
     let prody = sinx*cosy + siny*cosx;
 
     nx = prodx + ccx;
     ny = prody + ccy;
 }
-/* 68 : Golden‑Push‑Pull  (blend of attractive & repulsive constants)
-         zᵢ₊₁ =  (z² + c_rep) / (z² + c_att)  +  mix(c_att , c_rep , β)
-         where  β = 0.5 + 0.5·sin(iter·0.25) gives a gentle breathing  */
+/* 68 : Golden-Push-Pull */
 case 68u: {
     let phi  = 1.61803398875;
-    let crex = -phi;  let crey =  phi;           // c_repulsive
-    let caex =  phi-1.0; let caey = 0.5*phi;      // c_attractive
+    let crex = -phi;  let crey =  phi;
+    let caex =  phi-1.0; let caey = 0.5*phi;
 
-    /* z² */
     let zx2 = qx*qx - qy*qy;
     let zy2 = 2.0*qx*qy;
 
-    /* (z² + c_rep) / (z² + c_att) */
     let numx = zx2 + crex;
     let numy = zy2 + crey;
     let denx = zx2 + caex;
@@ -1364,7 +1263,6 @@ case 68u: {
     let divx = (numx*denx + numy*deny) / den2;
     let divy = (numy*denx - numx*deny) / den2;
 
-    /* breathing blend between constants */
     let beta = 0.5 + 0.5 * sin(f32(iter) * 0.25);
     let mixx = caex * (1.0-beta) + crex * beta;
     let mixy = caey * (1.0-beta) + crey * beta;
@@ -1373,26 +1271,23 @@ case 68u: {
     ny = divy + mixy + ccy;
 }
 
-/* 69 : Sinc‑Kernel   zᵢ₊₁ = sinc(π·z) + c   (sinc z = sin z / z)      */
+/* 69 : Sinc-Kernel */
 case 69u: {
     let pi  = 3.14159265359;
-    /* sin(π z)  → (a,b) */
     let sinX =  sin(pi*qx) * cosh(pi*qy);
     let sinY =  cos(pi*qx) * sinh(pi*qy);
 
-    /* denominator  π z  = (c,d) */
     let denX = pi * qx;
     let denY = pi * qy;
     let den2 = denX*denX + denY*denY + 1e-9;
 
-    /* (a+ib)/(c+id) */
     let sincX = ( sinX*denX + sinY*denY) / den2;
     let sincY = ( sinY*denX - sinX*denY) / den2;
 
     nx = sincX + ccx;
     ny = sincY + ccy;
   }
-   
+
     // 70: Bizarre Grid
     case 70u: {
       var zx = qx;
@@ -1448,9 +1343,6 @@ case 69u: {
       ny = zy2 + ky + 0.5;
     }
 
-
-
-
     default: { // Mandelbrot
       nx = qx*qx - qy*qy + ccx;
       ny = 2.0*qx*qy + ccy;
@@ -1489,7 +1381,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let centeredX = (nxFull - 0.5) * params.aspect;
   let centeredY = (nyFull - 0.5);
 
-  // Zoom + pan – zoom is the size of the window in complex space
+  // Zoom + pan - zoom is the size of the window in complex space
   let cx = centeredX * params.zoom + params.dx;
   let cy = centeredY * params.zoom + params.dy;
 
@@ -1512,7 +1404,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     let res = computeFractal(
       params.fractalType, qx, qy, px, py,
-      cx, cy, params.gamma, iter, params.scaleMode
+      cx, cy, params.gamma, iter
     );
 
     let nxz = res.nx;
@@ -1557,5 +1449,3 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     col
   );
 }
-
-

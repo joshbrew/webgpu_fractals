@@ -35,7 +35,12 @@ export const renderGlobals = {
 
     maxIter: 150,
     fractalType: 0,
+
+    // scaleOps is the ordered ops list (duplicates allowed). scaleMode is the legacy bitmask union.
+    // Default keeps old behavior: Multiply only.
+    scaleOps: [1],
     scaleMode: 1,
+
     zoom: 4.0,
     dx: 0.0,
     dy: 0.0,
@@ -106,7 +111,12 @@ const DIRTY_MAP = {
 
   maxIter: F.C,
   fractalType: F.C,
+
+  // new ordered list (duplicates allowed)
+  scaleOps: F.C,
+  // legacy union bitmask (still supported for backward compat)
   scaleMode: F.C,
+
   zoom: F.C,
   dx: F.C,
   dy: F.C,
@@ -188,6 +198,127 @@ export function setState(partial) {
   }
 }
 
+/* ======================================================================
+   Scale-ops normalization
+   ====================================================================== */
+
+const MAX_SCALE_OPS = 16;
+
+// opCode -> legacy bit value union (kept so old scaleMode continues to work)
+const _SCALE_OP_BITS = [
+  1, // 1 Multiply
+  2, // 2 Divide
+  4, // 3 Sine
+  8, // 4 Tangent
+  16, // 5 Cosine
+  32, // 6 Exp-Zoom
+  64, // 7 Log-Shrink
+  128, // 8 Aniso Warp
+  256, // 9 Rotate
+  512, // 10 Radial Twist
+  1024, // 11 HyperWarp
+  2048, // 12 RadialHyper
+  4096, // 13 Swirl
+  8192, // 14 Modular
+  16384, // 15 AxisSwap
+  32768, // 16 MixedWarp
+  65536, // 17 Jitter
+  131072, // 18 PowerWarp
+  262144, // 19 SmoothFade
+];
+
+function _isValidScaleOpCode(n) {
+  n = n | 0;
+  return n >= 1 && n <= _SCALE_OP_BITS.length;
+}
+
+function _normScaleOps(raw) {
+  if (!raw) return [];
+
+  let a = raw;
+
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    if (!s) return [];
+    a = s.split(",").map((x) => x.trim());
+  }
+
+  if (!Array.isArray(a)) return [];
+
+  const out = [];
+  for (let i = 0; i < a.length && out.length < MAX_SCALE_OPS; ++i) {
+    const v = a[i];
+    const n = typeof v === "number" ? v : Number(String(v).trim());
+    if (!Number.isFinite(n)) continue;
+    const c = n | 0;
+    if (_isValidScaleOpCode(c)) out.push(c);
+  }
+  return out;
+}
+
+function _scaleModeMaskFromOps(ops) {
+  let m = 0;
+  for (let i = 0; i < ops.length; ++i) {
+    const c = ops[i] | 0;
+    if (_isValidScaleOpCode(c)) m |= _SCALE_OP_BITS[c - 1] | 0;
+  }
+  return m >>> 0;
+}
+
+function _opsFromScaleModeMask(mask) {
+  const m = (Number(mask) >>> 0) | 0;
+  if (!m) return [];
+
+  const out = [];
+  for (
+    let code = 1;
+    code <= _SCALE_OP_BITS.length && out.length < MAX_SCALE_OPS;
+    ++code
+  ) {
+    const bit = _SCALE_OP_BITS[code - 1] | 0;
+    if (m & bit) out.push(code);
+  }
+  return out;
+}
+
+function normalizeScaleArgsInParams(ps) {
+  if (!ps || typeof ps !== "object") return;
+
+  const hasOps = Array.isArray(ps.scaleOps) || typeof ps.scaleOps === "string";
+  const hasMask = ps.scaleMode !== undefined && ps.scaleMode !== null;
+
+  if (hasOps) {
+    const ops = _normScaleOps(ps.scaleOps);
+    ps.scaleOps = ops;
+    ps.scaleMode = _scaleModeMaskFromOps(ops);
+    return;
+  }
+
+  if (hasMask) {
+    const ops = _opsFromScaleModeMask(ps.scaleMode);
+    ps.scaleOps = ops;
+    ps.scaleMode = _scaleModeMaskFromOps(ops);
+    return;
+  }
+
+  ps.scaleOps = [];
+  ps.scaleMode = 0;
+}
+
+function cloneParamsForCompute(baseParams, overrides) {
+  const p = Object.assign({}, baseParams || null, overrides || null);
+
+  // make sure arrays are safe and normalized
+  if (Array.isArray(p.lightPos))
+    p.lightPos = [p.lightPos[0] || 0, p.lightPos[1] || 0, p.lightPos[2] || 0];
+  normalizeScaleArgsInParams(p);
+
+  // never let compute mutate shared arrays by reference
+  if (Array.isArray(p.scaleOps)) p.scaleOps = p.scaleOps.slice(0);
+
+  return p;
+}
+
 function flushPending() {
   if (!hasPending) return;
 
@@ -197,6 +328,8 @@ function flushPending() {
   Object.assign(ps, pending.paramsState);
   pending.paramsState = {};
   hasPending = false;
+
+  normalizeScaleArgsInParams(ps);
 
   const nextLayerMode = !!ps.layerMode;
 
@@ -229,7 +362,6 @@ function _safeGamma(g) {
   const x = Number.isFinite(+g) ? +g : 1.0;
   return x;
 }
-
 
 function requestedLayersFromParams(params) {
   const p = params || renderGlobals.paramsState;
@@ -391,7 +523,8 @@ export async function initRender() {
   renderGlobals.paramsState.alphaMode = initialNumeric;
 
   let currentAlphaMode = canvasAlphaStringForNumeric(initialNumeric);
-  if (typeof window !== "undefined") window.__currentCanvasAlphaMode = currentAlphaMode;
+  if (typeof window !== "undefined")
+    window.__currentCanvasAlphaMode = currentAlphaMode;
 
   const uniformStride = 256;
   const MAX_PIXELS_PER_CHUNK = 8000000;
@@ -518,7 +651,7 @@ export async function initRender() {
 
   function clampLayerIndex(li, n) {
     const nn = Math.max(1, n | 0);
-    const x = Number.isFinite(+li) ? (+li | 0) : 0;
+    const x = Number.isFinite(+li) ? +li | 0 : 0;
     if (x < 0) return 0;
     if (x >= nn) return nn - 1;
     return x;
@@ -714,7 +847,7 @@ export async function initRender() {
 
     while (true) {
       try {
-        const params = Object.assign({}, renderGlobals.paramsState, {
+        const params = cloneParamsForCompute(renderGlobals.paramsState, {
           splitCount: eff,
           nLayers: 1,
           layers: 1,
@@ -727,6 +860,7 @@ export async function initRender() {
           aspect,
           "main",
           1,
+          params.scaleOps,
         );
         chunkInfos = chunks || [];
 
@@ -800,14 +934,14 @@ export async function initRender() {
   async function computeFractalLayerSeries(count, aspect = 1) {
     count = Math.max(1, count >>> 0);
 
-    const base = Object.assign({}, renderGlobals.paramsState, {
+    const base = cloneParamsForCompute(renderGlobals.paramsState, {
       splitCount: effectiveSplitCount(renderGlobals.paramsState.splitCount),
       nLayers: count,
       layers: count,
     });
 
     const { gammaStart, gammaRange } = resolveGammaSeries(base, count);
-    const baseParams = Object.assign({}, base, { gamma: gammaStart });
+    const baseParams = cloneParamsForCompute(base, { gamma: gammaStart });
 
     let seriesChunks;
     if (typeof fractalCompute.computeLayerSeries === "function") {
@@ -818,6 +952,7 @@ export async function initRender() {
         count,
         aspect,
         "main",
+        baseParams.scaleOps,
       );
     } else {
       const merged = new Map();
@@ -827,7 +962,7 @@ export async function initRender() {
         const paramsLi =
           g === baseParams.gamma
             ? baseParams
-            : Object.assign({}, baseParams, { gamma: g });
+            : cloneParamsForCompute(baseParams, { gamma: g });
 
         const chunks = await fractalCompute.compute(
           paramsLi,
@@ -835,6 +970,7 @@ export async function initRender() {
           aspect,
           "main",
           count,
+          paramsLi.scaleOps,
         );
 
         for (const c of chunks) {
@@ -877,7 +1013,7 @@ export async function initRender() {
     cleanupTempFallbacks(chunkInfos);
 
     try {
-      const params = Object.assign({}, renderGlobals.paramsState, {
+      const params = cloneParamsForCompute(renderGlobals.paramsState, {
         splitCount: effectiveSplitCount(renderGlobals.paramsState.splitCount),
         nLayers: 1,
         layers: 1,
@@ -886,7 +1022,13 @@ export async function initRender() {
 
       const wasReady = sdfReady;
 
-      await sdfCompute.compute(chunkInfos, params, layerIndex, aspect);
+      await sdfCompute.compute(
+        chunkInfos,
+        params,
+        layerIndex,
+        aspect,
+        params.scaleOps,
+      );
       await device.queue.onSubmittedWorkDone();
 
       sdfReady = true;
@@ -1227,7 +1369,9 @@ export async function initRender() {
     if (mode === "raw" && rpBlitFn) {
       const viewTex = context.getCurrentTexture().createView();
       const aspect =
-        canvas.width > 0 && canvas.height > 0 ? canvas.width / canvas.height : 1.0;
+        canvas.width > 0 && canvas.height > 0
+          ? canvas.width / canvas.height
+          : 1.0;
       if (typeof renderPipeline.updateCamera === "function") {
         renderPipeline.updateCamera(camState, aspect);
       }
@@ -1237,7 +1381,9 @@ export async function initRender() {
     } else if (rpBlitFn) {
       const viewTex = context.getCurrentTexture().createView();
       const aspect =
-        canvas.width > 0 && canvas.height > 0 ? canvas.width / canvas.height : 1.0;
+        canvas.width > 0 && canvas.height > 0
+          ? canvas.width / canvas.height
+          : 1.0;
       if (typeof renderPipeline.updateCamera === "function") {
         renderPipeline.updateCamera(camState, aspect);
       }
@@ -1896,4 +2042,3 @@ export async function initRender() {
     },
   };
 }
-

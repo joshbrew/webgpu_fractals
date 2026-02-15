@@ -2,1034 +2,1187 @@
 <div id="canvas-container">
   <canvas id="gpu-canvas"></canvas>
 
-  <div id="ui">
+  <aside id="ui" class="sidebar" aria-label="Fractal controls">
     <div class="ui-header">
-      <span>☰ Menu</span>
-      <button id="toggle-ui" type="button" aria-label="Toggle Menu">-</button>
-    </div>
-
-    <div id="ui-content">
-      <div class="row">
-        <label
-          title="Internal render resolution (GPU grid size). Higher values cost more GPU time."
-        >
-          Resolution:
-          <input
-            id="gridSize"
-            type="range"
-            min="64"
-            max="8192"
-            step="64"
-            value="1024"
-            title="Internal GPU grid resolution: 64–8192"
-          />
-          <input
-            id="gridSizeOut"
-            class="numeric-input"
-            type="number"
-            min="64"
-            max="8192"
-            step="64"
-            value="1024"
-            title="Exact numeric grid resolution"
-          />
-        </label>
+      <div class="ui-header-left">
+        <span class="ui-brand" aria-hidden="true">☰</span>
+        <div class="ui-title">
+          <div class="ui-title-main">Fractal Controls</div>
+          <div class="ui-title-sub">
+            Click canvas to lock mouse. ESC to release.
+          </div>
+        </div>
       </div>
 
+      <button
+        id="toggle-ui"
+        type="button"
+        class="icon-btn"
+        aria-label="Toggle sidebar"
+        aria-controls="ui-content"
+        aria-expanded="true"
+        title="Collapse sidebar"
+      >
+        ◀
+      </button>
+    </div>
+
+    <div id="ui-content" class="sidebar-body">
       <div class="row button-row">
-        <button id="resetCameraBtn" type="button" title="Reset pan and zoom">
+        <button
+          id="resetCameraBtn"
+          type="button"
+          title="Reset camera position and look direction"
+        >
           Reset Camera
         </button>
 
-        <button id="exportCanvasBtn" type="button" title="Save a PNG of the current canvas">
+        <button
+          id="exportCanvasBtn"
+          type="button"
+          title="Save a PNG of the current canvas"
+        >
           Save PNG
         </button>
 
         <button
           id="exportFullBtn"
           type="button"
-          title="Save a full-resolution PNG render"
+          title="Save a full-resolution PNG render (uses Resolution)"
         >
-          Save Full-Res PNG
+          Save Full-Res
         </button>
       </div>
 
-      <div class="row" style="display: none">
-        <label>
-          zMin:
-          <input id="zMin" type="number" step="0.1" value="0.0" />
-          <input
-            id="zMinOut"
-            class="numeric-input"
-            type="number"
-            step="0.1"
-            value="0.0"
-          />
-        </label>
-      </div>
-
-      <div class="row" style="display: none">
-        <label>
-          dz:
-          <input id="dz" type="number" step="0.01" value="0.2" />
-          <input
-            id="dzOut"
-            class="numeric-input"
-            type="number"
-            step="0.01"
-            value="0.2"
-          />
-        </label>
-      </div>
-
-      <div class="row">
-        <label title="Select the fractal equation family">
-          Fractal:
-          <select id="fractalType" title="Choose the fractal formula (0-71)">
-            <option value="0">Mandelbrot</option>
-            <option value="1">Tricorn</option>
-            <option value="2">Burning Ship</option>
-            <option value="3">Perpendicular Mandelbrot</option>
-            <option value="4">Celtic</option>
-            <option value="5">Buffalo</option>
-            <option value="6">Phoenix</option>
-            <option value="7">Cubic Multibrot (z³ + c)</option>
-            <option value="8">Quartic Multibrot (z⁴ + c)</option>
-            <option value="9">Cosine</option>
-            <option value="10">Sine</option>
-            <option value="11">Heart</option>
-            <option value="12">Perpendicular Buffalo</option>
-            <option value="13">Spiral Mandelbrot</option>
-            <option value="14">Quintic Multibrot (z⁵ + c)</option>
-            <option value="15">Sextic Multibrot (z⁶ + c)</option>
-            <option value="16">Tangent fractal (tan z + c)</option>
-            <option value="17">Exponential fractal (exp z + c)</option>
-            <option value="18">Septic Multibrot (z⁷ + c)</option>
-            <option value="19">Octic Multibrot (z⁸ + c)</option>
-            <option value="20">Inverse Mandelbrot (1/z² + c)</option>
-            <option value="21">Burning Ship Deep Zoom</option>
-            <option value="22">Cubic Burning Ship (|z|³ + c)</option>
-            <option value="23">Quartic Burning Ship (|z|⁴ + c)</option>
-            <option value="24">Quintic Burning Ship (|z|⁵ + c)</option>
-            <option value="25">Hexic Burning Ship (|z|⁶ + c)</option>
-            <option value="26">Nova (Newton z³−1)</option>
-            <option value="27">Man-o-War</option>
-            <option value="28">Stretched Celtic Spiral</option>
-            <option value="29">Polar-Flame fractal</option>
-            <option value="30">Inverse Cubic (1/z³ + c)</option>
-            <option value="31">Inverse Quartic (1/z⁴ + c)</option>
-            <option value="32">Inverse Quintic (1/z⁵ + c)</option>
-            <option value="33">Inverse Sextic (1/z⁶ + c)</option>
-            <option value="34">Inverse Septic (1/z⁷ + c)</option>
-            <option value="35">Inverse Octic (1/z⁸ + c)</option>
-            <option value="36">Inverse Burning Ship</option>
-            <option value="37">Inverse Tricorn</option>
-            <option value="38">Inverse Celtic</option>
-            <option value="39">Inverse Phoenix</option>
-            <option value="40">Tri-Nova</option>
-            <option value="41">Nova-Mandelbrot</option>
-            <option value="42">Nova 2 (inverse)</option>
-            <option value="43">Nova 2 variant</option>
-            <option value="44">Quartic-Nova</option>
-            <option value="45">Flower Nova</option>
-            <option value="46">Scatter-Nova</option>
-            <option value="47">Twisted-Flower Nova</option>
-            <option value="48">Lobed-Scatter Nova</option>
-            <option value="49">Hybrid-FlScatter Nova</option>
-            <option value="50">Fractional-Nova (p≈3.7)</option>
-            <option value="51">Kaleido-Nova</option>
-            <option value="52">Cross-Nova</option>
-            <option value="53">Mirror-Nova</option>
-            <option value="54">Spiro-Nova</option>
-            <option value="55">Vibrant-Nova</option>
-            <option value="56">Julia-Nova Hybrid</option>
-            <option value="57">Inverse-Spiral Nova</option>
-            <option value="58">Wavefront Nova</option>
-            <option value="59">Vortex Nova</option>
-            <option value="60">Sine Ring Nova</option>
-            <option value="61">Inverse-Spiral Nova 2</option>
-            <option value="62">Inverse-Vortex Nova</option>
-            <option value="63">Inverse Sine Ring Nova</option>
-            <option value="64">Inverse-Mirror Nova</option>
-            <option value="65">Inverse-Vibrant Nova</option>
-            <option value="66">Golden-Ratio Rational</option>
-            <option value="67">SinCos-Kernel</option>
-            <option value="68">Golden-Push-Pull</option>
-            <option value="69">Sinc-Kernel</option>
-            <option value="70">Bizarre Grid (set x/y to 1)</option>
-            <option value="71">Julia (use pan x/y sliders)</option>
-          </select>
-
-          <input
-            id="fractalTypeOut"
-            class="numeric-input"
-            type="number"
-            min="0"
-            max="71"
-            step="1"
-            value="0"
-            title="Numeric fractal type index"
-          />
-        </label>
-      </div>
-
-      <div class="row">
-        <label title="Choose the color palette used for mapping iterations to RGB">
-          🎨:
-          <select
-            id="colorScheme"
-            title="Choose the color palette used for mapping iterations to RGB"
+      <details class="section" open>
+        <summary>
+          <span class="section-title">View</span>
+          <span class="section-badge" title="Things that change performance"
+            >perf</span
           >
-            <option value="0">Violet-Cyan-White</option>
-            <option value="6">Grayscale</option>
-            <option value="1">Fire</option>
-            <option value="2">Ice</option>
-            <option value="3">Sunset</option>
-            <option value="4">Forest</option>
-            <option value="5">Neon</option>
-            <option value="7">Inferno</option>
-            <option value="8">Rainbow 360°</option>
-            <option value="9">Rainbow 720°</option>
-            <option value="10">Pastel Loop</option>
-            <option value="11">Viridis-ish</option>
-            <option value="12">Magma</option>
-            <option value="13">Plasma</option>
-            <option value="14">Cividis</option>
-            <option value="15">Ocean</option>
-            <option value="16">Midnight Blue</option>
-            <option value="17">Cool-Warm Diverge</option>
-            <option value="18">Rainbow 1080° (3 loops)</option>
-            <option value="19">Rainbow 1440° (4 loops)</option>
-            <option value="20">Pastel 5-loop</option>
-            <option value="21">Thermal</option>
-            <option value="22">Turbulent Wave</option>
-            <option value="23">Autumn</option>
-            <option value="24">Spring</option>
-            <option value="25">Summer</option>
-            <option value="26">Mono-loop (10× grayscale flicker)</option>
-            <option value="27">High-contrast Diverging</option>
-            <option value="28">Sine-wave Hue</option>
-            <option value="29">Sawtooth Loop (3 loops)</option>
-            <option value="30">Rainbow 2160° (6 loops)</option>
-            <option value="31">Triangle-wave 8 loops</option>
-            <option value="32">Exponential 12 loops</option>
-            <option value="33">Sawtooth 10 loops + offset</option>
-          </select>
+        </summary>
 
-          <input
-            id="colorSchemeOut"
-            class="numeric-input"
-            type="number"
-            min="0"
-            max="33"
-            step="1"
-            value="0"
-            title="Numeric color scheme index"
-          />
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control slider"
+            title="Internal render resolution (GPU grid size). Higher values cost more GPU time."
+          >
+            <span class="lbl">Resolution</span>
+            <input
+              id="gridSize"
+              type="range"
+              min="64"
+              max="8192"
+              step="64"
+              value="1024"
+            />
+            <input
+              id="gridSizeOut"
+              class="numeric-input"
+              type="number"
+              min="64"
+              max="8192"
+              step="64"
+              value="1024"
+            />
+          </label>
+          <div class="hint">
+            Higher = sharper. If it stutters, drop this first.
+          </div>
+        </div>
 
-      <div class="row">
-        <label title="Shift the global hue of the palette (wraps the color wheel)">
-          Hue Offset:
-          <input
-            id="hueOffset"
-            type="range"
-            min="-1"
-            max="1"
-            step="0.001"
-            value="0"
-            title="Hue offset (-1 to +1)"
-          />
-          <input
-            id="hueOffsetOut"
-            class="numeric-input"
-            type="number"
-            min="-1"
-            max="1"
-            step="0.001"
-            value="0.00"
-            title="Exact numeric hue offset"
-          />
-        </label>
-      </div>
+        <div class="row">
+          <label class="control select" title="Render output mode">
+            <span class="lbl">Render mode</span>
+            <select
+              id="renderMode"
+              title="Fractal rendering, slab view, or raw debug output"
+            >
+              <option value="fractal">Fractal</option>
+              <option value="slab">Slab</option>
+              <option value="raw">Raw</option>
+            </select>
+            <span class="spacer"></span>
+          </label>
+          <div class="hint">
+            Slab is a marching squares test. Raw is a debug view.
+          </div>
+        </div>
 
-      <div class="row">
-        <label title="Control zoom scale (size of the complex plane window)">
-          Zoom:
-          <input
-            id="zoom"
-            type="range"
-            min="0.00000001"
-            max="10"
-            step="0.000001"
-            value="4.0"
-            title="Zoom factor (lower values zoom in deeper)"
-          />
-          <input
-            id="zoomOut"
-            class="numeric-input"
-            type="number"
-            min="0.00000001"
-            max="10"
-            step="0.000001"
-            value="4.00"
-            title="Exact numeric zoom"
-          />
-        </label>
-      </div>
-
-      <div class="row">
-        <label title="Shift the view left/right in the complex plane">
-          Pan X:
-          <input
-            id="dx"
-            type="range"
-            min="-2"
-            max="2"
-            step="0.00001"
-            value="0.0"
-            title="Horizontal pan"
-          />
-          <input
-            id="dxOut"
-            class="numeric-input"
-            type="number"
-            min="-2"
-            max="2"
-            step="0.00001"
-            value="0.00"
-            title="Exact numeric pan X"
-          />
-        </label>
-      </div>
-
-      <div class="row">
-        <label title="Shift the view up/down in the complex plane">
-          Pan Y:
-          <input
-            id="dy"
-            type="range"
-            min="-2"
-            max="2"
-            step="0.00001"
-            value="0.0"
-            title="Vertical pan"
-          />
-          <input
-            id="dyOut"
-            class="numeric-input"
-            type="number"
-            min="-2"
-            max="2"
-            step="0.00001"
-            value="0.00"
-            title="Exact numeric pan Y"
-          />
-        </label>
-      </div>
-
-      <div class="row">
-        <label title="Higher values reveal more detail but increase render time">
-          Max Iter:
-          <input
-            id="maxIter"
-            type="range"
-            min="50"
-            max="5000"
-            step="50"
-            value="150"
-            title="Max escape/convergence iterations"
-          />
-          <input
-            id="maxIterOut"
-            class="numeric-input"
-            type="number"
-            min="50"
-            max="5000"
-            step="50"
-            value="150"
-            title="Exact numeric iteration count"
-          />
-        </label>
-      </div>
-
-      <div class="row">
-        <label title="Escape threshold (distance where the orbit is considered divergent)">
-          Escape R:
-          <input
-            id="escapeR"
-            type="range"
-            min="1"
-            max="20"
-            step="0.1"
-            value="4.0"
-            title="Escape radius"
-          />
-          <input
-            id="escapeROut"
-            class="numeric-input"
-            type="number"
-            min="1"
-            max="20"
-            step="0.1"
-            value="4.0"
-            title="Exact numeric escape radius"
-          />
-        </label>
-      </div>
-
-      <hr />
-
-      <div class="row">
-        <label title="Enable optional iterative coordinate warps, toggled as a bitmask">
-          Scale Mode:
-        </label>
-        <div class="scale-group">
-          <label title="Multiply coordinates by s">
-            <input type="checkbox" name="scaleMode" value="1" /> Multiply
-          </label>
-          <label title="Divide coordinates by s">
-            <input type="checkbox" name="scaleMode" value="2" /> Divide
-          </label>
-          <label title="Apply sin(s) warp">
-            <input type="checkbox" name="scaleMode" value="4" /> Sine
-          </label>
-          <label title="Apply tan(s) warp">
-            <input type="checkbox" name="scaleMode" value="8" /> Tangent
-          </label>
-          <label title="Apply cos(s) warp">
-            <input type="checkbox" name="scaleMode" value="16" /> Cosine
-          </label>
-          <label title="Exponential scaling">
-            <input type="checkbox" name="scaleMode" value="32" /> Exp-Zoom
-          </label>
-          <label title="Logarithmic shrink">
-            <input type="checkbox" name="scaleMode" value="64" /> Log-Shrink
-          </label>
-          <label title="Stretch X and squash Y">
-            <input type="checkbox" name="scaleMode" value="128" /> Aniso Warp
-          </label>
-          <label title="Rotate coordinates by s radians">
-            <input type="checkbox" name="scaleMode" value="256" /> Rotate
-          </label>
-          <label title="Twist radius/angle by s">
-            <input type="checkbox" name="scaleMode" value="512" /> Radial Twist
-          </label>
-          <label title="Hyperbolic warp">
-            <input type="checkbox" name="scaleMode" value="1024" /> HyperWarp
-          </label>
-          <label title="Hyperbolic radial warp">
-            <input type="checkbox" name="scaleMode" value="2048" /> RadialHyper
-          </label>
-          <label title="Add swirl proportional to s">
-            <input type="checkbox" name="scaleMode" value="4096" /> Swirl
-          </label>
-          <label title="Modular wrap">
-            <input type="checkbox" name="scaleMode" value="8192" /> Modular
-          </label>
-          <label title="Swap axes with scaling">
-            <input type="checkbox" name="scaleMode" value="16384" /> AxisSwap
-          </label>
-          <label title="Blend sin and multiply warps">
-            <input type="checkbox" name="scaleMode" value="32768" /> MixedWarp
-          </label>
-          <label title="Add jitter noise">
-            <input type="checkbox" name="scaleMode" value="65536" /> Jitter
-          </label>
-          <label title="Apply signed power warp">
-            <input type="checkbox" name="scaleMode" value="131072" /> PowerWarp
-          </label>
-          <label title="Smoothstep fade warp">
-            <input type="checkbox" name="scaleMode" value="262144" /> SmoothFade
+        <div class="row">
+          <label
+            class="control select"
+            title="Controls final canvas alpha compositing mode"
+          >
+            <span class="lbl">Alpha mode</span>
+            <select
+              id="alphaMode"
+              title="How transparency is applied to rendered pixels"
+            >
+              <option value="0">Opaque</option>
+              <option value="1">Fade out</option>
+              <option value="2">Reverse fade</option>
+            </select>
+            <span class="spacer"></span>
           </label>
         </div>
-      </div>
+      </details>
 
-      <div class="row">
-        <label title="Iteration-based parameter used by warp modes">
-          Gamma:
-          <input
-            id="gamma"
-            type="range"
-            min="-50"
-            max="50"
-            step="0.001"
-            value="1.0"
-            title="Gamma modifier"
-          />
-          <input
-            id="gammaOut"
-            class="numeric-input"
-            type="number"
-            min="-50"
-            max="50"
-            step="0.001"
-            value="1.0"
-            title="Exact numeric gamma"
-          />
-        </label>
-      </div>
+      <details class="section" open>
+        <summary>
+          <span class="section-title">Fractal</span>
+          <span class="section-badge" title="Core equation settings">core</span>
+        </summary>
 
-      <hr />
+        <div class="row">
+          <label
+            title="Select the fractal equation family"
+            class="control select"
+          >
+            <span class="lbl">Fractal</span>
+            <select id="fractalType" title="Choose the fractal formula (0-71)">
+              <option value="0">Mandelbrot</option>
+              <option value="1">Tricorn</option>
+              <option value="2">Burning Ship</option>
+              <option value="3">Perpendicular Mandelbrot</option>
+              <option value="4">Celtic</option>
+              <option value="5">Buffalo</option>
+              <option value="6">Phoenix</option>
+              <option value="7">Cubic Multibrot (z³ + c)</option>
+              <option value="8">Quartic Multibrot (z⁴ + c)</option>
+              <option value="9">Cosine</option>
+              <option value="10">Sine</option>
+              <option value="11">Heart</option>
+              <option value="12">Perpendicular Buffalo</option>
+              <option value="13">Spiral Mandelbrot</option>
+              <option value="14">Quintic Multibrot (z⁵ + c)</option>
+              <option value="15">Sextic Multibrot (z⁶ + c)</option>
+              <option value="16">Tangent (tan z + c)</option>
+              <option value="17">Exponential (exp z + c)</option>
+              <option value="18">Septic Multibrot (z⁷ + c)</option>
+              <option value="19">Octic Multibrot (z⁸ + c)</option>
+              <option value="20">Inverse Mandelbrot (1/z² + c)</option>
+              <option value="21">Burning Ship Deep Zoom</option>
+              <option value="22">Cubic Burning Ship (|z|³ + c)</option>
+              <option value="23">Quartic Burning Ship (|z|⁴ + c)</option>
+              <option value="24">Quintic Burning Ship (|z|⁵ + c)</option>
+              <option value="25">Hexic Burning Ship (|z|⁶ + c)</option>
+              <option value="26">Nova (Newton z³−1)</option>
+              <option value="27">Man-o-War</option>
+              <option value="28">Stretched Celtic Spiral</option>
+              <option value="29">Polar-Flame</option>
+              <option value="30">Inverse Cubic (1/z³ + c)</option>
+              <option value="31">Inverse Quartic (1/z⁴ + c)</option>
+              <option value="32">Inverse Quintic (1/z⁵ + c)</option>
+              <option value="33">Inverse Sextic (1/z⁶ + c)</option>
+              <option value="34">Inverse Septic (1/z⁷ + c)</option>
+              <option value="35">Inverse Octic (1/z⁸ + c)</option>
+              <option value="36">Inverse Burning Ship</option>
+              <option value="37">Inverse Tricorn</option>
+              <option value="38">Inverse Celtic</option>
+              <option value="39">Inverse Phoenix</option>
+              <option value="40">Tri-Nova</option>
+              <option value="41">Nova-Mandelbrot</option>
+              <option value="42">Nova 2 (inverse)</option>
+              <option value="43">Nova 2 variant</option>
+              <option value="44">Quartic-Nova</option>
+              <option value="45">Flower Nova</option>
+              <option value="46">Scatter-Nova</option>
+              <option value="47">Twisted-Flower Nova</option>
+              <option value="48">Lobed-Scatter Nova</option>
+              <option value="49">Hybrid-FlScatter Nova</option>
+              <option value="50">Fractional-Nova (p≈3.7)</option>
+              <option value="51">Kaleido-Nova</option>
+              <option value="52">Cross-Nova</option>
+              <option value="53">Mirror-Nova</option>
+              <option value="54">Spiro-Nova</option>
+              <option value="55">Vibrant-Nova</option>
+              <option value="56">Julia-Nova Hybrid</option>
+              <option value="57">Inverse-Spiral Nova</option>
+              <option value="58">Wavefront Nova</option>
+              <option value="59">Vortex Nova</option>
+              <option value="60">Sine Ring Nova</option>
+              <option value="61">Inverse-Spiral Nova 2</option>
+              <option value="62">Inverse-Vortex Nova</option>
+              <option value="63">Inverse Sine Ring Nova</option>
+              <option value="64">Inverse-Mirror Nova</option>
+              <option value="65">Inverse-Vibrant Nova</option>
+              <option value="66">Golden-Ratio Rational</option>
+              <option value="67">SinCos-Kernel</option>
+              <option value="68">Golden-Push-Pull</option>
+              <option value="69">Sinc-Kernel</option>
+              <option value="70">Bizarre Grid (set x/y to 1)</option>
+              <option value="71">Julia (use Pan X/Y)</option>
+            </select>
+            <input
+              id="fractalTypeOut"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="71"
+              step="1"
+              value="0"
+            />
+          </label>
+          <div class="hint">Julia uses Pan X and Pan Y as the constant.</div>
+        </div>
 
-      <div class="row">
-        <label title="Convergence tolerance for Newton-like fractals">
-          Epsilon:
-          <input
-            id="epsilon"
-            type="range"
-            min="0.000001"
-            max="0.01"
-            step="0.000001"
-            value="0.000001"
-            title="Convergence epsilon"
-          />
-          <input
-            id="epsilonOut"
-            class="numeric-input"
-            type="number"
-            min="0.000001"
-            max="0.01"
-            step="0.000001"
-            value="0.000001"
-            title="Exact numeric epsilon"
-          />
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control slider"
+            title="Control zoom scale (size of the complex plane window)"
+          >
+            <span class="lbl">Zoom</span>
+            <input
+              id="zoom"
+              type="range"
+              min="0.00000001"
+              max="10"
+              step="0.000001"
+              value="4.0"
+            />
+            <input
+              id="zoomOut"
+              class="numeric-input"
+              type="number"
+              min="0.00000001"
+              max="10"
+              step="0.000001"
+              value="4.00"
+            />
+          </label>
+          <div class="hint">Lower zoom = deeper zoom-in.</div>
+        </div>
 
-      <div class="row">
-        <label title="What field the threshold masking operates on">
-          Threshold basis:
-          <select id="thresholdBasis" title="Choose threshold basis">
-            <option value="0">Inner</option>
-            <option value="1">Outer</option>
-            <option value="2">Height (normalized)</option>
-          </select>
+        <div class="row">
+          <label
+            class="control slider"
+            title="Shift the view left/right in the complex plane"
+          >
+            <span class="lbl">Pan X</span>
+            <input
+              id="dx"
+              type="range"
+              min="-2"
+              max="2"
+              step="0.00001"
+              value="0.0"
+            />
+            <input
+              id="dxOut"
+              class="numeric-input"
+              type="number"
+              min="-2"
+              max="2"
+              step="0.00001"
+              value="0.00"
+            />
+          </label>
+        </div>
 
-          <input
-            id="thresholdBasisOut"
-            class="numeric-input"
-            type="number"
-            min="0"
-            max="2"
-            step="1"
-            value="0"
-            title="Numeric threshold basis"
-          />
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control slider"
+            title="Shift the view up/down in the complex plane"
+          >
+            <span class="lbl">Pan Y</span>
+            <input
+              id="dy"
+              type="range"
+              min="-2"
+              max="2"
+              step="0.00001"
+              value="0.0"
+            />
+            <input
+              id="dyOut"
+              class="numeric-input"
+              type="number"
+              min="-2"
+              max="2"
+              step="0.00001"
+              value="0.00"
+            />
+          </label>
+        </div>
 
-      <div class="row">
-        <label title="Lower clamp for threshold mask">
-          low
-          <input
-            id="lowThresh"
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value="0.00"
-            title="Lower threshold"
-          />
-          <input
-            id="lowThreshOut"
-            class="numeric-input"
-            type="number"
-            min="0"
-            max="1"
-            step="0.01"
-            value="0.00"
-            title="Exact numeric lower threshold"
-          />
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control slider"
+            title="Higher values reveal more detail but increase render time"
+          >
+            <span class="lbl">Max Iter</span>
+            <input
+              id="maxIter"
+              type="range"
+              min="50"
+              max="5000"
+              step="50"
+              value="150"
+            />
+            <input
+              id="maxIterOut"
+              class="numeric-input"
+              type="number"
+              min="50"
+              max="5000"
+              step="50"
+              value="150"
+            />
+          </label>
+        </div>
 
-      <div class="row">
-        <label title="Upper clamp for threshold mask">
-          high
-          <input
-            id="highThresh"
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value="1.00"
-            title="Upper threshold"
-          />
-          <input
-            id="highThreshOut"
-            class="numeric-input"
-            type="number"
-            min="0"
-            max="1"
-            step="0.01"
-            value="1.00"
-            title="Exact numeric upper threshold"
-          />
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control slider"
+            title="Escape threshold (distance where the orbit is considered divergent)"
+          >
+            <span class="lbl">Escape R</span>
+            <input
+              id="escapeR"
+              type="range"
+              min="1"
+              max="20"
+              step="0.1"
+              value="4.0"
+            />
+            <input
+              id="escapeROut"
+              class="numeric-input"
+              type="number"
+              min="1"
+              max="20"
+              step="0.1"
+              value="4.0"
+            />
+          </label>
+        </div>
 
-      <div class="row">
-        <label title="Controls final canvas alpha compositing mode">
-          Alpha mode:
-          <select id="alphaMode" title="How transparency is applied to rendered pixels">
-            <option value="0">0 - Opaque (no transparency)</option>
-            <option value="1">1 - Fade out</option>
-            <option value="2">2 - Reverse fade out</option>
-          </select>
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control check"
+            title="Toggle convergence-based termination for Newton or hybrid maps"
+          >
+            <input id="convergenceTest" type="checkbox" />
+            <span class="check-text">Convergence test</span>
+          </label>
+          <div class="hint">
+            Turn on for Newton-like fractals to stop when they settle on a root.
+          </div>
+        </div>
 
-      <div class="row">
-        <label title="Render output mode">
-          Render mode:
-          <select id="renderMode" title="Fractal rendering, slab view, or raw debug output">
-            <option value="fractal">Fractal</option>
-            <option value="slab">Slab</option>
-            <option value="raw">Raw</option>
-          </select>
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control select"
+            title="Whether the iteration should escape when diverging or converge toward a root"
+          >
+            <span class="lbl">Escape mode</span>
+            <select id="escapeMode" title="Divergence or convergence mode">
+              <option value="0">Converge</option>
+              <option value="1">Diverge</option>
+            </select>
+            <input
+              id="escapeModeOut"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="1"
+              step="1"
+              value="0"
+            />
+          </label>
+        </div>
 
-      <div class="row">
-        <label title="Toggle convergence-based termination for Newton or hybrid maps">
-          <input id="convergenceTest" type="checkbox" />
-          Convergence Test
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control slider"
+            title="Convergence tolerance for Newton-like fractals"
+          >
+            <span class="lbl">Epsilon</span>
+            <input
+              id="epsilon"
+              type="range"
+              min="0.000001"
+              max="0.01"
+              step="0.000001"
+              value="0.000001"
+            />
+            <input
+              id="epsilonOut"
+              class="numeric-input"
+              type="number"
+              min="0.000001"
+              max="0.01"
+              step="0.000001"
+              value="0.000001"
+            />
+          </label>
+        </div>
+      </details>
 
-      <div class="row">
-        <label title="Whether the iteration should escape when diverging or converge toward a root">
-          Escape Mode:
-          <select id="escapeMode" title="Divergence or convergence mode">
-            <option value="0">Converge</option>
-            <option value="1">Diverge</option>
-          </select>
-          <input
-            id="escapeModeOut"
-            class="numeric-input"
-            type="number"
-            min="0"
-            max="1"
-            step="1"
-            value="0"
-            title="Exact numeric escape mode"
-          />
-        </label>
-      </div>
+      <details class="section" open>
+        <summary>
+          <span class="section-title">Color</span>
+          <span class="section-badge" title="Palette + mapping">look</span>
+        </summary>
 
-      <hr />
+        <div class="row">
+          <label
+            class="control select"
+            title="Choose the color palette used for mapping iterations to RGB"
+          >
+            <span class="lbl">Palette</span>
+            <select
+              id="colorScheme"
+              title="Choose the color palette used for mapping iterations to RGB"
+            >
+              <option value="0">Violet-Cyan-White</option>
+              <option value="6">Grayscale</option>
+              <option value="1">Fire</option>
+              <option value="2">Ice</option>
+              <option value="3">Sunset</option>
+              <option value="4">Forest</option>
+              <option value="5">Neon</option>
+              <option value="7">Inferno</option>
+              <option value="8">Rainbow 360°</option>
+              <option value="9">Rainbow 720°</option>
+              <option value="10">Pastel Loop</option>
+              <option value="11">Viridis-ish</option>
+              <option value="12">Magma</option>
+              <option value="13">Plasma</option>
+              <option value="14">Cividis</option>
+              <option value="15">Ocean</option>
+              <option value="16">Midnight Blue</option>
+              <option value="17">Cool-Warm Diverge</option>
+              <option value="18">Rainbow 1080° (3 loops)</option>
+              <option value="19">Rainbow 1440° (4 loops)</option>
+              <option value="20">Pastel 5-loop</option>
+              <option value="21">Thermal</option>
+              <option value="22">Turbulent Wave</option>
+              <option value="23">Autumn</option>
+              <option value="24">Spring</option>
+              <option value="25">Summer</option>
+              <option value="26">Mono-loop (10× grayscale flicker)</option>
+              <option value="27">High-contrast Diverging</option>
+              <option value="28">Sine-wave Hue</option>
+              <option value="29">Sawtooth Loop (3 loops)</option>
+              <option value="30">Rainbow 2160° (6 loops)</option>
+              <option value="31">Triangle-wave 8 loops</option>
+              <option value="32">Exponential 12 loops</option>
+              <option value="33">Sawtooth 10 loops + offset</option>
+            </select>
+            <input
+              id="colorSchemeOut"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="33"
+              step="1"
+              value="0"
+            />
+          </label>
+        </div>
 
-      <div
-        class="row"
-        title="Enables multi-layer gamma-stepped stacks. Turning this ON auto-sets Displacement=None, Lighting OFF, and Render mode=Fractal."
-      >
-        <label>
-          <input type="checkbox" id="layerMode" />
-          Layer Mode (gamma-stepped stacks)
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control slider"
+            title="Shift the global hue of the palette (wraps the color wheel)"
+          >
+            <span class="lbl">Hue offset</span>
+            <input
+              id="hueOffset"
+              type="range"
+              min="-1"
+              max="1"
+              step="0.001"
+              value="0"
+            />
+            <input
+              id="hueOffsetOut"
+              class="numeric-input"
+              type="number"
+              min="-1"
+              max="1"
+              step="0.001"
+              value="0.00"
+            />
+          </label>
+        </div>
+      </details>
 
-      <div class="row">
-        <label title="Number of layers (only used when Layer Mode is enabled)">
-          Layers:
-          <input id="nLayers" type="range" min="1" max="128" step="1" value="1" />
-          <input
-            id="nLayersOut"
-            class="numeric-input"
-            type="number"
-            min="1"
-            max="128"
-            step="1"
-            value="1"
-          />
-        </label>
-      </div>
+      <details class="section">
+        <summary>
+          <span class="section-title">Warps</span>
+          <span
+            class="section-badge"
+            title="Ordered ops list. Duplicates allowed."
+            >ops</span
+          >
+        </summary>
 
-      <div class="row">
-        <label title="Gamma increment per layer: gamma(li) = gamma + layerGammaStep * li">
-          Gamma Step:
-          <input
-            id="layerGammaStep"
-            type="range"
-            min="-5"
-            max="5"
-            step="0.0001"
-            value="0.001"
-          />
-          <input
-            id="layerGammaStepOut"
-            class="numeric-input"
-            type="number"
-            min="-5"
-            max="5"
-            step="0.0001"
-            value="0.1"
-          />
-        </label>
-      </div>
+        <div class="row">
+          <div class="hint">
+            Build an ordered list of coordinate warps. Duplicates allowed. Only
+            the first 16 ops are used.
+          </div>
 
-      <div class="row">
-        <label title="World-space separation per layer for stacked rendering">
-          Layer Separation:
-          <input
-            id="layerSeparation"
-            type="range"
-            min="-10"
-            max="10"
-            step="0.001"
-            value="0.0"
-          />
-          <input
-            id="layerSeparationOut"
-            class="numeric-input"
-            type="number"
-            min="-10"
-            max="10"
-            step="0.001"
-            value="0.0"
-          />
-        </label>
-      </div>
+          <div class="scale-toolbar">
+            <select id="scaleOpPicker" title="Choose a warp op to add"></select>
 
-      <div class="row">
-        <label title="Enable radial bowl displacement for lighting/extrusion">
-          <input type="checkbox" id="bowlOn" />
-          Enable bowl
-        </label>
-      </div>
+            <button
+              id="scaleOpAdd"
+              type="button"
+              class="mini-btn"
+              title="Add the selected op to the list"
+            >
+              Add
+            </button>
 
-      <div class="row">
-        <label title="Depth of the bowl displacement curve">
-          Bowl depth
-          <input
-            type="range"
-            id="bowlDepth"
-            min="0"
-            max="3.14"
-            step="0.01"
-            value="0.25"
-            title="Bowl depth"
-          />
-          <input
-            id="bowlDepthOut"
-            class="numeric-input"
-            type="number"
-            min="0"
-            max="3.14"
-            step="0.01"
-            value="0.25"
-            title="Exact numeric bowl depth"
-          />
-        </label>
-      </div>
+            <button
+              id="scaleOpClear"
+              type="button"
+              class="mini-btn subtle"
+              title="Clear the op list"
+            >
+              Clear
+            </button>
 
-      <div class="row">
-        <label title="Scale the on-screen quad used for rendering (for multi-pass / stacked zoom modes)">
-          Quad Scale
-          <input
-            id="quadScale"
-            type="range"
-            min="1"
-            max="1000"
-            step="1"
-            value="1"
-            title="Quad scale factor"
-          />
-          <input
-            id="quadScaleOut"
-            class="numeric-input"
-            type="number"
-            min="1"
-            max="1000"
-            step="1"
-            value="1"
-            title="Exact numeric quad scale"
-          />
-        </label>
-      </div>
+            <span
+              id="scaleOpsCount"
+              class="pill"
+              title="How many ops are currently in the list (max 16 used)"
+            >
+              0/16
+            </span>
 
-      <div class="row">
-        <label title="Choose the type of height displacement applied to lighting / extrusion">
-          Displacement mode
-          <select id="dispMode" title="Displacement height mapping mode">
-            <option value="0">None</option>
-            <option value="1">Max Peak</option>
-            <option value="2">Min Peak</option>
-            <option value="3">Max Peak Log</option>
-            <option value="4">Min Peak Log</option>
-            <option value="5">Max Peak Pow</option>
-            <option value="6">Min Peak Pow</option>
-          </select>
-        </label>
-      </div>
+            <input
+              id="scaleOpsOut"
+              class="numeric-input mono"
+              type="text"
+              value=""
+              readonly
+              title="Current op list (codes)"
+            />
+          </div>
 
-      <hr />
+          <div
+            id="scaleOpsList"
+            class="scale-ops-list"
+            aria-label="Selected scale ops"
+          ></div>
+        </div>
 
-      <div class="row">
-        <label title="Resolution of the displacement sampling grid">
-          Grid Divs:
-          <input
-            id="gridDivs"
-            type="range"
-            min="64"
-            max="4096"
-            step="64"
-            value="256"
-            title="Displacement sampling grid resolution"
-          />
-          <input
-            id="gridDivsOut"
-            class="numeric-input"
-            type="number"
-            min="64"
-            max="4096"
-            step="64"
-            value="256"
-            title="Exact numeric grid divs"
-          />
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control slider"
+            title="Iteration-based parameter used by warp modes"
+          >
+            <span class="lbl">Gamma</span>
+            <input
+              id="gamma"
+              type="range"
+              min="-50"
+              max="50"
+              step="0.001"
+              value="1.0"
+            />
+            <input
+              id="gammaOut"
+              class="numeric-input"
+              type="number"
+              min="-50"
+              max="50"
+              step="0.001"
+              value="1.0"
+            />
+          </label>
+          <div class="hint">
+            Warp intensity often lives here. Try small steps first.
+          </div>
+        </div>
+      </details>
 
-      <div class="row">
-        <label title="Amplitude of displacement applied to lighting">
-          Displacement amp
-          <input
-            type="range"
-            id="dispAmp"
-            min="0"
-            max="2"
-            step="0.01"
-            value="0.15"
-            title="Displacement amplitude"
-          />
-          <input
-            id="dispAmpOut"
-            class="numeric-input"
-            type="number"
-            min="0"
-            max="2"
-            step="0.01"
-            value="0.15"
-            title="Exact numeric displacement amplitude"
-          />
-        </label>
-      </div>
+      <details class="section">
+        <summary>
+          <span class="section-title">Threshold + Mask</span>
+          <span class="section-badge" title="Clamp and mask outputs">mask</span>
+        </summary>
 
-      <div class="row">
-        <label title="Curve shaping for displacement height response">
-          Disp curve
-          <input
-            type="range"
-            id="dispCurve"
-            min="0.001"
-            max="100"
-            step="0.001"
-            value="3"
-            title="Displacement curve exponent"
-          />
-          <input
-            id="dispCurveOut"
-            class="numeric-input"
-            type="number"
-            min="0.001"
-            max="100"
-            step="0.001"
-            value="3"
-            title="Exact numeric curve exponent"
-          />
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control select"
+            title="What field the threshold masking operates on"
+          >
+            <span class="lbl">Basis</span>
+            <select id="thresholdBasis" title="Choose threshold basis">
+              <option value="0">Inner</option>
+              <option value="1">Outer</option>
+              <option value="2">Height (normalized)</option>
+            </select>
+            <input
+              id="thresholdBasisOut"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="2"
+              step="1"
+              value="0"
+            />
+          </label>
+        </div>
 
-      <hr />
+        <div class="row">
+          <label class="control slider" title="Lower clamp for threshold mask">
+            <span class="lbl">Low</span>
+            <input
+              id="lowThresh"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.00"
+            />
+            <input
+              id="lowThreshOut"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.00"
+            />
+          </label>
+        </div>
 
-      <div class="row">
-        <label class="slider-row" title="Enable a max-slope clamp to prevent artifacts">
-          <span>Disp limit ON</span>
-          <input id="dispLimitOn" type="checkbox" />
-        </label>
-      </div>
+        <div class="row">
+          <label class="control slider" title="Upper clamp for threshold mask">
+            <span class="lbl">High</span>
+            <input
+              id="highThresh"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="1.00"
+            />
+            <input
+              id="highThreshOut"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="1"
+              step="0.01"
+              value="1.00"
+            />
+          </label>
+        </div>
+      </details>
 
-      <div class="row">
-        <label class="slider-row" title="Maximum surface slope allowed (degrees)">
-          <span>Max Slope (deg)</span>
-          <input
-            id="slopeLimit"
-            type="range"
-            min="0"
-            max="91"
-            step="0.001"
-            value="45"
-            title="Maximum allowed displacement slope"
-          />
-          <input
-            id="slopeLimitOut"
-            class="numeric-input"
-            type="number"
-            min="0"
-            max="91"
-            step="0.001"
-            value="45"
-            title="Exact numeric slope limit"
-          />
-        </label>
-      </div>
+      <details class="section">
+        <summary>
+          <span class="section-title">Layer Stack</span>
+          <span class="section-badge" title="Multi-layer gamma-stepped stacks"
+            >stack</span
+          >
+        </summary>
 
-      <div class="row">
-        <label class="slider-row" title="Maximum height discontinuity allowed (normalized units)">
-          <span>Max Wall Height (norm)</span>
-          <input
-            id="wallJump"
-            type="range"
-            min="0"
-            max="1"
-            step="0.001"
-            value="0.05"
-            title="Wall height clamp"
-          />
-          <input
-            id="wallJumpOut"
-            class="numeric-input"
-            type="number"
-            min="0"
-            max="1"
-            step="0.001"
-            value="0.05"
-            title="Exact numeric height clamp"
-          />
-        </label>
-      </div>
+        <div
+          class="row"
+          title="Enables multi-layer gamma-stepped stacks. Turning this ON auto-sets Displacement=None, Lighting OFF, and Render mode=Fractal."
+        >
+          <label class="control check">
+            <input type="checkbox" id="layerMode" />
+            <span class="check-text">Layer mode (gamma-stepped stacks)</span>
+          </label>
+          <div class="hint">
+            Good for stacked looks. It disables SDF displacement, and lighting (for now).
+          </div>
+        </div>
 
-      <hr />
+        <div class="row">
+          <label
+            class="control slider"
+            title="Number of layers (only used when Layer Mode is enabled)"
+          >
+            <span class="lbl">Layers</span>
+            <input
+              id="nLayers"
+              type="range"
+              min="1"
+              max="128"
+              step="1"
+              value="1"
+            />
+            <input
+              id="nLayersOut"
+              class="numeric-input"
+              type="number"
+              min="1"
+              max="128"
+              step="1"
+              value="1"
+            />
+          </label>
+        </div>
 
-      <div class="row">
-        <label title="Enable Phong-style shading based on displacement height">
-          Lighting ON
-          <input id="lightingOn" type="checkbox" />
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control slider"
+            title="Gamma increment per layer: gamma(li) = gamma + layerGammaStep * li"
+          >
+            <span class="lbl">Gamma step</span>
+            <input
+              id="layerGammaStep"
+              type="range"
+              min="-5"
+              max="5"
+              step="0.0001"
+              value="0.001"
+            />
+            <input
+              id="layerGammaStepOut"
+              class="numeric-input"
+              type="number"
+              min="-5"
+              max="5"
+              step="0.0001"
+              value="0.1"
+            />
+          </label>
+        </div>
 
-      <div class="row">
-        <label title="Light position X coordinate">
-          Light X
-          <input
-            id="lightX"
-            type="range"
-            min="-50"
-            max="50"
-            step="0.1"
-            value="0"
-            title="Light X coordinate"
-          />
-          <input
-            id="lightXOut"
-            class="numeric-input"
-            type="number"
-            min="-50"
-            max="50"
-            step="0.1"
-            value="0"
-            title="Numeric light X"
-          />
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control slider"
+            title="World-space separation per layer for stacked rendering"
+          >
+            <span class="lbl">Separation</span>
+            <input
+              id="layerSeparation"
+              type="range"
+              min="-10"
+              max="10"
+              step="0.001"
+              value="0.0"
+            />
+            <input
+              id="layerSeparationOut"
+              class="numeric-input"
+              type="number"
+              min="-10"
+              max="10"
+              step="0.001"
+              value="0.0"
+            />
+          </label>
+        </div>
+      </details>
 
-      <div class="row">
-        <label title="Light position Y coordinate">
-          Light Y
-          <input
-            id="lightY"
-            type="range"
-            min="-50"
-            max="50"
-            step="0.1"
-            value="0"
-            title="Light Y coordinate"
-          />
-          <input
-            id="lightYOut"
-            class="numeric-input"
-            type="number"
-            min="-50"
-            max="50"
-            step="0.1"
-            value="0"
-            title="Numeric light Y"
-          />
-        </label>
-      </div>
+      <details class="section">
+        <summary>
+          <span class="section-title">Displacement + Lighting</span>
+          <span class="section-badge" title="SDF and shading">3d</span>
+        </summary>
 
-      <div class="row">
-        <label title="Light position Z coordinate (height)">
-          Light Z
-          <input
-            id="lightZ"
-            type="range"
-            min="-50"
-            max="50"
-            step="0.1"
-            value="50"
-            title="Light Z coordinate"
-          />
-          <input
-            id="lightZOut"
-            class="numeric-input"
-            type="number"
-            min="-50"
-            max="50"
-            step="0.1"
-            value="50"
-            title="Numeric light Z"
-          />
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control check"
+            title="Enable radial bowl displacement for lighting/extrusion"
+          >
+            <input type="checkbox" id="bowlOn" />
+            <span class="check-text">Enable bowl</span>
+          </label>
+        </div>
 
-      <div class="row">
-        <label title="Specular exponent controlling shininess">
-          Spec Power (shininess)
-          <input
-            id="specPower"
-            type="range"
-            min="1"
-            max="128"
-            step="1"
-            value="32"
-            title="Specular highlight power"
-          />
-          <input
-            id="specPowerOut"
-            class="numeric-input"
-            type="number"
-            min="1"
-            max="128"
-            step="1"
-            value="32"
-            title="Exact numeric specular power"
-          />
-        </label>
-      </div>
+        <div class="row">
+          <label
+            class="control slider"
+            title="Depth of the bowl displacement curve"
+          >
+            <span class="lbl">Bowl depth</span>
+            <input
+              type="range"
+              id="bowlDepth"
+              min="0"
+              max="3.14"
+              step="0.01"
+              value="0.25"
+            />
+            <input
+              id="bowlDepthOut"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="3.14"
+              step="0.01"
+              value="0.25"
+            />
+          </label>
+        </div>
 
-      <div class="row" style="display: none">
-        <label>
-          Max Pixels/Split:
-          <input
-            id="splitCount"
-            type="number"
-            step="100000"
-            min="100000"
-            value="8000000"
-          />
-          <input
-            id="splitCountOut"
-            class="numeric-input"
-            type="number"
-            step="100000"
-            min="100000"
-            value="8000000"
-          />
-        </label>
+        <div class="row">
+          <label
+            class="control slider"
+            title="Scale the on-screen quad used for rendering (for multi-pass / stacked zoom modes)"
+          >
+            <span class="lbl">Quad scale</span>
+            <input
+              id="quadScale"
+              type="range"
+              min="1"
+              max="1000"
+              step="1"
+              value="1"
+            />
+            <input
+              id="quadScaleOut"
+              class="numeric-input"
+              type="number"
+              min="1"
+              max="1000"
+              step="1"
+              value="1"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label
+            class="control select"
+            title="Choose the type of height displacement applied to lighting / extrusion"
+          >
+            <span class="lbl">Disp mode</span>
+            <select id="dispMode" title="Displacement height mapping mode">
+              <option value="0">None</option>
+              <option value="1">Max Peak</option>
+              <option value="2">Min Peak</option>
+              <option value="3">Max Peak Log</option>
+              <option value="4">Min Peak Log</option>
+              <option value="5">Max Peak Pow</option>
+              <option value="6">Min Peak Pow</option>
+            </select>
+            <span class="spacer"></span>
+          </label>
+          <div class="hint">
+            Displacement and lighting require SDF and will cost extra GPU time.
+          </div>
+        </div>
+
+        <div class="row">
+          <label
+            class="control slider"
+            title="Resolution of the displacement sampling grid"
+          >
+            <span class="lbl">Grid divs</span>
+            <input
+              id="gridDivs"
+              type="range"
+              min="64"
+              max="4096"
+              step="64"
+              value="256"
+            />
+            <input
+              id="gridDivsOut"
+              class="numeric-input"
+              type="number"
+              min="64"
+              max="4096"
+              step="64"
+              value="256"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label
+            class="control slider"
+            title="Amplitude of displacement applied to lighting"
+          >
+            <span class="lbl">Disp amp</span>
+            <input
+              type="range"
+              id="dispAmp"
+              min="0"
+              max="2"
+              step="0.01"
+              value="0.15"
+            />
+            <input
+              id="dispAmpOut"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="2"
+              step="0.01"
+              value="0.15"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label
+            class="control slider"
+            title="Curve shaping for displacement height response"
+          >
+            <span class="lbl">Disp curve</span>
+            <input
+              type="range"
+              id="dispCurve"
+              min="0.001"
+              max="100"
+              step="0.001"
+              value="3"
+            />
+            <input
+              id="dispCurveOut"
+              class="numeric-input"
+              type="number"
+              min="0.001"
+              max="100"
+              step="0.001"
+              value="3"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label
+            class="control check"
+            title="Enable a max-slope clamp to prevent artifacts"
+          >
+            <input id="dispLimitOn" type="checkbox" />
+            <span class="check-text">Disp limit</span>
+          </label>
+        </div>
+
+        <div class="row">
+          <label
+            class="control slider"
+            title="Maximum surface slope allowed (degrees)"
+          >
+            <span class="lbl">Max slope</span>
+            <input
+              id="slopeLimit"
+              type="range"
+              min="0"
+              max="91"
+              step="0.001"
+              value="45"
+            />
+            <input
+              id="slopeLimitOut"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="91"
+              step="0.001"
+              value="45"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label
+            class="control slider"
+            title="Maximum height discontinuity allowed (normalized units)"
+          >
+            <span class="lbl">Wall clamp</span>
+            <input
+              id="wallJump"
+              type="range"
+              min="0"
+              max="1"
+              step="0.001"
+              value="0.05"
+            />
+            <input
+              id="wallJumpOut"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="1"
+              step="0.001"
+              value="0.05"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label
+            class="control check"
+            title="Enable Phong-style shading based on displacement height"
+          >
+            <input id="lightingOn" type="checkbox" />
+            <span class="check-text">Lighting</span>
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="control slider" title="Light position X coordinate">
+            <span class="lbl">Light X</span>
+            <input
+              id="lightX"
+              type="range"
+              min="-50"
+              max="50"
+              step="0.1"
+              value="0"
+            />
+            <input
+              id="lightXOut"
+              class="numeric-input"
+              type="number"
+              min="-50"
+              max="50"
+              step="0.1"
+              value="0"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="control slider" title="Light position Y coordinate">
+            <span class="lbl">Light Y</span>
+            <input
+              id="lightY"
+              type="range"
+              min="-50"
+              max="50"
+              step="0.1"
+              value="0"
+            />
+            <input
+              id="lightYOut"
+              class="numeric-input"
+              type="number"
+              min="-50"
+              max="50"
+              step="0.1"
+              value="0"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label
+            class="control slider"
+            title="Light position Z coordinate (height)"
+          >
+            <span class="lbl">Light Z</span>
+            <input
+              id="lightZ"
+              type="range"
+              min="-50"
+              max="50"
+              step="0.1"
+              value="50"
+            />
+            <input
+              id="lightZOut"
+              class="numeric-input"
+              type="number"
+              min="-50"
+              max="50"
+              step="0.1"
+              value="50"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label
+            class="control slider"
+            title="Specular exponent controlling shininess"
+          >
+            <span class="lbl">Spec power</span>
+            <input
+              id="specPower"
+              type="range"
+              min="1"
+              max="128"
+              step="1"
+              value="32"
+            />
+            <input
+              id="specPowerOut"
+              class="numeric-input"
+              type="number"
+              min="1"
+              max="128"
+              step="1"
+              value="32"
+            />
+          </label>
+        </div>
+      </details>
+
+      <details class="section">
+        <summary>
+          <span class="section-title">Advanced</span>
+          <span class="section-badge" title="Mostly for debugging">dbg</span>
+        </summary>
+
+        <div class="row" style="display: none">
+          <label class="control slider">
+            <span class="lbl">zMin</span>
+            <input id="zMin" type="number" step="0.1" value="0.0" />
+            <input
+              id="zMinOut"
+              class="numeric-input"
+              type="number"
+              step="0.1"
+              value="0.0"
+            />
+          </label>
+        </div>
+
+        <div class="row" style="display: none">
+          <label class="control slider">
+            <span class="lbl">dz</span>
+            <input id="dz" type="number" step="0.01" value="0.2" />
+            <input
+              id="dzOut"
+              class="numeric-input"
+              type="number"
+              step="0.01"
+              value="0.2"
+            />
+          </label>
+        </div>
+
+        <div class="row" style="display: none">
+          <label class="control slider">
+            <span class="lbl">Split max</span>
+            <input
+              id="splitCount"
+              type="number"
+              step="100000"
+              min="100000"
+              value="8000000"
+            />
+            <input
+              id="splitCountOut"
+              class="numeric-input"
+              type="number"
+              step="100000"
+              min="100000"
+              value="8000000"
+            />
+          </label>
+        </div>
+      </details>
+
+      <div class="ui-footer">
+        <div class="kbd-line"><span class="kbd">WASD</span> move</div>
+        <div class="kbd-line">
+          <span class="kbd">Space</span>/<span class="kbd">C</span> up/down
+        </div>
+        <div class="kbd-line">
+          <span class="kbd">Shift</span> fast,
+          <span class="kbd">Ctrl</span> slow
+        </div>
       </div>
     </div>
-  </div>
+  </aside>
 </div>

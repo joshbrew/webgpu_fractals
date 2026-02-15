@@ -143,7 +143,6 @@ export const initUI = () => {
 
     layerSeparation: "worldOffset",
 
-    scaleMode: "scaleMode",
     renderMode: "renderMode",
     colorScheme: "scheme",
     layerMode: "layerMode",
@@ -275,34 +274,6 @@ export const initUI = () => {
     return cb;
   }
 
-  function setupMaskGroup(name, initialMask, onChange) {
-    const boxes = Array.from(document.querySelectorAll(`input[name="${name}"]`));
-    if (!boxes.length) return null;
-
-    function readMask() {
-      let m = 0;
-      for (const b of boxes) {
-        if (b.checked) m |= parseInt(b.value, 10) || 0;
-      }
-      return m >>> 0;
-    }
-
-    function writeMask(mask) {
-      for (const b of boxes) {
-        const bit = parseInt(b.value, 10) || 0;
-        b.checked = !!(mask & bit);
-      }
-    }
-
-    writeMask(Number(initialMask) >>> 0);
-
-    const handler = () => onChange(readMask());
-    for (const b of boxes) b.addEventListener("change", handler);
-
-    onChange(readMask());
-    return { readMask, writeMask, elements: boxes };
-  }
-
   function setDisabled(ids, disabled) {
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -428,6 +399,253 @@ export const initUI = () => {
     }
   }
 
+  const SCALE_OP_DEFS = [
+    { code: 1, name: "Multiply", bit: 1 },
+    { code: 2, name: "Divide", bit: 2 },
+    { code: 3, name: "Sine", bit: 4 },
+    { code: 4, name: "Tangent", bit: 8 },
+    { code: 5, name: "Cosine", bit: 16 },
+    { code: 6, name: "Exp-Zoom", bit: 32 },
+    { code: 7, name: "Log-Shrink", bit: 64 },
+    { code: 8, name: "Aniso Warp", bit: 128 },
+    { code: 9, name: "Rotate", bit: 256 },
+    { code: 10, name: "Radial Twist", bit: 512 },
+    { code: 11, name: "HyperWarp", bit: 1024 },
+    { code: 12, name: "RadialHyper", bit: 2048 },
+    { code: 13, name: "Swirl", bit: 4096 },
+    { code: 14, name: "Modular", bit: 8192 },
+    { code: 15, name: "AxisSwap", bit: 16384 },
+    { code: 16, name: "MixedWarp", bit: 32768 },
+    { code: 17, name: "Jitter", bit: 65536 },
+    { code: 18, name: "PowerWarp", bit: 131072 },
+    { code: 19, name: "SmoothFade", bit: 262144 },
+  ];
+
+  const _SCALE_OP_BY_CODE = new Map(SCALE_OP_DEFS.map((d) => [d.code, d]));
+  const _SCALE_OP_BY_KEY = new Map(
+    SCALE_OP_DEFS.map((d) => [String(d.name).trim().toLowerCase(), d]),
+  );
+
+  function _normOpCode(v) {
+    if (typeof v === "number" && Number.isFinite(v)) {
+      const n = v | 0;
+      return _SCALE_OP_BY_CODE.has(n) ? n : null;
+    }
+
+    if (typeof v === "string") {
+      const s = v.trim();
+      if (!s) return null;
+
+      const n = Number(s);
+      if (Number.isFinite(n)) {
+        const nn = n | 0;
+        return _SCALE_OP_BY_CODE.has(nn) ? nn : null;
+      }
+
+      const k = s.toLowerCase();
+      const def = _SCALE_OP_BY_KEY.get(k);
+      return def ? def.code : null;
+    }
+
+    return null;
+  }
+
+  function _maskToOps(mask) {
+    const m = (mask >>> 0) | 0;
+    const out = [];
+    for (const d of SCALE_OP_DEFS) {
+      if (m & d.bit) out.push(d.code);
+    }
+    return out;
+  }
+
+  function _opsToMask(ops) {
+    let m = 0;
+    for (let i = 0; i < ops.length; ++i) {
+      const c = ops[i] | 0;
+      const def = _SCALE_OP_BY_CODE.get(c);
+      if (def) m |= def.bit;
+    }
+    return m >>> 0;
+  }
+
+  function _deriveInitialOpsFromState(ps) {
+    const raw = ps?.scaleOps;
+    if (Array.isArray(raw)) {
+      const out = [];
+      for (let i = 0; i < raw.length; ++i) {
+        const c = _normOpCode(raw[i]);
+        if (c != null) out.push(c);
+      }
+      return out;
+    }
+
+    const mask = Number(ps?.scaleMode);
+    if (Number.isFinite(mask) && mask) {
+      return _maskToOps(mask >>> 0);
+    }
+
+    return [];
+  }
+
+  function setupScaleOpsBuilder() {
+    const picker = document.getElementById("scaleOpPicker");
+    const addBtn = document.getElementById("scaleOpAdd");
+    const clearBtn = document.getElementById("scaleOpClear");
+    const list = document.getElementById("scaleOpsList");
+    const out = document.getElementById("scaleOpsOut");
+    const count = document.getElementById("scaleOpsCount");
+    if (!picker || !addBtn || !list) return null;
+
+    picker.innerHTML = "";
+    for (const d of SCALE_OP_DEFS) {
+      const opt = document.createElement("option");
+      opt.value = String(d.code);
+      opt.textContent = `${d.code} - ${d.name}`;
+      picker.appendChild(opt);
+    }
+
+    let ops = _deriveInitialOpsFromState(renderGlobals.paramsState);
+    const MAX_OPS = 16;
+
+    function _clampOps(a) {
+      const out = [];
+      for (let i = 0; i < a.length && out.length < MAX_OPS; ++i) {
+        const c = _normOpCode(a[i]);
+        if (c != null) out.push(c);
+      }
+      return out;
+    }
+
+    function _syncOut() {
+      if (out) {
+        try {
+          out.value = ops.join(",");
+        } catch {}
+      }
+      if (count) {
+        count.textContent = `${ops.length}/${MAX_OPS}`;
+      }
+      addBtn.disabled = ops.length >= MAX_OPS;
+    }
+
+    function _commit() {
+      const mask = _opsToMask(ops);
+      S({ scaleOps: ops.slice(), scaleMode: mask });
+    }
+
+    function _makeItem(i, code) {
+      const def = _SCALE_OP_BY_CODE.get(code);
+      const name = def ? def.name : `Op ${code}`;
+
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.alignItems = "center";
+      row.style.gap = "6px";
+      row.style.padding = "4px 6px";
+      row.style.border = "1px solid rgba(255,255,255,0.15)";
+      row.style.borderRadius = "6px";
+
+      const label = document.createElement("div");
+      label.style.flex = "1 1 auto";
+      label.textContent = `${i + 1}. ${name} (${code})`;
+
+      const up = document.createElement("button");
+      up.type = "button";
+      up.textContent = "Up";
+      up.dataset.act = "up";
+      up.dataset.idx = String(i);
+      up.disabled = i === 0;
+
+      const down = document.createElement("button");
+      down.type = "button";
+      down.textContent = "Down";
+      down.dataset.act = "down";
+      down.dataset.idx = String(i);
+      down.disabled = i === ops.length - 1;
+
+      const del = document.createElement("button");
+      del.type = "button";
+      del.textContent = "Remove";
+      del.dataset.act = "del";
+      del.dataset.idx = String(i);
+
+      row.appendChild(label);
+      row.appendChild(up);
+      row.appendChild(down);
+      row.appendChild(del);
+
+      return row;
+    }
+
+    function _render() {
+      list.innerHTML = "";
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < ops.length; ++i) {
+        frag.appendChild(_makeItem(i, ops[i]));
+      }
+      list.appendChild(frag);
+    }
+
+    function _setOps(nextOps, doCommit = true) {
+      ops = _clampOps(nextOps || []);
+      _syncOut();
+      _render();
+      if (doCommit) _commit();
+    }
+
+    addBtn.addEventListener("click", () => {
+      const c = _normOpCode(picker.value);
+      if (c == null) return;
+      if (ops.length >= MAX_OPS) return;
+      _setOps([...ops, c]);
+    });
+
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        _setOps([]);
+      });
+    }
+
+    list.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!t || typeof t !== "object") return;
+
+      const act = t.dataset?.act;
+      const idx = Number(t.dataset?.idx);
+      if (!act || !Number.isFinite(idx)) return;
+      const i = idx | 0;
+      if (i < 0 || i >= ops.length) return;
+
+      if (act === "del") {
+        const next = ops.slice();
+        next.splice(i, 1);
+        _setOps(next);
+        return;
+      }
+
+      if (act === "up" && i > 0) {
+        const next = ops.slice();
+        const tmp = next[i - 1];
+        next[i - 1] = next[i];
+        next[i] = tmp;
+        _setOps(next);
+        return;
+      }
+
+      if (act === "down" && i + 1 < ops.length) {
+        const next = ops.slice();
+        const tmp = next[i + 1];
+        next[i + 1] = next[i];
+        next[i] = tmp;
+        _setOps(next);
+      }
+    });
+
+    _setOps(ops, true);
+    return { getOps: () => ops.slice(), setOps: (a) => _setOps(a) };
+  }
+
   setupSlider("gridSize", (v) => S({ gridSize: Math.floor(v) }));
 
   setupSlider("splitCount", (v) => {
@@ -471,6 +689,8 @@ export const initUI = () => {
   setupSelect("escapeMode", (v) => S({ escapeMode: +v }));
   setupCheckbox("convergenceTest", (v) => S({ convergenceTest: v }));
   setupSelect("colorScheme", (v) => S({ scheme: +v }));
+
+  setupScaleOpsBuilder();
 
   setupSelect("dispMode", (v) => S({ dispMode: +v }));
   setupSlider("dispAmp", (v) => S({ dispAmp: v }));
@@ -526,10 +746,6 @@ export const initUI = () => {
 
   setupSelect("renderMode", (v) => {
     applyRenderModeUI(v);
-  });
-
-  setupMaskGroup("scaleMode", renderGlobals.paramsState.scaleMode ?? 0, (mask) => {
-    S({ scaleMode: mask >>> 0 });
   });
 
   setupSelect("fieldMode", (v) => S({ fieldMode: +v }));

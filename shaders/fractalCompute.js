@@ -1,3 +1,4 @@
+// shaders/fractalCompute.js
 // fractalTileComputeGPU.js
 import computeWGSL from "./fractalCompute.wgsl";
 
@@ -7,7 +8,8 @@ import computeWGSL from "./fractalCompute.wgsl";
  * @property {number} splitCount
  * @property {number} maxIter
  * @property {number} fractalType
- * @property {number|string|Array<string|number>|Object<string,boolean>} scaleMode
+ * @property {number|string|Array<string|number>|Object<string,boolean>} [scaleOps]   // up to 16 ops, 0 ends
+ * @property {number|string|Array<string|number>|Object<string,boolean>} [scaleMode] // alias for scaleOps
  * @property {number} zoom
  * @property {number} dx
  * @property {number} dy
@@ -32,7 +34,7 @@ import computeWGSL from "./fractalCompute.wgsl";
  */
 
 /* ------------------------------------------------------------------ */
-/*  Fractal registry & SCALE helpers                                  */
+/*  Fractal registry                                                  */
 /* ------------------------------------------------------------------ */
 
 export const FRACTALS = {
@@ -110,56 +112,94 @@ export const FRACTALS = {
   Julia: 71,
 };
 
-export const SCALE = {
+/* ------------------------------------------------------------------ */
+/*  Transform ops (ordered list, 0 ends)                              */
+/* ------------------------------------------------------------------ */
+
+export const SCALE_OPS = {
+  End: 0,
   Multiply: 1,
   Divide: 2,
-  Sine: 4,
-  Tangent: 8,
-  Cosine: 16,
-  ExpZoom: 32,
-  LogShrink: 64,
-  AnisoWarp: 128,
-  Rotate: 256,
-  RadialTwist: 512,
-  HyperWarp: 1024,
-  RadialHyper: 2048,
-  Swirl: 4096,
-  Modular: 8192,
-  AxisSwap: 16384,
-  MixedWarp: 32768,
-  Jitter: 65536,
-  PowerWarp: 131072,
-  SmoothFade: 262144,
+  Sine: 3,
+  Tangent: 4,
+  Cosine: 5,
+  ExpZoom: 6,
+  LogShrink: 7,
+  AnisoWarp: 8,
+  Rotate: 9,
+  RadialTwist: 10,
+  HyperWarp: 11,
+  RadialHyper: 12,
+  Swirl: 13,
+  Modular: 14,
+  AxisSwap: 15,
+  MixedWarp: 16,
+  Jitter: 17,
+  PowerWarp: 18,
+  SmoothFade: 19,
 };
 
-export function packScaleMask(mask = 0) {
-  if (typeof mask === "number") return mask >>> 0;
+export const SCALE = SCALE_OPS;
 
-  let bits = 0;
-  if (typeof mask === "string") {
-    mask
-      .trim()
-      .split(/[|,+\s]+/)
-      .forEach((tok) => {
-        if (!tok) return;
-        const val = SCALE[tok] ?? parseInt(tok, 10);
-        if (Number.isFinite(val)) bits |= val;
-      });
-    return bits >>> 0;
+function _pushOp(out, idxRef, v) {
+  let i = idxRef.i | 0;
+  if (i >= 16) return idxRef;
+
+  const n = v == null ? 0 : (v >>> 0);
+  out[i] = n >>> 0;
+  idxRef.i = i + 1;
+  return idxRef;
+}
+
+function _addOpsFromAny(out, idxRef, ops) {
+  if (idxRef.i >= 16) return idxRef;
+  if (ops == null || ops === false) return idxRef;
+
+  if (typeof ops === "number") {
+    return _pushOp(out, idxRef, ops);
   }
 
-  if (Array.isArray(mask)) {
-    for (const m of mask) bits |= packScaleMask(m);
-    return bits >>> 0;
+  if (typeof ops === "string") {
+    const toks = ops.trim().split(/[|,+\s]+/);
+    for (let t = 0; t < toks.length && idxRef.i < 16; ++t) {
+      const tok = toks[t];
+      if (!tok) continue;
+      const val = SCALE_OPS[tok] ?? parseInt(tok, 10);
+      if (Number.isFinite(val)) _pushOp(out, idxRef, val);
+    }
+    return idxRef;
   }
 
-  if (mask && typeof mask === "object") {
-    for (const k in mask) {
-      if (mask[k]) bits |= packScaleMask(k);
+  if (Array.isArray(ops)) {
+    for (let k = 0; k < ops.length && idxRef.i < 16; ++k) {
+      idxRef = _addOpsFromAny(out, idxRef, ops[k]);
+    }
+    return idxRef;
+  }
+
+  if (typeof ops === "object") {
+    const keys = Object.keys(ops);
+    for (let k = 0; k < keys.length && idxRef.i < 16; ++k) {
+      const key = keys[k];
+      if (!ops[key]) continue;
+      const val = SCALE_OPS[key] ?? parseInt(key, 10);
+      if (Number.isFinite(val)) _pushOp(out, idxRef, val);
     }
   }
 
-  return bits >>> 0;
+  return idxRef;
+}
+
+export function packScaleOps(ops = 0) {
+  const out = new Uint32Array(16);
+  const idxRef = { i: 0 };
+
+  _addOpsFromAny(out, idxRef, ops);
+
+  if (idxRef.i < 16) out[idxRef.i] = 0;
+  for (let i = idxRef.i + 1; i < 16; ++i) out[i] = 0;
+
+  return out;
 }
 
 /* ------------------------------------------------------------------ */
@@ -349,7 +389,13 @@ export class FractalTileComputeGPU {
     const gridSize = params.gridSize >>> 0;
     const maxIter = (params.maxIter ?? 0) >>> 0;
     const fractalType = (params.fractalType ?? FRACTALS.Mandelbrot) >>> 0;
-    const scaleMode = packScaleMask(params.scaleMode ?? 0);
+
+    const opsInput =
+      params && typeof params === "object" && "scaleOps" in params
+        ? params.scaleOps
+        : params.scaleMode;
+
+    const scaleOps = packScaleOps(opsInput ?? 0);
 
     dv.setUint32(o, gridSize, true);
     o += 4;
@@ -357,8 +403,13 @@ export class FractalTileComputeGPU {
     o += 4;
     dv.setUint32(o, fractalType, true);
     o += 4;
-    dv.setUint32(o, scaleMode, true);
+    dv.setUint32(o, 0, true);
     o += 4;
+
+    for (let i = 0; i < 16; ++i) {
+      dv.setUint32(o, scaleOps[i] >>> 0, true);
+      o += 4;
+    }
 
     dv.setFloat32(o, +params.zoom || 1.0, true);
     o += 4;
@@ -391,6 +442,13 @@ export class FractalTileComputeGPU {
     o += 4;
 
     dv.setFloat32(o, +aspect || 1.0, true);
+    o += 4;
+
+    dv.setUint32(o, 0, true);
+    o += 4;
+    dv.setUint32(o, 0, true);
+    o += 4;
+    dv.setUint32(o, 0, true);
     o += 4;
 
     return buf;
