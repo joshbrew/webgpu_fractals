@@ -56,6 +56,65 @@
 
       <details class="section" open>
         <summary>
+          <span class="section-title">Preset</span>
+          <span class="section-badge" title="Copy/paste settings">json</span>
+        </summary>
+
+        <div class="row">
+          <div class="hint">
+            Export copies your current UI settings as JSON. Paste JSON and Apply
+            to restore.
+          </div>
+
+          <textarea
+            id="presetJson"
+            class="preset-textarea numeric-input mono"
+            spellcheck="false"
+            placeholder='{"version":1,"controls":{...}}'
+            aria-label="Preset JSON"
+          ></textarea>
+
+          <div class="preset-buttons">
+            <button
+              id="presetExportBtn"
+              type="button"
+              class="mini-btn"
+              title="Generate JSON from current UI"
+            >
+              Export
+            </button>
+            <button
+              id="presetCopyBtn"
+              type="button"
+              class="mini-btn"
+              title="Copy JSON to clipboard"
+            >
+              Copy
+            </button>
+            <button
+              id="presetPasteBtn"
+              type="button"
+              class="mini-btn subtle"
+              title="Paste JSON from clipboard"
+            >
+              Paste
+            </button>
+            <button
+              id="presetApplyBtn"
+              type="button"
+              class="mini-btn"
+              title="Apply JSON settings"
+            >
+              Apply
+            </button>
+          </div>
+
+          <div id="presetStatus" class="preset-status" aria-live="polite"></div>
+        </div>
+      </details>
+
+      <details class="section" open>
+        <summary>
           <span class="section-title">View</span>
           <span class="section-badge" title="Things that change performance"
             >perf</span
@@ -695,7 +754,8 @@
             <span class="check-text">Layer mode (gamma-stepped stacks)</span>
           </label>
           <div class="hint">
-            Good for stacked looks. It disables SDF displacement, and lighting (for now).
+            Good for stacked looks. It disables SDF displacement, and lighting
+            (for now).
           </div>
         </div>
 

@@ -7,7 +7,1255 @@
   });
 
   // shaders/fractalComponent.html
-  var fractalComponent_default = '<!-- shaders/fractalComponent.html -->\r\n<div id="canvas-container">\r\n  <canvas id="gpu-canvas"></canvas>\r\n\r\n  <aside id="ui" class="sidebar" aria-label="Fractal controls">\r\n    <div class="ui-header">\r\n      <div class="ui-header-left">\r\n        <span class="ui-brand" aria-hidden="true">\u2630</span>\r\n        <div class="ui-title">\r\n          <div class="ui-title-main">Fractal Controls</div>\r\n          <div class="ui-title-sub">\r\n            Click canvas to lock mouse. ESC to release.\r\n          </div>\r\n        </div>\r\n      </div>\r\n\r\n      <button\r\n        id="toggle-ui"\r\n        type="button"\r\n        class="icon-btn"\r\n        aria-label="Toggle sidebar"\r\n        aria-controls="ui-content"\r\n        aria-expanded="true"\r\n        title="Collapse sidebar"\r\n      >\r\n        \u25C0\r\n      </button>\r\n    </div>\r\n\r\n    <div id="ui-content" class="sidebar-body">\r\n      <div class="row button-row">\r\n        <button\r\n          id="resetCameraBtn"\r\n          type="button"\r\n          title="Reset camera position and look direction"\r\n        >\r\n          Reset Camera\r\n        </button>\r\n\r\n        <button\r\n          id="exportCanvasBtn"\r\n          type="button"\r\n          title="Save a PNG of the current canvas"\r\n        >\r\n          Save PNG\r\n        </button>\r\n\r\n        <button\r\n          id="exportFullBtn"\r\n          type="button"\r\n          title="Save a full-resolution PNG render (uses Resolution)"\r\n        >\r\n          Save Full-Res\r\n        </button>\r\n      </div>\r\n\r\n      <details class="section" open>\r\n        <summary>\r\n          <span class="section-title">View</span>\r\n          <span class="section-badge" title="Things that change performance"\r\n            >perf</span\r\n          >\r\n        </summary>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Internal render resolution (GPU grid size). Higher values cost more GPU time."\r\n          >\r\n            <span class="lbl">Resolution</span>\r\n            <input\r\n              id="gridSize"\r\n              type="range"\r\n              min="64"\r\n              max="8192"\r\n              step="64"\r\n              value="1024"\r\n            />\r\n            <input\r\n              id="gridSizeOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="64"\r\n              max="8192"\r\n              step="64"\r\n              value="1024"\r\n            />\r\n          </label>\r\n          <div class="hint">\r\n            Higher = sharper. If it stutters, drop this first.\r\n          </div>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label class="control select" title="Render output mode">\r\n            <span class="lbl">Render mode</span>\r\n            <select\r\n              id="renderMode"\r\n              title="Fractal rendering, slab view, or raw debug output"\r\n            >\r\n              <option value="fractal">Fractal</option>\r\n              <option value="slab">Slab</option>\r\n              <option value="raw">Raw</option>\r\n            </select>\r\n            <span class="spacer"></span>\r\n          </label>\r\n          <div class="hint">\r\n            Slab is a marching squares test. Raw is a debug view.\r\n          </div>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control select"\r\n            title="Controls final canvas alpha compositing mode"\r\n          >\r\n            <span class="lbl">Alpha mode</span>\r\n            <select\r\n              id="alphaMode"\r\n              title="How transparency is applied to rendered pixels"\r\n            >\r\n              <option value="0">Opaque</option>\r\n              <option value="1">Fade out</option>\r\n              <option value="2">Reverse fade</option>\r\n            </select>\r\n            <span class="spacer"></span>\r\n          </label>\r\n        </div>\r\n      </details>\r\n\r\n      <details class="section" open>\r\n        <summary>\r\n          <span class="section-title">Fractal</span>\r\n          <span class="section-badge" title="Core equation settings">core</span>\r\n        </summary>\r\n\r\n        <div class="row">\r\n          <label\r\n            title="Select the fractal equation family"\r\n            class="control select"\r\n          >\r\n            <span class="lbl">Fractal</span>\r\n            <select id="fractalType" title="Choose the fractal formula (0-71)">\r\n              <option value="0">Mandelbrot</option>\r\n              <option value="1">Tricorn</option>\r\n              <option value="2">Burning Ship</option>\r\n              <option value="3">Perpendicular Mandelbrot</option>\r\n              <option value="4">Celtic</option>\r\n              <option value="5">Buffalo</option>\r\n              <option value="6">Phoenix</option>\r\n              <option value="7">Cubic Multibrot (z\xB3 + c)</option>\r\n              <option value="8">Quartic Multibrot (z\u2074 + c)</option>\r\n              <option value="9">Cosine</option>\r\n              <option value="10">Sine</option>\r\n              <option value="11">Heart</option>\r\n              <option value="12">Perpendicular Buffalo</option>\r\n              <option value="13">Spiral Mandelbrot</option>\r\n              <option value="14">Quintic Multibrot (z\u2075 + c)</option>\r\n              <option value="15">Sextic Multibrot (z\u2076 + c)</option>\r\n              <option value="16">Tangent (tan z + c)</option>\r\n              <option value="17">Exponential (exp z + c)</option>\r\n              <option value="18">Septic Multibrot (z\u2077 + c)</option>\r\n              <option value="19">Octic Multibrot (z\u2078 + c)</option>\r\n              <option value="20">Inverse Mandelbrot (1/z\xB2 + c)</option>\r\n              <option value="21">Burning Ship Deep Zoom</option>\r\n              <option value="22">Cubic Burning Ship (|z|\xB3 + c)</option>\r\n              <option value="23">Quartic Burning Ship (|z|\u2074 + c)</option>\r\n              <option value="24">Quintic Burning Ship (|z|\u2075 + c)</option>\r\n              <option value="25">Hexic Burning Ship (|z|\u2076 + c)</option>\r\n              <option value="26">Nova (Newton z\xB3\u22121)</option>\r\n              <option value="27">Man-o-War</option>\r\n              <option value="28">Stretched Celtic Spiral</option>\r\n              <option value="29">Polar-Flame</option>\r\n              <option value="30">Inverse Cubic (1/z\xB3 + c)</option>\r\n              <option value="31">Inverse Quartic (1/z\u2074 + c)</option>\r\n              <option value="32">Inverse Quintic (1/z\u2075 + c)</option>\r\n              <option value="33">Inverse Sextic (1/z\u2076 + c)</option>\r\n              <option value="34">Inverse Septic (1/z\u2077 + c)</option>\r\n              <option value="35">Inverse Octic (1/z\u2078 + c)</option>\r\n              <option value="36">Inverse Burning Ship</option>\r\n              <option value="37">Inverse Tricorn</option>\r\n              <option value="38">Inverse Celtic</option>\r\n              <option value="39">Inverse Phoenix</option>\r\n              <option value="40">Tri-Nova</option>\r\n              <option value="41">Nova-Mandelbrot</option>\r\n              <option value="42">Nova 2 (inverse)</option>\r\n              <option value="43">Nova 2 variant</option>\r\n              <option value="44">Quartic-Nova</option>\r\n              <option value="45">Flower Nova</option>\r\n              <option value="46">Scatter-Nova</option>\r\n              <option value="47">Twisted-Flower Nova</option>\r\n              <option value="48">Lobed-Scatter Nova</option>\r\n              <option value="49">Hybrid-FlScatter Nova</option>\r\n              <option value="50">Fractional-Nova (p\u22483.7)</option>\r\n              <option value="51">Kaleido-Nova</option>\r\n              <option value="52">Cross-Nova</option>\r\n              <option value="53">Mirror-Nova</option>\r\n              <option value="54">Spiro-Nova</option>\r\n              <option value="55">Vibrant-Nova</option>\r\n              <option value="56">Julia-Nova Hybrid</option>\r\n              <option value="57">Inverse-Spiral Nova</option>\r\n              <option value="58">Wavefront Nova</option>\r\n              <option value="59">Vortex Nova</option>\r\n              <option value="60">Sine Ring Nova</option>\r\n              <option value="61">Inverse-Spiral Nova 2</option>\r\n              <option value="62">Inverse-Vortex Nova</option>\r\n              <option value="63">Inverse Sine Ring Nova</option>\r\n              <option value="64">Inverse-Mirror Nova</option>\r\n              <option value="65">Inverse-Vibrant Nova</option>\r\n              <option value="66">Golden-Ratio Rational</option>\r\n              <option value="67">SinCos-Kernel</option>\r\n              <option value="68">Golden-Push-Pull</option>\r\n              <option value="69">Sinc-Kernel</option>\r\n              <option value="70">Bizarre Grid (set x/y to 1)</option>\r\n              <option value="71">Julia (use Pan X/Y)</option>\r\n            </select>\r\n            <input\r\n              id="fractalTypeOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0"\r\n              max="71"\r\n              step="1"\r\n              value="0"\r\n            />\r\n          </label>\r\n          <div class="hint">Julia uses Pan X and Pan Y as the constant.</div>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Control zoom scale (size of the complex plane window)"\r\n          >\r\n            <span class="lbl">Zoom</span>\r\n            <input\r\n              id="zoom"\r\n              type="range"\r\n              min="0.00000001"\r\n              max="10"\r\n              step="0.000001"\r\n              value="4.0"\r\n            />\r\n            <input\r\n              id="zoomOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0.00000001"\r\n              max="10"\r\n              step="0.000001"\r\n              value="4.00"\r\n            />\r\n          </label>\r\n          <div class="hint">Lower zoom = deeper zoom-in.</div>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Shift the view left/right in the complex plane"\r\n          >\r\n            <span class="lbl">Pan X</span>\r\n            <input\r\n              id="dx"\r\n              type="range"\r\n              min="-2"\r\n              max="2"\r\n              step="0.00001"\r\n              value="0.0"\r\n            />\r\n            <input\r\n              id="dxOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="-2"\r\n              max="2"\r\n              step="0.00001"\r\n              value="0.00"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Shift the view up/down in the complex plane"\r\n          >\r\n            <span class="lbl">Pan Y</span>\r\n            <input\r\n              id="dy"\r\n              type="range"\r\n              min="-2"\r\n              max="2"\r\n              step="0.00001"\r\n              value="0.0"\r\n            />\r\n            <input\r\n              id="dyOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="-2"\r\n              max="2"\r\n              step="0.00001"\r\n              value="0.00"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Higher values reveal more detail but increase render time"\r\n          >\r\n            <span class="lbl">Max Iter</span>\r\n            <input\r\n              id="maxIter"\r\n              type="range"\r\n              min="50"\r\n              max="5000"\r\n              step="50"\r\n              value="150"\r\n            />\r\n            <input\r\n              id="maxIterOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="50"\r\n              max="5000"\r\n              step="50"\r\n              value="150"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Escape threshold (distance where the orbit is considered divergent)"\r\n          >\r\n            <span class="lbl">Escape R</span>\r\n            <input\r\n              id="escapeR"\r\n              type="range"\r\n              min="1"\r\n              max="20"\r\n              step="0.1"\r\n              value="4.0"\r\n            />\r\n            <input\r\n              id="escapeROut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="1"\r\n              max="20"\r\n              step="0.1"\r\n              value="4.0"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control check"\r\n            title="Toggle convergence-based termination for Newton or hybrid maps"\r\n          >\r\n            <input id="convergenceTest" type="checkbox" />\r\n            <span class="check-text">Convergence test</span>\r\n          </label>\r\n          <div class="hint">\r\n            Turn on for Newton-like fractals to stop when they settle on a root.\r\n          </div>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control select"\r\n            title="Whether the iteration should escape when diverging or converge toward a root"\r\n          >\r\n            <span class="lbl">Escape mode</span>\r\n            <select id="escapeMode" title="Divergence or convergence mode">\r\n              <option value="0">Converge</option>\r\n              <option value="1">Diverge</option>\r\n            </select>\r\n            <input\r\n              id="escapeModeOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0"\r\n              max="1"\r\n              step="1"\r\n              value="0"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Convergence tolerance for Newton-like fractals"\r\n          >\r\n            <span class="lbl">Epsilon</span>\r\n            <input\r\n              id="epsilon"\r\n              type="range"\r\n              min="0.000001"\r\n              max="0.01"\r\n              step="0.000001"\r\n              value="0.000001"\r\n            />\r\n            <input\r\n              id="epsilonOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0.000001"\r\n              max="0.01"\r\n              step="0.000001"\r\n              value="0.000001"\r\n            />\r\n          </label>\r\n        </div>\r\n      </details>\r\n\r\n      <details class="section" open>\r\n        <summary>\r\n          <span class="section-title">Color</span>\r\n          <span class="section-badge" title="Palette + mapping">look</span>\r\n        </summary>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control select"\r\n            title="Choose the color palette used for mapping iterations to RGB"\r\n          >\r\n            <span class="lbl">Palette</span>\r\n            <select\r\n              id="colorScheme"\r\n              title="Choose the color palette used for mapping iterations to RGB"\r\n            >\r\n              <option value="0">Violet-Cyan-White</option>\r\n              <option value="6">Grayscale</option>\r\n              <option value="1">Fire</option>\r\n              <option value="2">Ice</option>\r\n              <option value="3">Sunset</option>\r\n              <option value="4">Forest</option>\r\n              <option value="5">Neon</option>\r\n              <option value="7">Inferno</option>\r\n              <option value="8">Rainbow 360\xB0</option>\r\n              <option value="9">Rainbow 720\xB0</option>\r\n              <option value="10">Pastel Loop</option>\r\n              <option value="11">Viridis-ish</option>\r\n              <option value="12">Magma</option>\r\n              <option value="13">Plasma</option>\r\n              <option value="14">Cividis</option>\r\n              <option value="15">Ocean</option>\r\n              <option value="16">Midnight Blue</option>\r\n              <option value="17">Cool-Warm Diverge</option>\r\n              <option value="18">Rainbow 1080\xB0 (3 loops)</option>\r\n              <option value="19">Rainbow 1440\xB0 (4 loops)</option>\r\n              <option value="20">Pastel 5-loop</option>\r\n              <option value="21">Thermal</option>\r\n              <option value="22">Turbulent Wave</option>\r\n              <option value="23">Autumn</option>\r\n              <option value="24">Spring</option>\r\n              <option value="25">Summer</option>\r\n              <option value="26">Mono-loop (10\xD7 grayscale flicker)</option>\r\n              <option value="27">High-contrast Diverging</option>\r\n              <option value="28">Sine-wave Hue</option>\r\n              <option value="29">Sawtooth Loop (3 loops)</option>\r\n              <option value="30">Rainbow 2160\xB0 (6 loops)</option>\r\n              <option value="31">Triangle-wave 8 loops</option>\r\n              <option value="32">Exponential 12 loops</option>\r\n              <option value="33">Sawtooth 10 loops + offset</option>\r\n            </select>\r\n            <input\r\n              id="colorSchemeOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0"\r\n              max="33"\r\n              step="1"\r\n              value="0"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Shift the global hue of the palette (wraps the color wheel)"\r\n          >\r\n            <span class="lbl">Hue offset</span>\r\n            <input\r\n              id="hueOffset"\r\n              type="range"\r\n              min="-1"\r\n              max="1"\r\n              step="0.001"\r\n              value="0"\r\n            />\r\n            <input\r\n              id="hueOffsetOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="-1"\r\n              max="1"\r\n              step="0.001"\r\n              value="0.00"\r\n            />\r\n          </label>\r\n        </div>\r\n      </details>\r\n\r\n      <details class="section">\r\n        <summary>\r\n          <span class="section-title">Warps</span>\r\n          <span\r\n            class="section-badge"\r\n            title="Ordered ops list. Duplicates allowed."\r\n            >ops</span\r\n          >\r\n        </summary>\r\n\r\n        <div class="row">\r\n          <div class="hint">\r\n            Build an ordered list of coordinate warps. Duplicates allowed. Only\r\n            the first 16 ops are used.\r\n          </div>\r\n\r\n          <div class="scale-toolbar">\r\n            <select id="scaleOpPicker" title="Choose a warp op to add"></select>\r\n\r\n            <button\r\n              id="scaleOpAdd"\r\n              type="button"\r\n              class="mini-btn"\r\n              title="Add the selected op to the list"\r\n            >\r\n              Add\r\n            </button>\r\n\r\n            <button\r\n              id="scaleOpClear"\r\n              type="button"\r\n              class="mini-btn subtle"\r\n              title="Clear the op list"\r\n            >\r\n              Clear\r\n            </button>\r\n\r\n            <span\r\n              id="scaleOpsCount"\r\n              class="pill"\r\n              title="How many ops are currently in the list (max 16 used)"\r\n            >\r\n              0/16\r\n            </span>\r\n\r\n            <input\r\n              id="scaleOpsOut"\r\n              class="numeric-input mono"\r\n              type="text"\r\n              value=""\r\n              readonly\r\n              title="Current op list (codes)"\r\n            />\r\n          </div>\r\n\r\n          <div\r\n            id="scaleOpsList"\r\n            class="scale-ops-list"\r\n            aria-label="Selected scale ops"\r\n          ></div>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Iteration-based parameter used by warp modes"\r\n          >\r\n            <span class="lbl">Gamma</span>\r\n            <input\r\n              id="gamma"\r\n              type="range"\r\n              min="-50"\r\n              max="50"\r\n              step="0.001"\r\n              value="1.0"\r\n            />\r\n            <input\r\n              id="gammaOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="-50"\r\n              max="50"\r\n              step="0.001"\r\n              value="1.0"\r\n            />\r\n          </label>\r\n          <div class="hint">\r\n            Warp intensity often lives here. Try small steps first.\r\n          </div>\r\n        </div>\r\n      </details>\r\n\r\n      <details class="section">\r\n        <summary>\r\n          <span class="section-title">Threshold + Mask</span>\r\n          <span class="section-badge" title="Clamp and mask outputs">mask</span>\r\n        </summary>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control select"\r\n            title="What field the threshold masking operates on"\r\n          >\r\n            <span class="lbl">Basis</span>\r\n            <select id="thresholdBasis" title="Choose threshold basis">\r\n              <option value="0">Inner</option>\r\n              <option value="1">Outer</option>\r\n              <option value="2">Height (normalized)</option>\r\n            </select>\r\n            <input\r\n              id="thresholdBasisOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0"\r\n              max="2"\r\n              step="1"\r\n              value="0"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label class="control slider" title="Lower clamp for threshold mask">\r\n            <span class="lbl">Low</span>\r\n            <input\r\n              id="lowThresh"\r\n              type="range"\r\n              min="0"\r\n              max="1"\r\n              step="0.01"\r\n              value="0.00"\r\n            />\r\n            <input\r\n              id="lowThreshOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0"\r\n              max="1"\r\n              step="0.01"\r\n              value="0.00"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label class="control slider" title="Upper clamp for threshold mask">\r\n            <span class="lbl">High</span>\r\n            <input\r\n              id="highThresh"\r\n              type="range"\r\n              min="0"\r\n              max="1"\r\n              step="0.01"\r\n              value="1.00"\r\n            />\r\n            <input\r\n              id="highThreshOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0"\r\n              max="1"\r\n              step="0.01"\r\n              value="1.00"\r\n            />\r\n          </label>\r\n        </div>\r\n      </details>\r\n\r\n      <details class="section">\r\n        <summary>\r\n          <span class="section-title">Layer Stack</span>\r\n          <span class="section-badge" title="Multi-layer gamma-stepped stacks"\r\n            >stack</span\r\n          >\r\n        </summary>\r\n\r\n        <div\r\n          class="row"\r\n          title="Enables multi-layer gamma-stepped stacks. Turning this ON auto-sets Displacement=None, Lighting OFF, and Render mode=Fractal."\r\n        >\r\n          <label class="control check">\r\n            <input type="checkbox" id="layerMode" />\r\n            <span class="check-text">Layer mode (gamma-stepped stacks)</span>\r\n          </label>\r\n          <div class="hint">\r\n            Good for stacked looks. It disables SDF displacement, and lighting (for now).\r\n          </div>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Number of layers (only used when Layer Mode is enabled)"\r\n          >\r\n            <span class="lbl">Layers</span>\r\n            <input\r\n              id="nLayers"\r\n              type="range"\r\n              min="1"\r\n              max="128"\r\n              step="1"\r\n              value="1"\r\n            />\r\n            <input\r\n              id="nLayersOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="1"\r\n              max="128"\r\n              step="1"\r\n              value="1"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Gamma increment per layer: gamma(li) = gamma + layerGammaStep * li"\r\n          >\r\n            <span class="lbl">Gamma step</span>\r\n            <input\r\n              id="layerGammaStep"\r\n              type="range"\r\n              min="-5"\r\n              max="5"\r\n              step="0.0001"\r\n              value="0.001"\r\n            />\r\n            <input\r\n              id="layerGammaStepOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="-5"\r\n              max="5"\r\n              step="0.0001"\r\n              value="0.1"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="World-space separation per layer for stacked rendering"\r\n          >\r\n            <span class="lbl">Separation</span>\r\n            <input\r\n              id="layerSeparation"\r\n              type="range"\r\n              min="-10"\r\n              max="10"\r\n              step="0.001"\r\n              value="0.0"\r\n            />\r\n            <input\r\n              id="layerSeparationOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="-10"\r\n              max="10"\r\n              step="0.001"\r\n              value="0.0"\r\n            />\r\n          </label>\r\n        </div>\r\n      </details>\r\n\r\n      <details class="section">\r\n        <summary>\r\n          <span class="section-title">Displacement + Lighting</span>\r\n          <span class="section-badge" title="SDF and shading">3d</span>\r\n        </summary>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control check"\r\n            title="Enable radial bowl displacement for lighting/extrusion"\r\n          >\r\n            <input type="checkbox" id="bowlOn" />\r\n            <span class="check-text">Enable bowl</span>\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Depth of the bowl displacement curve"\r\n          >\r\n            <span class="lbl">Bowl depth</span>\r\n            <input\r\n              type="range"\r\n              id="bowlDepth"\r\n              min="0"\r\n              max="3.14"\r\n              step="0.01"\r\n              value="0.25"\r\n            />\r\n            <input\r\n              id="bowlDepthOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0"\r\n              max="3.14"\r\n              step="0.01"\r\n              value="0.25"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Scale the on-screen quad used for rendering (for multi-pass / stacked zoom modes)"\r\n          >\r\n            <span class="lbl">Quad scale</span>\r\n            <input\r\n              id="quadScale"\r\n              type="range"\r\n              min="1"\r\n              max="1000"\r\n              step="1"\r\n              value="1"\r\n            />\r\n            <input\r\n              id="quadScaleOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="1"\r\n              max="1000"\r\n              step="1"\r\n              value="1"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control select"\r\n            title="Choose the type of height displacement applied to lighting / extrusion"\r\n          >\r\n            <span class="lbl">Disp mode</span>\r\n            <select id="dispMode" title="Displacement height mapping mode">\r\n              <option value="0">None</option>\r\n              <option value="1">Max Peak</option>\r\n              <option value="2">Min Peak</option>\r\n              <option value="3">Max Peak Log</option>\r\n              <option value="4">Min Peak Log</option>\r\n              <option value="5">Max Peak Pow</option>\r\n              <option value="6">Min Peak Pow</option>\r\n            </select>\r\n            <span class="spacer"></span>\r\n          </label>\r\n          <div class="hint">\r\n            Displacement and lighting require SDF and will cost extra GPU time.\r\n          </div>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Resolution of the displacement sampling grid"\r\n          >\r\n            <span class="lbl">Grid divs</span>\r\n            <input\r\n              id="gridDivs"\r\n              type="range"\r\n              min="64"\r\n              max="4096"\r\n              step="64"\r\n              value="256"\r\n            />\r\n            <input\r\n              id="gridDivsOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="64"\r\n              max="4096"\r\n              step="64"\r\n              value="256"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Amplitude of displacement applied to lighting"\r\n          >\r\n            <span class="lbl">Disp amp</span>\r\n            <input\r\n              type="range"\r\n              id="dispAmp"\r\n              min="0"\r\n              max="2"\r\n              step="0.01"\r\n              value="0.15"\r\n            />\r\n            <input\r\n              id="dispAmpOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0"\r\n              max="2"\r\n              step="0.01"\r\n              value="0.15"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Curve shaping for displacement height response"\r\n          >\r\n            <span class="lbl">Disp curve</span>\r\n            <input\r\n              type="range"\r\n              id="dispCurve"\r\n              min="0.001"\r\n              max="100"\r\n              step="0.001"\r\n              value="3"\r\n            />\r\n            <input\r\n              id="dispCurveOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0.001"\r\n              max="100"\r\n              step="0.001"\r\n              value="3"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control check"\r\n            title="Enable a max-slope clamp to prevent artifacts"\r\n          >\r\n            <input id="dispLimitOn" type="checkbox" />\r\n            <span class="check-text">Disp limit</span>\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Maximum surface slope allowed (degrees)"\r\n          >\r\n            <span class="lbl">Max slope</span>\r\n            <input\r\n              id="slopeLimit"\r\n              type="range"\r\n              min="0"\r\n              max="91"\r\n              step="0.001"\r\n              value="45"\r\n            />\r\n            <input\r\n              id="slopeLimitOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0"\r\n              max="91"\r\n              step="0.001"\r\n              value="45"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Maximum height discontinuity allowed (normalized units)"\r\n          >\r\n            <span class="lbl">Wall clamp</span>\r\n            <input\r\n              id="wallJump"\r\n              type="range"\r\n              min="0"\r\n              max="1"\r\n              step="0.001"\r\n              value="0.05"\r\n            />\r\n            <input\r\n              id="wallJumpOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="0"\r\n              max="1"\r\n              step="0.001"\r\n              value="0.05"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control check"\r\n            title="Enable Phong-style shading based on displacement height"\r\n          >\r\n            <input id="lightingOn" type="checkbox" />\r\n            <span class="check-text">Lighting</span>\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label class="control slider" title="Light position X coordinate">\r\n            <span class="lbl">Light X</span>\r\n            <input\r\n              id="lightX"\r\n              type="range"\r\n              min="-50"\r\n              max="50"\r\n              step="0.1"\r\n              value="0"\r\n            />\r\n            <input\r\n              id="lightXOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="-50"\r\n              max="50"\r\n              step="0.1"\r\n              value="0"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label class="control slider" title="Light position Y coordinate">\r\n            <span class="lbl">Light Y</span>\r\n            <input\r\n              id="lightY"\r\n              type="range"\r\n              min="-50"\r\n              max="50"\r\n              step="0.1"\r\n              value="0"\r\n            />\r\n            <input\r\n              id="lightYOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="-50"\r\n              max="50"\r\n              step="0.1"\r\n              value="0"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Light position Z coordinate (height)"\r\n          >\r\n            <span class="lbl">Light Z</span>\r\n            <input\r\n              id="lightZ"\r\n              type="range"\r\n              min="-50"\r\n              max="50"\r\n              step="0.1"\r\n              value="50"\r\n            />\r\n            <input\r\n              id="lightZOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="-50"\r\n              max="50"\r\n              step="0.1"\r\n              value="50"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row">\r\n          <label\r\n            class="control slider"\r\n            title="Specular exponent controlling shininess"\r\n          >\r\n            <span class="lbl">Spec power</span>\r\n            <input\r\n              id="specPower"\r\n              type="range"\r\n              min="1"\r\n              max="128"\r\n              step="1"\r\n              value="32"\r\n            />\r\n            <input\r\n              id="specPowerOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              min="1"\r\n              max="128"\r\n              step="1"\r\n              value="32"\r\n            />\r\n          </label>\r\n        </div>\r\n      </details>\r\n\r\n      <details class="section">\r\n        <summary>\r\n          <span class="section-title">Advanced</span>\r\n          <span class="section-badge" title="Mostly for debugging">dbg</span>\r\n        </summary>\r\n\r\n        <div class="row" style="display: none">\r\n          <label class="control slider">\r\n            <span class="lbl">zMin</span>\r\n            <input id="zMin" type="number" step="0.1" value="0.0" />\r\n            <input\r\n              id="zMinOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              step="0.1"\r\n              value="0.0"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row" style="display: none">\r\n          <label class="control slider">\r\n            <span class="lbl">dz</span>\r\n            <input id="dz" type="number" step="0.01" value="0.2" />\r\n            <input\r\n              id="dzOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              step="0.01"\r\n              value="0.2"\r\n            />\r\n          </label>\r\n        </div>\r\n\r\n        <div class="row" style="display: none">\r\n          <label class="control slider">\r\n            <span class="lbl">Split max</span>\r\n            <input\r\n              id="splitCount"\r\n              type="number"\r\n              step="100000"\r\n              min="100000"\r\n              value="8000000"\r\n            />\r\n            <input\r\n              id="splitCountOut"\r\n              class="numeric-input"\r\n              type="number"\r\n              step="100000"\r\n              min="100000"\r\n              value="8000000"\r\n            />\r\n          </label>\r\n        </div>\r\n      </details>\r\n\r\n      <div class="ui-footer">\r\n        <div class="kbd-line"><span class="kbd">WASD</span> move</div>\r\n        <div class="kbd-line">\r\n          <span class="kbd">Space</span>/<span class="kbd">C</span> up/down\r\n        </div>\r\n        <div class="kbd-line">\r\n          <span class="kbd">Shift</span> fast,\r\n          <span class="kbd">Ctrl</span> slow\r\n        </div>\r\n      </div>\r\n    </div>\r\n  </aside>\r\n</div>\r\n';
+  var fractalComponent_default = `<!-- shaders/fractalComponent.html -->\r
+<div id="canvas-container">\r
+  <canvas id="gpu-canvas"></canvas>\r
+\r
+  <aside id="ui" class="sidebar" aria-label="Fractal controls">\r
+    <div class="ui-header">\r
+      <div class="ui-header-left">\r
+        <span class="ui-brand" aria-hidden="true">\u2630</span>\r
+        <div class="ui-title">\r
+          <div class="ui-title-main">Fractal Controls</div>\r
+          <div class="ui-title-sub">\r
+            Click canvas to lock mouse. ESC to release.\r
+          </div>\r
+        </div>\r
+      </div>\r
+\r
+      <button\r
+        id="toggle-ui"\r
+        type="button"\r
+        class="icon-btn"\r
+        aria-label="Toggle sidebar"\r
+        aria-controls="ui-content"\r
+        aria-expanded="true"\r
+        title="Collapse sidebar"\r
+      >\r
+        \u25C0\r
+      </button>\r
+    </div>\r
+\r
+    <div id="ui-content" class="sidebar-body">\r
+      <div class="row button-row">\r
+        <button\r
+          id="resetCameraBtn"\r
+          type="button"\r
+          title="Reset camera position and look direction"\r
+        >\r
+          Reset Camera\r
+        </button>\r
+\r
+        <button\r
+          id="exportCanvasBtn"\r
+          type="button"\r
+          title="Save a PNG of the current canvas"\r
+        >\r
+          Save PNG\r
+        </button>\r
+\r
+        <button\r
+          id="exportFullBtn"\r
+          type="button"\r
+          title="Save a full-resolution PNG render (uses Resolution)"\r
+        >\r
+          Save Full-Res\r
+        </button>\r
+      </div>\r
+\r
+      <details class="section" open>\r
+        <summary>\r
+          <span class="section-title">Preset</span>\r
+          <span class="section-badge" title="Copy/paste settings">json</span>\r
+        </summary>\r
+\r
+        <div class="row">\r
+          <div class="hint">\r
+            Export copies your current UI settings as JSON. Paste JSON and Apply\r
+            to restore.\r
+          </div>\r
+\r
+          <textarea\r
+            id="presetJson"\r
+            class="preset-textarea numeric-input mono"\r
+            spellcheck="false"\r
+            placeholder='{"version":1,"controls":{...}}'\r
+            aria-label="Preset JSON"\r
+          ></textarea>\r
+\r
+          <div class="preset-buttons">\r
+            <button\r
+              id="presetExportBtn"\r
+              type="button"\r
+              class="mini-btn"\r
+              title="Generate JSON from current UI"\r
+            >\r
+              Export\r
+            </button>\r
+            <button\r
+              id="presetCopyBtn"\r
+              type="button"\r
+              class="mini-btn"\r
+              title="Copy JSON to clipboard"\r
+            >\r
+              Copy\r
+            </button>\r
+            <button\r
+              id="presetPasteBtn"\r
+              type="button"\r
+              class="mini-btn subtle"\r
+              title="Paste JSON from clipboard"\r
+            >\r
+              Paste\r
+            </button>\r
+            <button\r
+              id="presetApplyBtn"\r
+              type="button"\r
+              class="mini-btn"\r
+              title="Apply JSON settings"\r
+            >\r
+              Apply\r
+            </button>\r
+          </div>\r
+\r
+          <div id="presetStatus" class="preset-status" aria-live="polite"></div>\r
+        </div>\r
+      </details>\r
+\r
+      <details class="section" open>\r
+        <summary>\r
+          <span class="section-title">View</span>\r
+          <span class="section-badge" title="Things that change performance"\r
+            >perf</span\r
+          >\r
+        </summary>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Internal render resolution (GPU grid size). Higher values cost more GPU time."\r
+          >\r
+            <span class="lbl">Resolution</span>\r
+            <input\r
+              id="gridSize"\r
+              type="range"\r
+              min="64"\r
+              max="8192"\r
+              step="64"\r
+              value="1024"\r
+            />\r
+            <input\r
+              id="gridSizeOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="64"\r
+              max="8192"\r
+              step="64"\r
+              value="1024"\r
+            />\r
+          </label>\r
+          <div class="hint">\r
+            Higher = sharper. If it stutters, drop this first.\r
+          </div>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label class="control select" title="Render output mode">\r
+            <span class="lbl">Render mode</span>\r
+            <select\r
+              id="renderMode"\r
+              title="Fractal rendering, slab view, or raw debug output"\r
+            >\r
+              <option value="fractal">Fractal</option>\r
+              <option value="slab">Slab</option>\r
+              <option value="raw">Raw</option>\r
+            </select>\r
+            <span class="spacer"></span>\r
+          </label>\r
+          <div class="hint">\r
+            Slab is a marching squares test. Raw is a debug view.\r
+          </div>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control select"\r
+            title="Controls final canvas alpha compositing mode"\r
+          >\r
+            <span class="lbl">Alpha mode</span>\r
+            <select\r
+              id="alphaMode"\r
+              title="How transparency is applied to rendered pixels"\r
+            >\r
+              <option value="0">Opaque</option>\r
+              <option value="1">Fade out</option>\r
+              <option value="2">Reverse fade</option>\r
+            </select>\r
+            <span class="spacer"></span>\r
+          </label>\r
+        </div>\r
+      </details>\r
+\r
+      <details class="section" open>\r
+        <summary>\r
+          <span class="section-title">Fractal</span>\r
+          <span class="section-badge" title="Core equation settings">core</span>\r
+        </summary>\r
+\r
+        <div class="row">\r
+          <label\r
+            title="Select the fractal equation family"\r
+            class="control select"\r
+          >\r
+            <span class="lbl">Fractal</span>\r
+            <select id="fractalType" title="Choose the fractal formula (0-71)">\r
+              <option value="0">Mandelbrot</option>\r
+              <option value="1">Tricorn</option>\r
+              <option value="2">Burning Ship</option>\r
+              <option value="3">Perpendicular Mandelbrot</option>\r
+              <option value="4">Celtic</option>\r
+              <option value="5">Buffalo</option>\r
+              <option value="6">Phoenix</option>\r
+              <option value="7">Cubic Multibrot (z\xB3 + c)</option>\r
+              <option value="8">Quartic Multibrot (z\u2074 + c)</option>\r
+              <option value="9">Cosine</option>\r
+              <option value="10">Sine</option>\r
+              <option value="11">Heart</option>\r
+              <option value="12">Perpendicular Buffalo</option>\r
+              <option value="13">Spiral Mandelbrot</option>\r
+              <option value="14">Quintic Multibrot (z\u2075 + c)</option>\r
+              <option value="15">Sextic Multibrot (z\u2076 + c)</option>\r
+              <option value="16">Tangent (tan z + c)</option>\r
+              <option value="17">Exponential (exp z + c)</option>\r
+              <option value="18">Septic Multibrot (z\u2077 + c)</option>\r
+              <option value="19">Octic Multibrot (z\u2078 + c)</option>\r
+              <option value="20">Inverse Mandelbrot (1/z\xB2 + c)</option>\r
+              <option value="21">Burning Ship Deep Zoom</option>\r
+              <option value="22">Cubic Burning Ship (|z|\xB3 + c)</option>\r
+              <option value="23">Quartic Burning Ship (|z|\u2074 + c)</option>\r
+              <option value="24">Quintic Burning Ship (|z|\u2075 + c)</option>\r
+              <option value="25">Hexic Burning Ship (|z|\u2076 + c)</option>\r
+              <option value="26">Nova (Newton z\xB3\u22121)</option>\r
+              <option value="27">Man-o-War</option>\r
+              <option value="28">Stretched Celtic Spiral</option>\r
+              <option value="29">Polar-Flame</option>\r
+              <option value="30">Inverse Cubic (1/z\xB3 + c)</option>\r
+              <option value="31">Inverse Quartic (1/z\u2074 + c)</option>\r
+              <option value="32">Inverse Quintic (1/z\u2075 + c)</option>\r
+              <option value="33">Inverse Sextic (1/z\u2076 + c)</option>\r
+              <option value="34">Inverse Septic (1/z\u2077 + c)</option>\r
+              <option value="35">Inverse Octic (1/z\u2078 + c)</option>\r
+              <option value="36">Inverse Burning Ship</option>\r
+              <option value="37">Inverse Tricorn</option>\r
+              <option value="38">Inverse Celtic</option>\r
+              <option value="39">Inverse Phoenix</option>\r
+              <option value="40">Tri-Nova</option>\r
+              <option value="41">Nova-Mandelbrot</option>\r
+              <option value="42">Nova 2 (inverse)</option>\r
+              <option value="43">Nova 2 variant</option>\r
+              <option value="44">Quartic-Nova</option>\r
+              <option value="45">Flower Nova</option>\r
+              <option value="46">Scatter-Nova</option>\r
+              <option value="47">Twisted-Flower Nova</option>\r
+              <option value="48">Lobed-Scatter Nova</option>\r
+              <option value="49">Hybrid-FlScatter Nova</option>\r
+              <option value="50">Fractional-Nova (p\u22483.7)</option>\r
+              <option value="51">Kaleido-Nova</option>\r
+              <option value="52">Cross-Nova</option>\r
+              <option value="53">Mirror-Nova</option>\r
+              <option value="54">Spiro-Nova</option>\r
+              <option value="55">Vibrant-Nova</option>\r
+              <option value="56">Julia-Nova Hybrid</option>\r
+              <option value="57">Inverse-Spiral Nova</option>\r
+              <option value="58">Wavefront Nova</option>\r
+              <option value="59">Vortex Nova</option>\r
+              <option value="60">Sine Ring Nova</option>\r
+              <option value="61">Inverse-Spiral Nova 2</option>\r
+              <option value="62">Inverse-Vortex Nova</option>\r
+              <option value="63">Inverse Sine Ring Nova</option>\r
+              <option value="64">Inverse-Mirror Nova</option>\r
+              <option value="65">Inverse-Vibrant Nova</option>\r
+              <option value="66">Golden-Ratio Rational</option>\r
+              <option value="67">SinCos-Kernel</option>\r
+              <option value="68">Golden-Push-Pull</option>\r
+              <option value="69">Sinc-Kernel</option>\r
+              <option value="70">Bizarre Grid (set x/y to 1)</option>\r
+              <option value="71">Julia (use Pan X/Y)</option>\r
+            </select>\r
+            <input\r
+              id="fractalTypeOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="71"\r
+              step="1"\r
+              value="0"\r
+            />\r
+          </label>\r
+          <div class="hint">Julia uses Pan X and Pan Y as the constant.</div>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Control zoom scale (size of the complex plane window)"\r
+          >\r
+            <span class="lbl">Zoom</span>\r
+            <input\r
+              id="zoom"\r
+              type="range"\r
+              min="0.00000001"\r
+              max="10"\r
+              step="0.000001"\r
+              value="4.0"\r
+            />\r
+            <input\r
+              id="zoomOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0.00000001"\r
+              max="10"\r
+              step="0.000001"\r
+              value="4.00"\r
+            />\r
+          </label>\r
+          <div class="hint">Lower zoom = deeper zoom-in.</div>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Shift the view left/right in the complex plane"\r
+          >\r
+            <span class="lbl">Pan X</span>\r
+            <input\r
+              id="dx"\r
+              type="range"\r
+              min="-2"\r
+              max="2"\r
+              step="0.00001"\r
+              value="0.0"\r
+            />\r
+            <input\r
+              id="dxOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="-2"\r
+              max="2"\r
+              step="0.00001"\r
+              value="0.00"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Shift the view up/down in the complex plane"\r
+          >\r
+            <span class="lbl">Pan Y</span>\r
+            <input\r
+              id="dy"\r
+              type="range"\r
+              min="-2"\r
+              max="2"\r
+              step="0.00001"\r
+              value="0.0"\r
+            />\r
+            <input\r
+              id="dyOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="-2"\r
+              max="2"\r
+              step="0.00001"\r
+              value="0.00"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Higher values reveal more detail but increase render time"\r
+          >\r
+            <span class="lbl">Max Iter</span>\r
+            <input\r
+              id="maxIter"\r
+              type="range"\r
+              min="50"\r
+              max="5000"\r
+              step="50"\r
+              value="150"\r
+            />\r
+            <input\r
+              id="maxIterOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="50"\r
+              max="5000"\r
+              step="50"\r
+              value="150"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Escape threshold (distance where the orbit is considered divergent)"\r
+          >\r
+            <span class="lbl">Escape R</span>\r
+            <input\r
+              id="escapeR"\r
+              type="range"\r
+              min="1"\r
+              max="20"\r
+              step="0.1"\r
+              value="4.0"\r
+            />\r
+            <input\r
+              id="escapeROut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="1"\r
+              max="20"\r
+              step="0.1"\r
+              value="4.0"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control check"\r
+            title="Toggle convergence-based termination for Newton or hybrid maps"\r
+          >\r
+            <input id="convergenceTest" type="checkbox" />\r
+            <span class="check-text">Convergence test</span>\r
+          </label>\r
+          <div class="hint">\r
+            Turn on for Newton-like fractals to stop when they settle on a root.\r
+          </div>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control select"\r
+            title="Whether the iteration should escape when diverging or converge toward a root"\r
+          >\r
+            <span class="lbl">Escape mode</span>\r
+            <select id="escapeMode" title="Divergence or convergence mode">\r
+              <option value="0">Converge</option>\r
+              <option value="1">Diverge</option>\r
+            </select>\r
+            <input\r
+              id="escapeModeOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="1"\r
+              step="1"\r
+              value="0"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Convergence tolerance for Newton-like fractals"\r
+          >\r
+            <span class="lbl">Epsilon</span>\r
+            <input\r
+              id="epsilon"\r
+              type="range"\r
+              min="0.000001"\r
+              max="0.01"\r
+              step="0.000001"\r
+              value="0.000001"\r
+            />\r
+            <input\r
+              id="epsilonOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0.000001"\r
+              max="0.01"\r
+              step="0.000001"\r
+              value="0.000001"\r
+            />\r
+          </label>\r
+        </div>\r
+      </details>\r
+\r
+      <details class="section" open>\r
+        <summary>\r
+          <span class="section-title">Color</span>\r
+          <span class="section-badge" title="Palette + mapping">look</span>\r
+        </summary>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control select"\r
+            title="Choose the color palette used for mapping iterations to RGB"\r
+          >\r
+            <span class="lbl">Palette</span>\r
+            <select\r
+              id="colorScheme"\r
+              title="Choose the color palette used for mapping iterations to RGB"\r
+            >\r
+              <option value="0">Violet-Cyan-White</option>\r
+              <option value="6">Grayscale</option>\r
+              <option value="1">Fire</option>\r
+              <option value="2">Ice</option>\r
+              <option value="3">Sunset</option>\r
+              <option value="4">Forest</option>\r
+              <option value="5">Neon</option>\r
+              <option value="7">Inferno</option>\r
+              <option value="8">Rainbow 360\xB0</option>\r
+              <option value="9">Rainbow 720\xB0</option>\r
+              <option value="10">Pastel Loop</option>\r
+              <option value="11">Viridis-ish</option>\r
+              <option value="12">Magma</option>\r
+              <option value="13">Plasma</option>\r
+              <option value="14">Cividis</option>\r
+              <option value="15">Ocean</option>\r
+              <option value="16">Midnight Blue</option>\r
+              <option value="17">Cool-Warm Diverge</option>\r
+              <option value="18">Rainbow 1080\xB0 (3 loops)</option>\r
+              <option value="19">Rainbow 1440\xB0 (4 loops)</option>\r
+              <option value="20">Pastel 5-loop</option>\r
+              <option value="21">Thermal</option>\r
+              <option value="22">Turbulent Wave</option>\r
+              <option value="23">Autumn</option>\r
+              <option value="24">Spring</option>\r
+              <option value="25">Summer</option>\r
+              <option value="26">Mono-loop (10\xD7 grayscale flicker)</option>\r
+              <option value="27">High-contrast Diverging</option>\r
+              <option value="28">Sine-wave Hue</option>\r
+              <option value="29">Sawtooth Loop (3 loops)</option>\r
+              <option value="30">Rainbow 2160\xB0 (6 loops)</option>\r
+              <option value="31">Triangle-wave 8 loops</option>\r
+              <option value="32">Exponential 12 loops</option>\r
+              <option value="33">Sawtooth 10 loops + offset</option>\r
+            </select>\r
+            <input\r
+              id="colorSchemeOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="33"\r
+              step="1"\r
+              value="0"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Shift the global hue of the palette (wraps the color wheel)"\r
+          >\r
+            <span class="lbl">Hue offset</span>\r
+            <input\r
+              id="hueOffset"\r
+              type="range"\r
+              min="-1"\r
+              max="1"\r
+              step="0.001"\r
+              value="0"\r
+            />\r
+            <input\r
+              id="hueOffsetOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="-1"\r
+              max="1"\r
+              step="0.001"\r
+              value="0.00"\r
+            />\r
+          </label>\r
+        </div>\r
+      </details>\r
+\r
+      <details class="section">\r
+        <summary>\r
+          <span class="section-title">Warps</span>\r
+          <span\r
+            class="section-badge"\r
+            title="Ordered ops list. Duplicates allowed."\r
+            >ops</span\r
+          >\r
+        </summary>\r
+\r
+        <div class="row">\r
+          <div class="hint">\r
+            Build an ordered list of coordinate warps. Duplicates allowed. Only\r
+            the first 16 ops are used.\r
+          </div>\r
+\r
+          <div class="scale-toolbar">\r
+            <select id="scaleOpPicker" title="Choose a warp op to add"></select>\r
+\r
+            <button\r
+              id="scaleOpAdd"\r
+              type="button"\r
+              class="mini-btn"\r
+              title="Add the selected op to the list"\r
+            >\r
+              Add\r
+            </button>\r
+\r
+            <button\r
+              id="scaleOpClear"\r
+              type="button"\r
+              class="mini-btn subtle"\r
+              title="Clear the op list"\r
+            >\r
+              Clear\r
+            </button>\r
+\r
+            <span\r
+              id="scaleOpsCount"\r
+              class="pill"\r
+              title="How many ops are currently in the list (max 16 used)"\r
+            >\r
+              0/16\r
+            </span>\r
+\r
+            <input\r
+              id="scaleOpsOut"\r
+              class="numeric-input mono"\r
+              type="text"\r
+              value=""\r
+              readonly\r
+              title="Current op list (codes)"\r
+            />\r
+          </div>\r
+\r
+          <div\r
+            id="scaleOpsList"\r
+            class="scale-ops-list"\r
+            aria-label="Selected scale ops"\r
+          ></div>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Iteration-based parameter used by warp modes"\r
+          >\r
+            <span class="lbl">Gamma</span>\r
+            <input\r
+              id="gamma"\r
+              type="range"\r
+              min="-50"\r
+              max="50"\r
+              step="0.001"\r
+              value="1.0"\r
+            />\r
+            <input\r
+              id="gammaOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="-50"\r
+              max="50"\r
+              step="0.001"\r
+              value="1.0"\r
+            />\r
+          </label>\r
+          <div class="hint">\r
+            Warp intensity often lives here. Try small steps first.\r
+          </div>\r
+        </div>\r
+      </details>\r
+\r
+      <details class="section">\r
+        <summary>\r
+          <span class="section-title">Threshold + Mask</span>\r
+          <span class="section-badge" title="Clamp and mask outputs">mask</span>\r
+        </summary>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control select"\r
+            title="What field the threshold masking operates on"\r
+          >\r
+            <span class="lbl">Basis</span>\r
+            <select id="thresholdBasis" title="Choose threshold basis">\r
+              <option value="0">Inner</option>\r
+              <option value="1">Outer</option>\r
+              <option value="2">Height (normalized)</option>\r
+            </select>\r
+            <input\r
+              id="thresholdBasisOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="2"\r
+              step="1"\r
+              value="0"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label class="control slider" title="Lower clamp for threshold mask">\r
+            <span class="lbl">Low</span>\r
+            <input\r
+              id="lowThresh"\r
+              type="range"\r
+              min="0"\r
+              max="1"\r
+              step="0.01"\r
+              value="0.00"\r
+            />\r
+            <input\r
+              id="lowThreshOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="1"\r
+              step="0.01"\r
+              value="0.00"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label class="control slider" title="Upper clamp for threshold mask">\r
+            <span class="lbl">High</span>\r
+            <input\r
+              id="highThresh"\r
+              type="range"\r
+              min="0"\r
+              max="1"\r
+              step="0.01"\r
+              value="1.00"\r
+            />\r
+            <input\r
+              id="highThreshOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="1"\r
+              step="0.01"\r
+              value="1.00"\r
+            />\r
+          </label>\r
+        </div>\r
+      </details>\r
+\r
+      <details class="section">\r
+        <summary>\r
+          <span class="section-title">Layer Stack</span>\r
+          <span class="section-badge" title="Multi-layer gamma-stepped stacks"\r
+            >stack</span\r
+          >\r
+        </summary>\r
+\r
+        <div\r
+          class="row"\r
+          title="Enables multi-layer gamma-stepped stacks. Turning this ON auto-sets Displacement=None, Lighting OFF, and Render mode=Fractal."\r
+        >\r
+          <label class="control check">\r
+            <input type="checkbox" id="layerMode" />\r
+            <span class="check-text">Layer mode (gamma-stepped stacks)</span>\r
+          </label>\r
+          <div class="hint">\r
+            Good for stacked looks. It disables SDF displacement, and lighting\r
+            (for now).\r
+          </div>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Number of layers (only used when Layer Mode is enabled)"\r
+          >\r
+            <span class="lbl">Layers</span>\r
+            <input\r
+              id="nLayers"\r
+              type="range"\r
+              min="1"\r
+              max="128"\r
+              step="1"\r
+              value="1"\r
+            />\r
+            <input\r
+              id="nLayersOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="1"\r
+              max="128"\r
+              step="1"\r
+              value="1"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Gamma increment per layer: gamma(li) = gamma + layerGammaStep * li"\r
+          >\r
+            <span class="lbl">Gamma step</span>\r
+            <input\r
+              id="layerGammaStep"\r
+              type="range"\r
+              min="-5"\r
+              max="5"\r
+              step="0.0001"\r
+              value="0.001"\r
+            />\r
+            <input\r
+              id="layerGammaStepOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="-5"\r
+              max="5"\r
+              step="0.0001"\r
+              value="0.1"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="World-space separation per layer for stacked rendering"\r
+          >\r
+            <span class="lbl">Separation</span>\r
+            <input\r
+              id="layerSeparation"\r
+              type="range"\r
+              min="-10"\r
+              max="10"\r
+              step="0.001"\r
+              value="0.0"\r
+            />\r
+            <input\r
+              id="layerSeparationOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="-10"\r
+              max="10"\r
+              step="0.001"\r
+              value="0.0"\r
+            />\r
+          </label>\r
+        </div>\r
+      </details>\r
+\r
+      <details class="section">\r
+        <summary>\r
+          <span class="section-title">Displacement + Lighting</span>\r
+          <span class="section-badge" title="SDF and shading">3d</span>\r
+        </summary>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control check"\r
+            title="Enable radial bowl displacement for lighting/extrusion"\r
+          >\r
+            <input type="checkbox" id="bowlOn" />\r
+            <span class="check-text">Enable bowl</span>\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Depth of the bowl displacement curve"\r
+          >\r
+            <span class="lbl">Bowl depth</span>\r
+            <input\r
+              type="range"\r
+              id="bowlDepth"\r
+              min="0"\r
+              max="3.14"\r
+              step="0.01"\r
+              value="0.25"\r
+            />\r
+            <input\r
+              id="bowlDepthOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="3.14"\r
+              step="0.01"\r
+              value="0.25"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Scale the on-screen quad used for rendering (for multi-pass / stacked zoom modes)"\r
+          >\r
+            <span class="lbl">Quad scale</span>\r
+            <input\r
+              id="quadScale"\r
+              type="range"\r
+              min="1"\r
+              max="1000"\r
+              step="1"\r
+              value="1"\r
+            />\r
+            <input\r
+              id="quadScaleOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="1"\r
+              max="1000"\r
+              step="1"\r
+              value="1"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control select"\r
+            title="Choose the type of height displacement applied to lighting / extrusion"\r
+          >\r
+            <span class="lbl">Disp mode</span>\r
+            <select id="dispMode" title="Displacement height mapping mode">\r
+              <option value="0">None</option>\r
+              <option value="1">Max Peak</option>\r
+              <option value="2">Min Peak</option>\r
+              <option value="3">Max Peak Log</option>\r
+              <option value="4">Min Peak Log</option>\r
+              <option value="5">Max Peak Pow</option>\r
+              <option value="6">Min Peak Pow</option>\r
+            </select>\r
+            <span class="spacer"></span>\r
+          </label>\r
+          <div class="hint">\r
+            Displacement and lighting require SDF and will cost extra GPU time.\r
+          </div>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Resolution of the displacement sampling grid"\r
+          >\r
+            <span class="lbl">Grid divs</span>\r
+            <input\r
+              id="gridDivs"\r
+              type="range"\r
+              min="64"\r
+              max="4096"\r
+              step="64"\r
+              value="256"\r
+            />\r
+            <input\r
+              id="gridDivsOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="64"\r
+              max="4096"\r
+              step="64"\r
+              value="256"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Amplitude of displacement applied to lighting"\r
+          >\r
+            <span class="lbl">Disp amp</span>\r
+            <input\r
+              type="range"\r
+              id="dispAmp"\r
+              min="0"\r
+              max="2"\r
+              step="0.01"\r
+              value="0.15"\r
+            />\r
+            <input\r
+              id="dispAmpOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="2"\r
+              step="0.01"\r
+              value="0.15"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Curve shaping for displacement height response"\r
+          >\r
+            <span class="lbl">Disp curve</span>\r
+            <input\r
+              type="range"\r
+              id="dispCurve"\r
+              min="0.001"\r
+              max="100"\r
+              step="0.001"\r
+              value="3"\r
+            />\r
+            <input\r
+              id="dispCurveOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0.001"\r
+              max="100"\r
+              step="0.001"\r
+              value="3"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control check"\r
+            title="Enable a max-slope clamp to prevent artifacts"\r
+          >\r
+            <input id="dispLimitOn" type="checkbox" />\r
+            <span class="check-text">Disp limit</span>\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Maximum surface slope allowed (degrees)"\r
+          >\r
+            <span class="lbl">Max slope</span>\r
+            <input\r
+              id="slopeLimit"\r
+              type="range"\r
+              min="0"\r
+              max="91"\r
+              step="0.001"\r
+              value="45"\r
+            />\r
+            <input\r
+              id="slopeLimitOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="91"\r
+              step="0.001"\r
+              value="45"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Maximum height discontinuity allowed (normalized units)"\r
+          >\r
+            <span class="lbl">Wall clamp</span>\r
+            <input\r
+              id="wallJump"\r
+              type="range"\r
+              min="0"\r
+              max="1"\r
+              step="0.001"\r
+              value="0.05"\r
+            />\r
+            <input\r
+              id="wallJumpOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="1"\r
+              step="0.001"\r
+              value="0.05"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control check"\r
+            title="Enable Phong-style shading based on displacement height"\r
+          >\r
+            <input id="lightingOn" type="checkbox" />\r
+            <span class="check-text">Lighting</span>\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label class="control slider" title="Light position X coordinate">\r
+            <span class="lbl">Light X</span>\r
+            <input\r
+              id="lightX"\r
+              type="range"\r
+              min="-50"\r
+              max="50"\r
+              step="0.1"\r
+              value="0"\r
+            />\r
+            <input\r
+              id="lightXOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="-50"\r
+              max="50"\r
+              step="0.1"\r
+              value="0"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label class="control slider" title="Light position Y coordinate">\r
+            <span class="lbl">Light Y</span>\r
+            <input\r
+              id="lightY"\r
+              type="range"\r
+              min="-50"\r
+              max="50"\r
+              step="0.1"\r
+              value="0"\r
+            />\r
+            <input\r
+              id="lightYOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="-50"\r
+              max="50"\r
+              step="0.1"\r
+              value="0"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Light position Z coordinate (height)"\r
+          >\r
+            <span class="lbl">Light Z</span>\r
+            <input\r
+              id="lightZ"\r
+              type="range"\r
+              min="-50"\r
+              max="50"\r
+              step="0.1"\r
+              value="50"\r
+            />\r
+            <input\r
+              id="lightZOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="-50"\r
+              max="50"\r
+              step="0.1"\r
+              value="50"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control slider"\r
+            title="Specular exponent controlling shininess"\r
+          >\r
+            <span class="lbl">Spec power</span>\r
+            <input\r
+              id="specPower"\r
+              type="range"\r
+              min="1"\r
+              max="128"\r
+              step="1"\r
+              value="32"\r
+            />\r
+            <input\r
+              id="specPowerOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="1"\r
+              max="128"\r
+              step="1"\r
+              value="32"\r
+            />\r
+          </label>\r
+        </div>\r
+      </details>\r
+\r
+      <details class="section">\r
+        <summary>\r
+          <span class="section-title">Advanced</span>\r
+          <span class="section-badge" title="Mostly for debugging">dbg</span>\r
+        </summary>\r
+\r
+        <div class="row" style="display: none">\r
+          <label class="control slider">\r
+            <span class="lbl">zMin</span>\r
+            <input id="zMin" type="number" step="0.1" value="0.0" />\r
+            <input\r
+              id="zMinOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              step="0.1"\r
+              value="0.0"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row" style="display: none">\r
+          <label class="control slider">\r
+            <span class="lbl">dz</span>\r
+            <input id="dz" type="number" step="0.01" value="0.2" />\r
+            <input\r
+              id="dzOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              step="0.01"\r
+              value="0.2"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row" style="display: none">\r
+          <label class="control slider">\r
+            <span class="lbl">Split max</span>\r
+            <input\r
+              id="splitCount"\r
+              type="number"\r
+              step="100000"\r
+              min="100000"\r
+              value="8000000"\r
+            />\r
+            <input\r
+              id="splitCountOut"\r
+              class="numeric-input"\r
+              type="number"\r
+              step="100000"\r
+              min="100000"\r
+              value="8000000"\r
+            />\r
+          </label>\r
+        </div>\r
+      </details>\r
+\r
+      <div class="ui-footer">\r
+        <div class="kbd-line"><span class="kbd">WASD</span> move</div>\r
+        <div class="kbd-line">\r
+          <span class="kbd">Space</span>/<span class="kbd">C</span> up/down\r
+        </div>\r
+        <div class="kbd-line">\r
+          <span class="kbd">Shift</span> fast,\r
+          <span class="kbd">Ctrl</span> slow\r
+        </div>\r
+      </div>\r
+    </div>\r
+  </aside>\r
+</div>\r
+`;
 
   // shaders/fractalCompute.wgsl
   var fractalCompute_default = "// shaders/fractalCompute.wgsl\r\n// Compute WGSL (entry point: main)\r\nstruct Params {\r\n  gridSize: u32,\r\n  maxIter: u32,\r\n  fractalType: u32,\r\n  _padA: u32,\r\n\r\n  // 16 ordered ops (0 ends early), packed as 4 vec4<u32> for 16-byte alignment\r\n  scaleOps: array<vec4<u32>, 4>,\r\n\r\n  zoom: f32,\r\n  dx: f32,\r\n  dy: f32,\r\n  escapeR: f32,\r\n  gamma: f32,\r\n  layerIndex: u32,\r\n  epsilon: f32,\r\n  convergenceTest: u32,\r\n  escapeMode: u32,\r\n  tileOffsetX: u32,\r\n  tileOffsetY: u32,\r\n  tileWidth: u32,\r\n  tileHeight: u32,\r\n  aspect: f32,\r\n  _pad0: u32,\r\n  _pad1: u32,\r\n  _pad2: u32,        // adjust so struct size remains multiple of 16 (or fits your uniformBufferSize)\r\n};\r\n@group(0) @binding(0) var<uniform> params: Params;\r\n@group(1) @binding(0) var storageTex: texture_storage_2d_array<rgba8unorm, write>;\r\n\r\nfn scaleOpAt(i: u32) -> u32 {\r\n  let v = params.scaleOps[i >> 2u];\r\n  let j = i32(i & 3u);\r\n  return v[j];\r\n}\r\n\r\n// Helpers:\r\nfn shipPower(ax: f32, ay: f32, p: f32) -> vec2<f32> {\r\n  // r = sqrt(ax^2 + ay^2)^p ; \u03B8 = atan2(ay,ax)*p\r\n  let r2 = ax*ax + ay*ay;\r\n  // avoid negative or zero? r2>=0\r\n  let r = pow(r2, 0.5 * p);\r\n  let theta = atan2(ay, ax) * p;\r\n  return vec2<f32>(r * cos(theta), r * sin(theta));\r\n}\r\n\r\nfn invPower(qx: f32, qy: f32, p: f32) -> vec2<f32> {\r\n  // 1/(qx+ i qy)^p via polar\r\n  let r2 = qx*qx + qy*qy + 1e-9;\r\n  let rp = pow(r2, 0.5 * p);\r\n  let th = atan2(qy, qx) * p;\r\n  let inv = 1.0 / rp;\r\n  return vec2<f32>(inv * cos(th), -inv * sin(th));\r\n}\r\n\r\nstruct InitialZ { qx: f32, qy: f32, px: f32, py: f32 };\r\n\r\nfn getInitialZ(typ: u32, x0: f32, y0: f32) -> InitialZ {\r\n  // Newton-typ indices: 26,40-46\r\n  let isNewton =\r\n      (typ == 26u) || (typ == 40u) || (typ == 41u) || (typ == 42u)\r\n      || (typ == 43u) || (typ == 44u) || (typ == 45u) || (typ == 46u);\r\n  if (isNewton) {\r\n    return InitialZ(1.0, 0.0, 0.0, 0.0);\r\n  }\r\n  // inverse families 30-39 start at c\r\n  if (typ >= 30u && typ <= 39u) {\r\n    return InitialZ(x0, y0, 0.0, 0.0);\r\n  }\r\n\r\n  // Basic Julia starts at the pixel's complex coordinate c = (x0,y0)\r\n  if (typ == 71u) {\r\n    return InitialZ(x0, y0, 0.0, 0.0);\r\n  }\r\n\r\n  // default start at 0\r\n  return InitialZ(0.0, 0.0, 0.0, 0.0);\r\n}\r\n\r\n// Main fractal step returning new z and new px,py:\r\nstruct FractalResult { nx: f32, ny: f32, npx: f32, npy: f32 };\r\n\r\nfn computeFractal(\r\n  typ: u32,\r\n  qx: f32, qy: f32, px: f32, py: f32,\r\n  cx: f32, cy: f32,\r\n  gamma: f32,\r\n  iter: u32,\r\n) -> FractalResult {\r\n\r\n  let s = 1.0 + f32(iter) * (gamma - 1.0);\r\n  var ccx = cx;\r\n  var ccy = cy;\r\n\r\n  for (var ti: u32 = 0u; ti < 16u; ti = ti + 1u) {\r\n    let op = scaleOpAt(ti);\r\n    if (op == 0u) {\r\n      break;\r\n    }\r\n\r\n    switch(op) {\r\n      case 1u: { // Multiply\r\n        ccx = ccx * s;\r\n        ccy = ccy * s;\r\n      }\r\n\r\n      case 2u: { // Divide\r\n        ccx = ccx / s;\r\n        ccy = ccy / s;\r\n      }\r\n\r\n      case 3u: { // Sine warp\r\n        let m = sin(s);\r\n        ccx = ccx * m;\r\n        ccy = ccy * m;\r\n      }\r\n\r\n      case 4u: { // Tangent warp\r\n        let m = tan(s);\r\n        ccx = ccx * m;\r\n        ccy = ccy * m;\r\n      }\r\n\r\n      case 5u: { // Cosine warp\r\n        let m = cos(s);\r\n        ccx = ccx * m;\r\n        ccy = ccy * m;\r\n      }\r\n\r\n      case 6u: { // Exponential zoom\r\n        let m = exp(s);\r\n        ccx = ccx * m;\r\n        ccy = ccy * m;\r\n      }\r\n\r\n      case 7u: { // Logarithmic shrink\r\n        let m = log(s + 1e-3);\r\n        ccx = ccx * m;\r\n        ccy = ccy * m;\r\n      }\r\n\r\n      case 8u: { // Anisotropic warp (x\xB7s, y\xF7s)\r\n        ccx = ccx * s;\r\n        ccy = ccy / s;\r\n      }\r\n\r\n      case 9u: { // Rotate by s radians\r\n        let \u03B8 = s;\r\n        let x0 = ccx * cos(\u03B8) - ccy * sin(\u03B8);\r\n        let y0 = ccx * sin(\u03B8) + ccy * cos(\u03B8);\r\n        ccx = x0;\r\n        ccy = y0;\r\n      }\r\n\r\n      case 10u: { // Radial twist (r^s, \u03B8\xB7s)\r\n        let r0  = sqrt(ccx*ccx + ccy*ccy);\r\n        let \u03B80  = atan2(ccy, ccx);\r\n        let rp  = pow(r0, s);\r\n        let \u03B8p  = \u03B80 * s;\r\n        ccx = rp * cos(\u03B8p);\r\n        ccy = rp * sin(\u03B8p);\r\n      }\r\n\r\n      case 11u: { // Hyperbolic warp (sinh, cosh)\r\n        ccx = ccx * sinh(s);\r\n        ccy = ccy * cosh(s);\r\n      }\r\n\r\n      case 12u: { // Radial hyperbolic (sinh(r*s))\r\n        let r0  = sqrt(ccx*ccx + ccy*ccy);\r\n        let \u03B80  = atan2(ccy, ccx);\r\n        let rp  = sinh(r0 * s);\r\n        ccx = rp * cos(\u03B80);\r\n        ccy = rp * sin(\u03B80);\r\n      }\r\n\r\n      case 13u: { // Swirl (\u03B8 + r*s)\r\n        let r0  = sqrt(ccx*ccx + ccy*ccy);\r\n        let \u03B80  = atan2(ccy, ccx);\r\n        let \u03B8p  = \u03B80 + r0 * s;\r\n        ccx = r0 * cos(\u03B8p);\r\n        ccy = r0 * sin(\u03B8p);\r\n      }\r\n\r\n      case 14u: { // Modular wrap\r\n        let m0 = fract(s * 0.5) * 2.0;      // s mod 2\r\n        let ux = ccx * m0 + 1.0;\r\n        let uy = ccy * m0 + 1.0;\r\n        ccx = fract(ux * 0.5) * 2.0 - 1.0;\r\n        ccy = fract(uy * 0.5) * 2.0 - 1.0;\r\n      }\r\n\r\n      case 15u: { // Axis swap & scale\r\n        let tx = ccy * s;\r\n        let ty = ccx * s;\r\n        ccx = tx;\r\n        ccy = ty;\r\n      }\r\n\r\n      case 16u: { // Mixed warp (blend multiply & sine)\r\n        let \u03B1   = fract(s * 0.1);\r\n        let m1x = ccx * s;\r\n        let m2x = ccx * sin(s);\r\n        let m1y = ccy * s;\r\n        let m2y = ccy * sin(s);\r\n        ccx = mix(m1x, m2x, \u03B1);\r\n        ccy = mix(m1y, m2y, \u03B1);\r\n      }\r\n\r\n      case 17u: { // Jitter noise\r\n        let jx = fract(sin(ccx * s) * 43758.5453) - 0.5;\r\n        let jy = fract(sin(ccy * s) * 97531.2468) - 0.5;\r\n        ccx = ccx + jx * s * 0.2;\r\n        ccy = ccy + jy * s * 0.2;\r\n      }\r\n\r\n      case 18u: { // Signed power warp\r\n        ccx = sign(ccx) * pow(abs(ccx), s);\r\n        ccy = sign(ccy) * pow(abs(ccy), s);\r\n      }\r\n\r\n      case 19u: { // Smoothstep fade\r\n        let t0 = smoothstep(0.0, 1.0, s);\r\n        ccx = ccx * t0;\r\n        ccy = ccy * t0;\r\n      }\r\n\r\n      default: {}\r\n    }\r\n  }\r\n\r\n  let a = abs(qx);\r\n  let b = abs(qy);\r\n  var nx: f32 = 0.0;\r\n  var ny: f32 = 0.0;\r\n  var npx = px;\r\n  var npy = py;\r\n\r\n  switch(typ) {\r\n    case 1u: { // Tricorn\r\n      nx = qx*qx - qy*qy + ccx;\r\n      ny = -2.0*qx*qy + ccy;\r\n    }\r\n    case 2u: { // Burning Ship\r\n      nx = a*a - b*b + ccx;\r\n      ny = 2.0*a*b + ccy;\r\n    }\r\n    case 3u: { // Perpendicular Mandelbrot\r\n      nx = qx*qx - qy*qy + ccx;\r\n      ny = -2.0*a*qy + ccy;\r\n    }\r\n    case 4u: { // Celtic\r\n      nx = abs(qx*qx - qy*qy) + ccx;\r\n      ny = 2.0*qx*qy + ccy;\r\n    }\r\n    case 5u: { // Buffalo\r\n      nx = abs(qx*qx - qy*qy) + ccx;\r\n      ny = -2.0*qx*qy + ccy;\r\n    }\r\n    case 6u: { // Phoenix (\u03BB = -0.5)\r\n      nx = qx*qx - qy*qy + ccx - 0.5*px;\r\n      ny = 2.0*qx*qy + ccy - 0.5*py;\r\n      npx = qx;\r\n      npy = qy;\r\n    }\r\n    case 7u: { // Cubic Multibrot z^3 + c\r\n      let r2 = qx*qx + qy*qy;\r\n      let theta = atan2(qy, qx);\r\n      let r3 = pow(r2, 1.5);\r\n      nx = r3 * cos(3.0 * theta) + ccx;\r\n      ny = r3 * sin(3.0 * theta) + ccy;\r\n    }\r\n    case 8u: { // Quartic Multibrot z^4 + c\r\n      let r2 = qx*qx + qy*qy;\r\n      let theta = atan2(qy, qx);\r\n      let r4 = r2*r2;\r\n      nx = r4 * cos(4.0 * theta) + ccx;\r\n      ny = r4 * sin(4.0 * theta) + ccy;\r\n    }\r\n    case 9u: { // Cosine\r\n      nx = cos(qx)*cosh(qy) + ccx;\r\n      ny = -sin(qx)*sinh(qy) + ccy;\r\n    }\r\n    case 10u: { // Sine\r\n      nx = sin(qx)*cosh(qy) + ccx;\r\n      ny = cos(qx)*sinh(qy) + ccy;\r\n    }\r\n    case 11u: { // Heart\r\n      let rx = abs(qx);\r\n      nx = rx*rx - qy*qy + ccx;\r\n      ny = 2.0*rx*qy + ccy;\r\n    }\r\n    case 12u: { // Perpendicular Buffalo\r\n      nx = abs(qx*qx - qy*qy) + ccx;\r\n      ny = -2.0*a*qy + ccy;\r\n    }\r\n    case 13u: { // Spiral Mandelbrot with twist\r\n      let THETA = 0.35 + 2.0*gamma;\r\n      let wRe = cos(THETA);\r\n      let wIm = sin(THETA);\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n      let tx = wRe*zx2 - wIm*zy2;\r\n      let ty = wRe*zy2 + wIm*zx2;\r\n      nx = tx + ccx;\r\n      ny = ty + ccy;\r\n    }\r\n    case 14u: { // Quintic z^5 + c\r\n      let r2 = qx*qx + qy*qy;\r\n      let theta = atan2(qy, qx);\r\n      let r5 = pow(r2, 2.5);\r\n      nx = r5*cos(5.0*theta) + ccx;\r\n      ny = r5*sin(5.0*theta) + ccy;\r\n    }\r\n    case 15u: { // Sextic z^6 + c\r\n      let r2 = qx*qx + qy*qy;\r\n      let theta = atan2(qy, qx);\r\n      let r6 = r2*r2*r2;\r\n      nx = r6*cos(6.0*theta) + ccx;\r\n      ny = r6*sin(6.0*theta) + ccy;\r\n    }\r\n    case 16u: { // Tangent fractal tan(z)+c\r\n      let sin2x = sin(2.0*qx);\r\n      let sinh2y = sinh(2.0*qy);\r\n      let denom = cos(2.0*qx) + cosh(2.0*qy) + 1e-9;\r\n      nx = sin2x/denom + ccx;\r\n      ny = sinh2y/denom + ccy;\r\n    }\r\n    case 17u: { // Exponential fractal exp(z)+c\r\n      let ex = exp(qx);\r\n      nx = ex*cos(qy) + ccx;\r\n      ny = ex*sin(qy) + ccy;\r\n    }\r\n    case 18u: { // Septic z^7 + c\r\n      let r2 = qx*qx + qy*qy;\r\n      let theta = atan2(qy, qx);\r\n      let r7 = pow(r2, 3.5);\r\n      nx = r7*cos(7.0*theta) + ccx;\r\n      ny = r7*sin(7.0*theta) + ccy;\r\n    }\r\n    case 19u: { // Octic z^8 + c\r\n      let r2 = qx*qx + qy*qy;\r\n      let theta = atan2(qy, qx);\r\n      let r8 = r2*r2*r2*r2;\r\n      nx = r8*cos(8.0*theta) + ccx;\r\n      ny = r8*sin(8.0*theta) + ccy;\r\n    }\r\n    case 20u: { // Inverse Mandelbrot 1/z^2 + c\r\n      let r2 = qx*qx + qy*qy + 1e-9;\r\n      let invv = 1.0/(r2*r2);\r\n      nx = (qx*qx - qy*qy)*invv + ccx;\r\n      ny = (2.0*qx*qy)*invv + ccy;\r\n    }\r\n    case 21u: { // Burning Ship deep zoom\r\n      let centerRe = -1.7443359375;\r\n      let centerIm = -0.017451171875;\r\n      let sub = 0.04;\r\n      let dx2 = ccx*sub + centerRe;\r\n      let dy2 = ccy*sub + centerIm;\r\n      nx = a*a - b*b + dx2;\r\n      ny = 2.0*a*b + dy2;\r\n    }\r\n    case 22u: { // Cubic Burning Ship |z|^3 + c\r\n      let pr = shipPower(a, b, 3.0);\r\n      nx = pr.x + ccx;\r\n      ny = pr.y + ccy;\r\n    }\r\n    case 23u: { // Quartic Burning Ship |z|^4 + c\r\n      let pr = shipPower(a, b, 4.0);\r\n      nx = pr.x + ccx;\r\n      ny = pr.y + ccy;\r\n    }\r\n    case 24u: { // Quintic Burning Ship |z|^5 + c\r\n      let pr = shipPower(a, b, 5.0);\r\n      nx = pr.x + ccx;\r\n      ny = pr.y + ccy;\r\n    }\r\n    case 25u: { // Hexic Burning Ship |z|^6 + c\r\n      let pr = shipPower(a, b, 6.0);\r\n      nx = pr.x + ccx;\r\n      ny = pr.y + ccy;\r\n    }\r\n    case 26u: { // Nova: z - (z^3-1)/(3 z^2) + c\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n      let zx3 = zx2*qx - zy2*qy;\r\n      let zy3 = zx2*qy + zy2*qx;\r\n      let numx = zx3 - 1.0;\r\n      let numy = zy3;\r\n      let denx = 3.0*zx2;\r\n      let deny = 3.0*zy2;\r\n      let den2 = denx*denx + deny*deny + 1e-9;\r\n      let qxDiv = (numx*denx + numy*deny)/den2;\r\n      let qyDiv = (numy*denx - numx*deny)/den2;\r\n      nx = qx - qxDiv + ccx;\r\n      ny = qy - qyDiv + ccy;\r\n    }\r\n    case 27u: { // Man-o-War: z^2 + c + prev\r\n      nx = qx*qx - qy*qy + ccx + px;\r\n      ny = 2.0*qx*qy + ccy + py;\r\n      npx = qx;\r\n      npy = qy;\r\n    }\r\n    /* =============================================================== */\r\n    /* 28 -  Stretched-Celtic-Spiral                                   */\r\n    /* =============================================================== */\r\n    case 28u: {\r\n        let k = 1.5;                    /* stretch factor              */\r\n        let sx = qx * k;\r\n        let sy = qy / k;\r\n\r\n        /* perpendicular-Celtic core                                   */\r\n        var tx = abs(sx*sx - sy*sy);\r\n        var ty = -2.0*abs(sx)*sy;\r\n\r\n        /* gentle spiral twist using gamma & iteration #               */\r\n        let \u03C1   = length(vec2<f32>(tx, ty));\r\n        let \u03B8   = atan2(ty, tx)\r\n                + gamma * 6.2831853 * 0.1\r\n                + f32(iter) * 0.03;\r\n\r\n        nx = \u03C1 * cos(\u03B8) + cx;\r\n        ny = \u03C1 * sin(\u03B8) + cy;\r\n    }\r\n\r\n    /* =============================================================== */\r\n    /* 29 -  Polar-Flame fractal                                       */\r\n    /* =============================================================== */\r\n    case 29u: {\r\n        let r      = length(vec2<f32>(qx, qy)) + 1e-9;\r\n        let theta  = atan2(qy, qx);\r\n\r\n        /* flame parameters modulated by gamma                         */\r\n        let c0 = 0.25 + 0.15*gamma;\r\n        let c1 = 0.5  + 0.5 *gamma;\r\n\r\n        let r2    = r*r + c0;\r\n        let theta2= 2.0*theta + c1;\r\n\r\n        nx = r2 * cos(theta2) + cx;\r\n        ny = r2 * sin(theta2) + cy;\r\n    }\r\n    case 30u, 31u, 32u, 33u, 34u, 35u: { // inv 3..8\r\n      let p = f32(typ - 27u); // 30->3, 31->4, ..., 35->8\r\n      let pr = invPower(qx, qy, p);\r\n      nx = pr.x + ccx;\r\n      ny = pr.y + ccy;\r\n    }\r\n    case 36u: { // Inverse Burning-Ship\r\n      let a2 = abs(qx);\r\n      let b2 = abs(qy);\r\n      let r2 = qx*qx + qy*qy + 1e-9;\r\n      let invv = 1.0/(r2*r2);\r\n      nx = (a2*a2 - b2*b2)*invv + ccx;\r\n      ny = (2.0*a2*b2)*invv + ccy;\r\n    }\r\n    case 37u: { // Inverse Tricorn\r\n      let r2 = qx*qx + qy*qy + 1e-9;\r\n      let invv = 1.0/(r2*r2);\r\n      nx = (qx*qx - qy*qy)*invv + ccx;\r\n      ny = (-2.0*qx*qy)*invv + ccy;\r\n    }\r\n    case 38u: { // Inverse Celtic\r\n      let r2 = qx*qx + qy*qy + 1e-9;\r\n      let invv = 1.0/(r2*r2);\r\n      let rx = abs(qx*qx - qy*qy);\r\n      nx = rx*invv + ccx;\r\n      ny = (2.0*qx*qy)*invv + ccy;\r\n    }\r\n    case 39u: { // Inverse Phoenix\r\n      let r2 = qx*qx + qy*qy + 1e-9;\r\n      let invv = 1.0/(r2*r2);\r\n      let zx2 = (qx*qx - qy*qy)*invv;\r\n      let zy2 = (2.0*qx*qy)*invv;\r\n      nx = zx2 + ccx - 0.5*px;\r\n      ny = zy2 + ccy - 0.5*py;\r\n      npx = qx;\r\n      npy = qy;\r\n    }\r\n    case 40u: { // Tri-Nova\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n      let zx4 = zx2*zx2 - zy2*zy2;\r\n      let zy4 = 2.0*zx2*zy2;\r\n      nx = 1.3333333*qx - 0.3333333*zx4 + ccx;\r\n      ny = 1.3333333*qy - 0.3333333*zy4 + ccy;\r\n    }\r\n    case 41u: { // Nova-Mandelbrot\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n      let zx3 = zx2*qx - zy2*qy;\r\n      let zy3 = zx2*qy + zy2*qx;\r\n      let denx = 3.0*zx2;\r\n      let deny = 3.0*zy2;\r\n      let den2 = denx*denx + deny*deny + 1e-9;\r\n      let numx = zx3 - 1.0;\r\n      let numy = zy3;\r\n      let divx = (numx*denx + numy*deny)/den2;\r\n      let divy = (numy*denx - numx*deny)/den2;\r\n      nx = qx - divx + ccx;\r\n      ny = qy - divy + ccy;\r\n    }\r\n    case 42u: { // Nova 2 (inverse variant)\r\n      let r2_inv = 1.0/(qx*qx + qy*qy + 1e-9);\r\n      let izRe = qx * r2_inv;\r\n      let izIm = -qy * r2_inv;\r\n      let zx2 = izRe*izRe - izIm*izIm;\r\n      let zy2 = 2.0*izRe*izIm;\r\n      let zx4 = zx2*zx2 - zy2*zy2;\r\n      let zy4 = 2.0*zx2*zy2;\r\n      let fRe = 1.3333333*izRe - 0.3333333*zx4 + ccx;\r\n      let fIm = 1.3333333*izIm - 0.3333333*zy4 + ccy;\r\n      let den = 1.0/(fRe*fRe + fIm*fIm + 1e-9);\r\n      nx = fRe*den;\r\n      ny = -fIm*den;\r\n    }\r\n    case 43u: { // Nova 2 variant\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n      let zx4 = zx2*zx2 - zy2*zy2;\r\n      let zy4 = 2.0*zx2*zy2;\r\n      let fRe = 1.3333333*qx - 0.3333333*zx4 + ccx;\r\n      let fIm = 1.3333333*qy - 0.3333333*zy4 + ccy;\r\n      let invR2 = 1.0/(fRe*fRe + fIm*fIm + 1e-9);\r\n      nx = fRe*invR2;\r\n      ny = -fIm*invR2;\r\n    }\r\n    case 44u: { // Quartic-Nova\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n      let zx3 = zx2*qx - zy2*qy;\r\n      let zy3 = zx2*qy + zy2*qx;\r\n      let zx4 = zx3*qx - zy3*qy;\r\n      let zy4 = zx3*qy + zy3*qx;\r\n      let numx = zx4 - 1.0;\r\n      let numy = zy4;\r\n      let denx = 4.0*(zx2*qx - zy2*qy);\r\n      let deny = 4.0*(zx2*qy + zy2*qx);\r\n      let den2 = denx*denx + deny*deny + 1e-9;\r\n      let divx = (numx*denx + numy*deny)/den2;\r\n      let divy = (numy*denx - numx*deny)/den2;\r\n      nx = qx - divx + ccx;\r\n      ny = qy - divy + ccy;\r\n    }\r\ncase 45u: { // Flower Nova\r\n  var zx0 = qx;\r\n  var zy0 = qy;\r\n  if (iter == 0u) {\r\n    zx0 = cx;\r\n    zy0 = cy;\r\n  }\r\n  let zx2 = zx0*zx0 - zy0*zy0;\r\n  let zy2 = 2.0*zx0*zy0;\r\n  let zx3 = zx2*zx0 - zy2*zy0;\r\n  let zy3 = zx2*zy0 + zy2*zx0;\r\n  let zx4 = zx3*zx0 - zy3*zy0;\r\n  let zy4 = zx3*zy0 + zy3*zx0;\r\n  let denx = 4.0*zx3;\r\n  let deny = 4.0*zy3;\r\n  let den2 = denx*denx + deny*deny + 1e-9;\r\n  let numx = zx4 - 1.0;\r\n  let numy = zy4;\r\n  let divx = (numx*denx + numy*deny) / den2;\r\n  let divy = (numy*denx - numx*deny) / den2;\r\n  let fx = zx0 - divx + ccx;\r\n  let fy = zy0 - divy + ccy;\r\n  nx = -fx;\r\n  ny = -fy;\r\n  break;\r\n}\r\ncase 46u: { // Scatter-Nova\r\n  var zx0 = qx;\r\n  var zy0 = qy;\r\n  if (iter == 0u) {\r\n    zx0 = cx;\r\n    zy0 = cy;\r\n  }\r\n  let zx2 = zx0*zx0 - zy0*zy0;\r\n  let zy2 = 2.0*zx0*zy0;\r\n  let zx3 = zx2*zx0 - zy2*zy0;\r\n  let zy3 = zx2*zy0 + zy2*zx0;\r\n  let zx4 = zx3*zx0 - zy3*zy0;\r\n  let zy4 = zx3*zy0 + zy3*zx0;\r\n  let denx = 4.0*zx3;\r\n  let deny = 4.0*zy3;\r\n  let den2 = denx*denx + deny*deny + 1e-9;\r\n  let numx = zx4 - 1.0;\r\n  let numy = zy4;\r\n  let divx = (numx*denx + numy*deny) / den2;\r\n  let divy = (numy*denx - numx*deny) / den2;\r\n  let fx = zx0 - divx + ccx;\r\n  let fy = zy0 - divy + ccy;\r\n  let invR2 = 1.0 / (fx*fx + fy*fy + 1e-9);\r\n  nx = fx * invR2;\r\n  ny = -fy * invR2;\r\n  break;\r\n}\r\n\r\n// 47: Twisted-Flower Nova\r\ncase 47u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx; zy0 = cy;\r\n    }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let denx = 4.0*zx3;\r\n    let deny = 4.0*zy3;\r\n    let den2 = denx*denx + deny*deny + 1e-9;\r\n    let numx = zx4 - 1.0;\r\n    let numy = zy4;\r\n    let divx = (numx*denx + numy*deny) / den2;\r\n    let divy = (numy*denx - numx*deny) / den2;\r\n    let fx = zx0 - divx + ccx;\r\n    let fy = zy0 - divy + ccy;\r\n    let r = length(vec2<f32>(fx, fy));\r\n    let theta = atan2(fy, fx);\r\n    let twist = theta + gamma * 2.0 * 3.14159265 * sin(f32(iter) * 0.2);\r\n    nx = r * cos(twist);\r\n    ny = r * sin(twist);\r\n    npx = qx;\r\n    npy = qy;\r\n    break;\r\n}\r\n\r\n// 48: Lobed-Scatter Nova\r\ncase 48u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numx = zx4 - 1.0;\r\n    let numy = zy4;\r\n    let denx = 4.0*zx3;\r\n    let deny = 4.0*zy3;\r\n    let den2 = denx*denx + deny*deny + 1e-9;\r\n    let divx = (numx*denx + numy*deny) / den2;\r\n    let divy = (numy*denx - numx*deny) / den2;\r\n    let fx = zx0 - divx + ccx;\r\n    let fy = zy0 - divy + ccy;\r\n    let invR2 = 1.0 / (fx*fx + fy*fy + 1e-9);\r\n    var sx = fx * invR2;\r\n    var sy = -fy * invR2;\r\n    let ang = atan2(sy, sx);\r\n    let r0  = length(vec2<f32>(sx, sy));\r\n    let lobes = 5.0 + sin(gamma * 10.0);\r\n    let petal = 1.0 + 0.3 * cos(ang * lobes + f32(iter) * 0.15);\r\n    nx = sx * petal;\r\n    ny = sy * petal;\r\n    npx = qx;\r\n    npy = qy;\r\n    break;\r\n}\r\n// 49: Hybrid-FlScatter Nova\r\ncase 49u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invDenF = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fxF = zx0 - ((numxF*denxF + numyF*denyF) * invDenF) + ccx;\r\n    let fyF = zy0 - ((numyF*denxF - numxF*denyF) * invDenF) + ccy;\r\n    let invR2 = 1.0 / (fxF*fxF + fyF*fyF + 1e-9);\r\n    let sx    = fxF * invR2;\r\n    let sy    = -fyF * invR2;\r\n    let blend = 0.5 + 0.5 * sin(gamma * 3.14159265 + f32(iter) * 0.05);\r\n    nx = mix(fxF, sx, blend);\r\n    ny = mix(fyF, sy, blend);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 50: Fractional-Nova\r\ncase 50u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let p   = 3.7;\r\n    let r0  = length(vec2<f32>(zx0, zy0));\r\n    let theta0 = atan2(zy0, zx0);\r\n    let rp  = pow(r0, p);\r\n    let xp  = rp * cos(p * theta0);\r\n    let yp  = rp * sin(p * theta0);\r\n    let rm1 = pow(r0, p - 1.0);\r\n    let xm1 = rm1 * cos((p - 1.0) * theta0);\r\n    let ym1 = rm1 * sin((p - 1.0) * theta0);\r\n    let denx = p * xm1;\r\n    let deny = p * ym1;\r\n    let d2   = denx*denx + deny*deny + 1e-9;\r\n    let divx = ((xp - 1.0) * denx + yp * deny) / d2;\r\n    let divy = ( yp * denx - (xp - 1.0) * deny) / d2;\r\n    nx = zx0 - divx + ccx;\r\n    ny = zy0 - divy + ccy;\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 51: Kaleido-Nova\r\ncase 51u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let zx2   = zx0*zx0 - zy0*zy0;\r\n    let zy2   = 2.0*zx0*zy0;\r\n    let zx3   = zx2*zx0 - zy2*zy0;\r\n    let zy3   = zx2*zy0 + zy2*zx0;\r\n    let zx4   = zx3*zx0 - zy3*zy0;\r\n    let zy4   = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invDen = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx    = zx0 - ((numxF*denxF + numyF*denyF) * invDen) + ccx;\r\n    let fy    = zy0 - ((numyF*denxF - numxF*denyF) * invDen) + ccy;\r\n\r\n    let sect   = 7.0;\r\n    let slice  = 2.0 * 3.14159265 / sect;\r\n    let angle  = atan2(fy, fx);\r\n    let aDiv  = floor(angle / slice);\r\n    let a2    = angle - aDiv * slice;\r\n    var aMir: f32;\r\n    if (a2 < slice * 0.5) {\r\n        aMir = a2;\r\n    } else {\r\n        aMir = slice - a2;\r\n    }\r\n    let angK  = aDiv * slice + aMir;\r\n    let rad0  = length(vec2<f32>(fx, fy));\r\n    nx = rad0 * cos(angK);\r\n    ny = rad0 * sin(angK);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 52: Cross-Nova\r\ncase 52u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    var sx = cx;\r\n    var sy = cy;\r\n    if ((iter & 1u) == 1u) {\r\n        sx = params.dx;\r\n        sy = params.dy;\r\n    }\r\n    let ux0 = zx0 + (sx - cx);\r\n    let uy0 = zy0 + (sy - cy);\r\n    let ux2 = ux0*ux0 - uy0*uy0;\r\n    let uy2 = 2.0*ux0*uy0;\r\n    let ux3 = ux2*ux0 - uy2*uy0;\r\n    let uy3 = ux2*uy0 + uy2*ux0;\r\n    let ux4 = ux3*ux0 - uy3*uy0;\r\n    let uy4 = ux3*uy0 + uy3*ux0;\r\n    let numx = ux4 - 1.0;\r\n    let numy = uy4;\r\n    let denx = 4.0*ux3;\r\n    let deny = 4.0*uy3;\r\n    let invD = 1.0 / (denx*denx + deny*deny + 1e-9);\r\n    let divx = (numx*denx + numy*deny) * invD;\r\n    let divy = (numy*denx - numx*deny) * invD;\r\n    let fx = ux0 - divx + ccx;\r\n    let fy = uy0 - divy + ccy;\r\n    nx = fx;\r\n    ny = fy;\r\n    npx = qx;\r\n    npy = qy;\r\n    break;\r\n}\r\n\r\n// 53: Mirror-Nova\r\ncase 53u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let zx2   = zx0*zx0 - zy0*zy0;\r\n    let zy2   = 2.0*zx0*zy0;\r\n    let zx3   = zx2*zx0 - zy2*zy0;\r\n    let zy3   = zx2*zy0 + zy2*zx0;\r\n    let zx4   = zx3*zx0 - zy3*zy0;\r\n    let zy4   = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invD  = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx    = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;\r\n    let fy    = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;\r\n\r\n    if ((iter & 1u) == 0u) {\r\n        nx = -fx; ny = fy;\r\n    } else {\r\n        nx = fx;  ny = -fy;\r\n    }\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 54: Spiro-Nova\r\ncase 54u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let zx2   = zx0*zx0 - zy0*zy0;\r\n    let zy2   = 2.0*zx0*zy0;\r\n    let zx3   = zx2*zx0 - zy2*zy0;\r\n    let zy3   = zx2*zy0 + zy2*zx0;\r\n    let zx4   = zx3*zx0 - zy3*zy0;\r\n    let zy4   = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invD  = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx    = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;\r\n    let fy    = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;\r\n\r\n    let theta   = atan2(fy, fx);\r\n    let r0      = length(vec2<f32>(fx, fy));\r\n    let tmpA    = gamma * 5.0;\r\n    let aDiv    = floor(tmpA / 4.0);\r\n    let freqA   = tmpA - aDiv * 4.0;\r\n    let aFreq   = 3.0 + freqA;\r\n    let tmpB    = gamma * 7.0;\r\n    let bDiv    = floor(tmpB / 5.0);\r\n    let freqB   = tmpB - bDiv * 5.0;\r\n    let bFreq   = 4.0 + freqB;\r\n    let amp     = 0.2 + 0.1 * sin(f32(iter) * 0.1);\r\n\r\n    nx = (r0 + amp * sin(aFreq * theta)) * cos(theta + amp * cos(bFreq * theta));\r\n    ny = (r0 + amp * sin(aFreq * theta)) * sin(theta + amp * cos(bFreq * theta));\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 55: Vibrant-Nova\r\ncase 55u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let zx2   = zx0*zx0 - zy0*zy0;\r\n    let zy2   = 2.0*zx0*zy0;\r\n    let zx3   = zx2*zx0 - zy2*zy0;\r\n    let zy3   = zx2*zy0 + zy2*zx0;\r\n    let zx4   = zx3*zx0 - zy3*zy0;\r\n    let zy4   = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invD   = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx     = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;\r\n    let fy     = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;\r\n\r\n    let r0      = length(vec2<f32>(fx, fy));\r\n    let theta   = atan2(fy, fx);\r\n    let wave    = 1.0 + 0.3 * sin(6.0*theta + f32(iter)*0.2 + gamma*10.0);\r\n\r\n    nx = r0 * wave * cos(theta);\r\n    ny = r0 * wave * sin(theta);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n// 56: Julia-Nova Hybrid\r\ncase 56u: {\r\n    let jx = params.dx;\r\n    let jy = params.dy;\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let numx = zx3 - 1.0;\r\n    let numy = zy3;\r\n    let denx = 3.0*zx2;\r\n    let deny = 3.0*zy2;\r\n    let invD = 1.0 / (denx*denx + deny*deny + 1e-9);\r\n    let divx = (numx*denx + numy*deny) * invD;\r\n    let divy = (numy*denx - numx*deny) * invD;\r\n    let fx = zx0 - divx + ccx;\r\n    let fy = zy0 - divy + ccy;\r\n    let alpha = 0.3 + 0.2 * sin(gamma * 6.28);\r\n    nx = fx + alpha * (fx - jx);\r\n    ny = fy + alpha * (fy - jy);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 57: Inverse-Spiral Nova\r\ncase 57u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numx = zx4 - 1.0; let numy = zy4;\r\n    let denx = 4.0*zx3; let deny = 4.0*zy3;\r\n    let invD = 1.0/(denx*denx + deny*deny + 1e-9);\r\n    let fx   = zx0 - (numx*denx + numy*deny)*invD + ccx;\r\n    let fy   = zy0 - (numy*denx - numx*deny)*invD + ccy;\r\n    let invR2= 1.0/(fx*fx + fy*fy + 1e-9);\r\n    var sx   = fx * invR2; var sy = -fy * invR2;\r\n    let \u03B8 = atan2(sy, sx);\r\n    let r = length(vec2<f32>(sx, sy));\r\n    let beta = 0.1 + 0.05*sin(f32(iter)*0.2);\r\n    let rw = r * exp(beta * \u03B8);\r\n    nx = rw * cos(\u03B8);\r\n    ny = rw * sin(\u03B8);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 58: Wavefront Nova\r\ncase 58u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let denx = 4.0*zx3; let deny = 4.0*zy3;\r\n    let numx = zx4 - 1.0; let numy = zy4;\r\n    let invD = 1.0/(denx*denx + deny*deny + 1e-9);\r\n    let fx   = zx0 - (numx*denx + numy*deny)*invD + ccx;\r\n    let fy   = zy0 - (numy*denx - numx*deny)*invD + ccy;\r\n    let r0    = length(vec2<f32>(fx, fy));\r\n    let phase = sin(f32(iter) * 0.3 + gamma * 12.0);\r\n    let offset= 0.2 * phase * sin(8.0 * r0);\r\n    let r1    = max(0.0, r0 + offset);\r\n    let \u03B8     = atan2(fy, fx);\r\n    nx = r1 * cos(\u03B8);\r\n    ny = r1 * sin(\u03B8);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 59: Vortex-Nova\r\ncase 59u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx; zy0 = cy;\r\n    }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invD = 1.0/(denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;\r\n    let fy = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;\r\n\r\n    let r   = length(vec2<f32>(fx, fy));\r\n    let baseAngle = atan2(fy, fx);\r\n    let swirlAmt  = 1.5 * exp(-r * 2.0);\r\n    let angle2    = baseAngle + swirlAmt;\r\n    nx = r * cos(angle2);\r\n    ny = r * sin(angle2);\r\n\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 60: Sine-Ring Nova\r\ncase 60u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx; zy0 = cy;\r\n    }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invD   = 1.0/(denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx0    = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;\r\n    let fy0    = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;\r\n\r\n    let r0    = length(vec2<f32>(fx0, fy0));\r\n    let \u03B8     = atan2(fy0, fx0);\r\n    let freq  = 10.0 + 5.0 * sin(gamma * 6.2831853);\r\n    let amp   = 0.1 + 0.05 * cos(f32(iter) * 0.1);\r\n    let ring  = r0 + amp * sin(freq * r0);\r\n    nx = ring * cos(\u03B8);\r\n    ny = ring * sin(\u03B8);\r\n\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 61: Inverse-Spiral Nova (gentler)\r\ncase 61u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx; zy0 = cy;\r\n    }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numx = zx4 - 1.0;   let numy = zy4;\r\n    let denx = 4.0*zx3;     let deny = 4.0*zy3;\r\n    let invD = 1.0/(denx*denx + deny*deny + 1e-9);\r\n    let fx0  = zx0 - (numx*denx + numy*deny)*invD + ccx;\r\n    let fy0  = zy0 - (numy*denx - numx*deny)*invD + ccy;\r\n    let invR2= 1.0/(fx0*fx0 + fy0*fy0 + 1e-9);\r\n    let sx   = fx0 * invR2;\r\n    let sy   = -fy0 * invR2;\r\n\r\n    let \u03B8    = atan2(sy, sx);\r\n    let r    = length(vec2<f32>(sx, sy));\r\n    let t    = \u03B8 / 3.14159265;\r\n    let beta = 1.0 + 0.2 * t;\r\n    let rw   = pow(r, beta);\r\n\r\n    nx = rw * cos(\u03B8);\r\n    ny = rw * sin(\u03B8);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n// 62: Inverse-Vortex Nova\r\ncase 62u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invDF  = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx0    = zx0 - ((numxF*denxF + numyF*denyF)*invDF) + ccx;\r\n    let fy0    = zy0 - ((numyF*denxF - numxF*denyF)*invDF) + ccy;\r\n\r\n    let r   = length(vec2<f32>(fx0, fy0));\r\n    let \u03B8   = atan2(fy0, fx0);\r\n    let swirlAmt = 1.5 * exp(-r * 2.0);\r\n    let \u03B82  = \u03B8 + swirlAmt;\r\n    var vx  = r * cos(\u03B82);\r\n    var vy  = r * sin(\u03B82);\r\n\r\n    let invR2 = 1.0 / (vx*vx + vy*vy + 1e-9);\r\n    nx = vx * invR2;\r\n    ny = -vy * invR2;\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 63: Inverse-Sine-Ring Nova\r\ncase 63u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invDF  = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx0    = zx0 - ((numxF*denxF + numyF*denyF)*invDF) + ccx;\r\n    let fy0    = zy0 - ((numyF*denxF - numxF*denyF)*invDF) + ccy;\r\n\r\n    let r0   = length(vec2<f32>(fx0, fy0));\r\n    let \u03B8    = atan2(fy0, fx0);\r\n    let freq = 10.0 + 5.0 * sin(gamma * 6.2831853);\r\n    let amp  = 0.1 + 0.05 * cos(f32(iter) * 0.1);\r\n    var rx  = r0 + amp * sin(freq * r0);\r\n    var ry  = \u03B8;\r\n\r\n    let sx = rx * cos(ry);\r\n    let sy = rx * sin(ry);\r\n\r\n    let invR2 = 1.0 / (sx*sx + sy*sy + 1e-9);\r\n    nx = sx * invR2;\r\n    ny = -sy * invR2;\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 64: Inverse-Mirror Nova\r\ncase 64u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n\r\n    let zx2   = zx0*zx0 - zy0*zy0;\r\n    let zy2   = 2.0*zx0*zy0;\r\n    let zx3   = zx2*zx0 - zy2*zy0;\r\n    let zy3   = zx2*zy0 + zy2*zx0;\r\n    let zx4   = zx3*zx0 - zy3*zy0;\r\n    let zy4   = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invDF = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx0   = zx0 - ((numxF*denxF + numyF*denyF)*invDF) + ccx;\r\n    let fy0   = zy0 - ((numyF*denxF - numxF*denyF)*invDF) + ccy;\r\n\r\n    var mx: f32; var my: f32;\r\n    if ((iter & 1u) == 0u) {\r\n        mx = -fx0; my = fy0;\r\n    } else {\r\n        mx =  fx0; my = -fy0;\r\n    }\r\n\r\n    let invR2 = 1.0 / (mx*mx + my*my + 1e-9);\r\n    nx = mx * invR2;\r\n    ny = -my * invR2;\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 65: Inverse-Vibrant Nova\r\ncase 65u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n\r\n    let zx2   = zx0*zx0 - zy0*zy0;\r\n    let zy2   = 2.0*zx0*zy0;\r\n    let zx3   = zx2*zx0 - zy2*zy0;\r\n    let zy3   = zx2*zy0 + zy2*zx0;\r\n    let zx4   = zx3*zx0 - zy3*zy0;\r\n    let zy4   = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invDF = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx0   = zx0 - ((numxF*denxF + numyF*denyF)*invDF) + ccx;\r\n    let fy0   = zy0 - ((numyF*denxF - numxF*denyF)*invDF) + ccy;\r\n\r\n    let r0     = length(vec2<f32>(fx0, fy0));\r\n    let theta  = atan2(fy0, fx0);\r\n    let wave   = 1.0 + 0.3 * sin(6.0*theta + f32(iter)*0.2 + gamma*10.0);\r\n    let vx     = r0 * wave * cos(theta);\r\n    let vy     = r0 * wave * sin(theta);\r\n\r\n    let invR2  = 1.0 / (vx*vx + vy*vy + 1e-9);\r\n    nx = vx * invR2;\r\n    ny = -vy * invR2;\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\ncase 66u: {                // Golden-Ratio Rational\r\n    let phi  = 1.61803398875;\r\n    let crx = -phi;\r\n    let cry =  phi;\r\n    let cax =  phi - 1.0;\r\n    let cay =  0.5 * phi;\r\n\r\n    let zx2 = qx*qx - qy*qy;\r\n    let zy2 = 2.0 * qx * qy;\r\n\r\n    let numx = zx2 + crx;\r\n    let numy = zy2 + cry;\r\n    let denx = zx2 + cax;\r\n    let deny = zy2 + cay;\r\n    let den2 = denx*denx + deny*deny + 1e-9;\r\n\r\n    let divx = (numx*denx + numy*deny) / den2;\r\n    let divy = (numy*denx - numx*deny) / den2;\r\n\r\n    nx = divx + ccx;\r\n    ny = divy + ccy;\r\n}\r\n\r\ncase 67u: {                // SinCos-Kernel\r\n    let sinx = sin(qx) * cosh(qy);\r\n    let siny =  cos(qx) * sinh(qy);\r\n    let cosx = cos(qx) * cosh(qy);\r\n    let cosy = -sin(qx) * sinh(qy);\r\n\r\n    let prodx = sinx*cosx - siny*cosy;\r\n    let prody = sinx*cosy + siny*cosx;\r\n\r\n    nx = prodx + ccx;\r\n    ny = prody + ccy;\r\n}\r\n/* 68 : Golden-Push-Pull */\r\ncase 68u: {\r\n    let phi  = 1.61803398875;\r\n    let crex = -phi;  let crey =  phi;\r\n    let caex =  phi-1.0; let caey = 0.5*phi;\r\n\r\n    let zx2 = qx*qx - qy*qy;\r\n    let zy2 = 2.0*qx*qy;\r\n\r\n    let numx = zx2 + crex;\r\n    let numy = zy2 + crey;\r\n    let denx = zx2 + caex;\r\n    let deny = zy2 + caey;\r\n    let den2 = denx*denx + deny*deny + 1e-9;\r\n    let divx = (numx*denx + numy*deny) / den2;\r\n    let divy = (numy*denx - numx*deny) / den2;\r\n\r\n    let beta = 0.5 + 0.5 * sin(f32(iter) * 0.25);\r\n    let mixx = caex * (1.0-beta) + crex * beta;\r\n    let mixy = caey * (1.0-beta) + crey * beta;\r\n\r\n    nx = divx + mixx + ccx;\r\n    ny = divy + mixy + ccy;\r\n}\r\n\r\n/* 69 : Sinc-Kernel */\r\ncase 69u: {\r\n    let pi  = 3.14159265359;\r\n    let sinX =  sin(pi*qx) * cosh(pi*qy);\r\n    let sinY =  cos(pi*qx) * sinh(pi*qy);\r\n\r\n    let denX = pi * qx;\r\n    let denY = pi * qy;\r\n    let den2 = denX*denX + denY*denY + 1e-9;\r\n\r\n    let sincX = ( sinX*denX + sinY*denY) / den2;\r\n    let sincY = ( sinY*denX - sinX*denY) / den2;\r\n\r\n    nx = sincX + ccx;\r\n    ny = sincY + ccy;\r\n  }\r\n\r\n    // 70: Bizarre Grid\r\n    case 70u: {\r\n      var zx = qx;\r\n      var zy = qy;\r\n      if (iter == 0u) {\r\n        zx = cx;\r\n        zy = cy;\r\n      }\r\n\r\n      if (zx > 1.0) {\r\n        zx = 2.0 - zx;\r\n      }\r\n      if (zx < -1.0) {\r\n        zx = -2.0 - zx;\r\n      }\r\n      if (zy > 1.0) {\r\n        zy = 2.0 - zy;\r\n      }\r\n      if (zy < -1.0) {\r\n        zy = -2.0 - zy;\r\n      }\r\n\r\n      let r2 = zx*zx + zy*zy;\r\n      var scale = 1.0;\r\n      let Rmin2 = 0.25;\r\n      let Rmax2 = 2.25;\r\n\r\n      if (r2 < Rmin2) {\r\n        scale = Rmax2 / Rmin2;\r\n      } else if (r2 < Rmax2) {\r\n        scale = Rmax2 / r2;\r\n      }\r\n\r\n      zx = zx * scale * 1.5;\r\n      zy = zy * scale * 1.5;\r\n\r\n      let kx = params.dx;\r\n      let ky = params.dy;\r\n\r\n      nx = zx + kx;\r\n      ny = zy + ky;\r\n    }\r\n\r\n    // 71: Julia (z\xB2 + k, z\u2080 = c, k = dx + i dy)\r\n    case 71u: {\r\n      let kx = params.dx;\r\n      let ky = params.dy;\r\n\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n\r\n      nx = zx2 + kx + 0.3; //offset to not get a perfect circle\r\n      ny = zy2 + ky + 0.5;\r\n    }\r\n\r\n    default: { // Mandelbrot\r\n      nx = qx*qx - qy*qy + ccx;\r\n      ny = 2.0*qx*qy + ccy;\r\n    }\r\n  }\r\n  return FractalResult(nx, ny, npx, npy);\r\n}\r\n\r\n@compute @workgroup_size(8,8,1)\r\nfn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r\n  // Local index within this strip texture\r\n  let lx = gid.x;\r\n  let ly = gid.y;\r\n\r\n  // Skip threads that fall outside the strip bounds for this dispatch\r\n  if (lx >= params.tileWidth || ly >= params.tileHeight) {\r\n    return;\r\n  }\r\n\r\n  // Global index within the *full* fractal grid (e.g. 8192\xD78192)\r\n  let gx = params.tileOffsetX + lx;\r\n  let gy = params.tileOffsetY + ly;\r\n\r\n  // Skip anything that lies outside the global grid\r\n  if (gx >= params.gridSize || gy >= params.gridSize) {\r\n    return;\r\n  }\r\n\r\n  // Normalized coordinates across the full grid [0,1]\r\n  // gridSize should be the full resolution (8192), not the strip size.\r\n  let invF = 1.0 / f32(params.gridSize - 1u);\r\n  let nxFull = f32(gx) * invF;\r\n  let nyFull = f32(gy) * invF;\r\n\r\n  // Center at zero, maintain aspect so it is not stretched\r\n  let centeredX = (nxFull - 0.5) * params.aspect;\r\n  let centeredY = (nyFull - 0.5);\r\n\r\n  // Zoom + pan - zoom is the size of the window in complex space\r\n  let cx = centeredX * params.zoom + params.dx;\r\n  let cy = centeredY * params.zoom + params.dy;\r\n\r\n  var init = getInitialZ(params.fractalType, cx, cy);\r\n  var qx = init.qx;\r\n  var qy = init.qy;\r\n  var px = init.px;\r\n  var py = init.py;\r\n\r\n  var iter: u32 = 0u;\r\n  let escapeR2 = params.escapeR * params.escapeR;\r\n\r\n  loop {\r\n    if (iter >= params.maxIter) {\r\n      break;\r\n    }\r\n    if (qx*qx + qy*qy > escapeR2) {\r\n      break;\r\n    }\r\n\r\n    let res = computeFractal(\r\n      params.fractalType, qx, qy, px, py,\r\n      cx, cy, params.gamma, iter\r\n    );\r\n\r\n    let nxz = res.nx;\r\n    let nyz = res.ny;\r\n    let npx = res.npx;\r\n    let npy = res.npy;\r\n\r\n    if (params.convergenceTest == 1u) {\r\n      if (params.escapeMode == 1u) {\r\n        if (nxz*nxz + nyz*nyz > escapeR2) {\r\n          iter = iter + 1u;\r\n          break;\r\n        }\r\n      } else {\r\n        let dx_ = nxz - qx;\r\n        let dy_ = nyz - qy;\r\n        if (dx_*dx_ + dy_*dy_ < params.epsilon * params.epsilon) {\r\n          iter = iter + 1u;\r\n          break;\r\n        }\r\n      }\r\n    } else {\r\n      if (nxz*nxz + nyz*nyz > escapeR2) {\r\n        iter = iter + 1u;\r\n        break;\r\n      }\r\n    }\r\n\r\n    px = npx; py = npy;\r\n    qx = nxz; qy = nyz;\r\n    iter = iter + 1u;\r\n  }\r\n\r\n  let ratio = f32(iter) / f32(params.maxIter);\r\n  let col = vec4<f32>(ratio, ratio, ratio, 1.0);\r\n\r\n  // IMPORTANT: write into the strip texture at local coords\r\n  textureStore(\r\n    storageTex,\r\n    vec2<i32>(i32(lx), i32(ly)),\r\n    i32(params.layerIndex),\r\n    col\r\n  );\r\n}\r\n";
@@ -5418,9 +6666,15 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     const ui = document.getElementById("ui");
     const button = document.getElementById("toggle-ui");
     if (button && ui) {
+      const setToggleVisual = (collapsed) => {
+        button.textContent = collapsed ? "\u25B6" : "\u25C0";
+        button.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        button.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
+      };
+      setToggleVisual(ui.classList.contains("collapsed"));
       button.addEventListener("click", () => {
         const isCollapsed = ui.classList.toggle("collapsed");
-        button.textContent = isCollapsed ? "+" : "-";
+        setToggleVisual(isCollapsed);
       });
       const hdr = ui.querySelector(".ui-header");
       if (hdr) {
@@ -5453,6 +6707,12 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         }
       });
     }
+    const presetJson = document.getElementById("presetJson");
+    const presetExportBtn = document.getElementById("presetExportBtn");
+    const presetCopyBtn = document.getElementById("presetCopyBtn");
+    const presetPasteBtn = document.getElementById("presetPasteBtn");
+    const presetApplyBtn = document.getElementById("presetApplyBtn");
+    const presetStatus = document.getElementById("presetStatus");
     const LIVE_IDS = /* @__PURE__ */ new Set([
       "epsilon",
       "dispAmp",
@@ -5750,6 +7010,25 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         ensureLayerModeVisibilityDefaults();
       }
     }
+    function applyAlphaModeUI(v) {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return;
+      setControlValue("alphaMode", n);
+      S({ alphaMode: n });
+      const canvasMode = n === 0 ? "opaque" : "premultiplied";
+      if (typeof window.setAlphaMode === "function") {
+        try {
+          window.setAlphaMode(n);
+        } catch {
+          try {
+            window.setAlphaMode(canvasMode);
+          } catch {
+          }
+        }
+      } else {
+        window.__pendingAlphaMode = canvasMode;
+      }
+    }
     const SCALE_OP_DEFS = [
       { code: 1, name: "Multiply", bit: 1 },
       { code: 2, name: "Divide", bit: 2 },
@@ -5996,7 +7275,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     setupSelect("escapeMode", (v) => S({ escapeMode: +v }));
     setupCheckbox("convergenceTest", (v) => S({ convergenceTest: v }));
     setupSelect("colorScheme", (v) => S({ scheme: +v }));
-    setupScaleOpsBuilder();
+    const scaleOpsApi = setupScaleOpsBuilder();
     setupSelect("dispMode", (v) => S({ dispMode: +v }));
     setupSlider("dispAmp", (v) => S({ dispAmp: v }));
     setupSlider("dispCurve", (v) => S({ dispCurve: v }));
@@ -6022,24 +7301,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     setupSlider("lowThresh", (v) => S({ lowT: v }));
     setupSlider("highThresh", (v) => S({ highT: v }));
     setupSelect("thresholdBasis", (v) => S({ basis: +v }));
-    setupSelect("alphaMode", (v) => {
-      const n = Number(v);
-      if (!Number.isFinite(n)) return;
-      S({ alphaMode: n });
-      const canvasMode = n === 0 ? "opaque" : "premultiplied";
-      if (typeof window.setAlphaMode === "function") {
-        try {
-          window.setAlphaMode(n);
-        } catch {
-          try {
-            window.setAlphaMode(canvasMode);
-          } catch {
-          }
-        }
-      } else {
-        window.__pendingAlphaMode = canvasMode;
-      }
-    });
+    setupSelect("alphaMode", (v) => applyAlphaModeUI(v));
     setupSelect("renderMode", (v) => {
       applyRenderModeUI(v);
     });
@@ -6055,6 +7317,419 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     setupCheckbox("contourOn", (v) => S({ contourOn: v }));
     setupCheckbox("contourOnly", (v) => S({ contourOnly: v }));
     setupCheckbox("contourFront", (v) => S({ contourFront: v }));
+    function setPresetStatus(msg) {
+      if (!presetStatus) return;
+      try {
+        presetStatus.textContent = msg || "";
+      } catch {
+      }
+    }
+    const PRESET_CONTROL_IDS = [
+      "gridSize",
+      "renderMode",
+      "alphaMode",
+      "fractalType",
+      "zoom",
+      "dx",
+      "dy",
+      "maxIter",
+      "escapeR",
+      "convergenceTest",
+      "escapeMode",
+      "epsilon",
+      "colorScheme",
+      "hueOffset",
+      "gamma",
+      "lowThresh",
+      "highThresh",
+      "thresholdBasis",
+      "layerMode",
+      "nLayers",
+      "layerGammaStep",
+      "layerSeparation",
+      "dispMode",
+      "gridDivs",
+      "dispAmp",
+      "dispCurve",
+      "dispLimitOn",
+      "bowlOn",
+      "bowlDepth",
+      "quadScale",
+      "slopeLimit",
+      "wallJump",
+      "lightingOn",
+      "lightX",
+      "lightY",
+      "lightZ",
+      "specPower",
+      "fieldMode",
+      "meshStep",
+      "capBias",
+      "gradScale",
+      "thickness",
+      "feather",
+      "contourOn",
+      "contourOnly",
+      "contourFront"
+    ];
+    const PRESET_TYPES = {
+      gridSize: "int",
+      maxIter: "int",
+      nLayers: "int",
+      gridDivs: "int",
+      fractalType: "int",
+      escapeMode: "int",
+      colorScheme: "int",
+      dispMode: "int",
+      thresholdBasis: "int",
+      alphaMode: "int",
+      renderMode: "string",
+      convergenceTest: "bool",
+      layerMode: "bool",
+      dispLimitOn: "bool",
+      bowlOn: "bool",
+      lightingOn: "bool",
+      contourOn: "bool",
+      contourOnly: "bool",
+      contourFront: "bool",
+      zoom: "num",
+      dx: "num",
+      dy: "num",
+      escapeR: "num",
+      epsilon: "num",
+      hueOffset: "num",
+      gamma: "num",
+      layerGammaStep: "num",
+      layerSeparation: "num",
+      dispAmp: "num",
+      dispCurve: "num",
+      bowlDepth: "num",
+      quadScale: "num",
+      slopeLimit: "num",
+      wallJump: "num",
+      lightX: "num",
+      lightY: "num",
+      lightZ: "num",
+      specPower: "num",
+      meshStep: "int",
+      capBias: "num",
+      gradScale: "num",
+      thickness: "num",
+      feather: "num",
+      fieldMode: "int"
+    };
+    function readPresetValueFromControl(id) {
+      const el = document.getElementById(id);
+      if (!el) return void 0;
+      if (el.type === "checkbox") return !!el.checked;
+      const raw = el.value;
+      const t = PRESET_TYPES[id] || "num";
+      if (t === "string") return String(raw);
+      if (t === "bool") return !!raw;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return void 0;
+      if (t === "int") return Math.round(n) | 0;
+      return n;
+    }
+    function buildPresetObject() {
+      const controls = {};
+      for (let i = 0; i < PRESET_CONTROL_IDS.length; ++i) {
+        const id = PRESET_CONTROL_IDS[i];
+        const v = readPresetValueFromControl(id);
+        if (v !== void 0) controls[id] = v;
+      }
+      if (scaleOpsApi && typeof scaleOpsApi.getOps === "function") {
+        const ops = scaleOpsApi.getOps();
+        if (Array.isArray(ops)) controls.scaleOps = ops.slice();
+      } else {
+        const rawOps = renderGlobals.paramsState?.scaleOps;
+        if (Array.isArray(rawOps)) controls.scaleOps = rawOps.slice();
+      }
+      return { version: 1, controls };
+    }
+    function _toNum(v) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+    function _applyNumericControl(id, v) {
+      const n = _toNum(v);
+      if (n == null) return false;
+      setControlValue(id, n);
+      setControlOutput(id, n);
+      return true;
+    }
+    function _applyIntControl(id, v) {
+      const n = _toNum(v);
+      if (n == null) return false;
+      const i = Math.round(n) | 0;
+      setControlValue(id, i);
+      setControlOutput(id, i);
+      return true;
+    }
+    function _applyBoolControl(id, v) {
+      const b = !!v;
+      setControlValue(id, b);
+      return true;
+    }
+    function applyPresetObject(obj) {
+      const root = obj && typeof obj === "object" ? obj : null;
+      if (!root) return { ok: false, err: "Preset is not an object" };
+      const controls = root.controls && typeof root.controls === "object" ? root.controls : root;
+      if (!controls || typeof controls !== "object") return { ok: false, err: "Missing controls" };
+      if ("layerMode" in controls) {
+        _applyBoolControl("layerMode", controls.layerMode);
+        applyLayerModeUI(!!controls.layerMode);
+      }
+      if ("alphaMode" in controls) {
+        applyAlphaModeUI(controls.alphaMode);
+      }
+      if ("renderMode" in controls) {
+        setControlValue("renderMode", controls.renderMode);
+        applyRenderModeUI(controls.renderMode);
+      }
+      const patch = {};
+      if ("gridSize" in controls && _applyIntControl("gridSize", controls.gridSize)) {
+        patch.gridSize = Math.max(1, Math.floor(_toNum(controls.gridSize) || 1));
+      }
+      if ("maxIter" in controls && _applyIntControl("maxIter", controls.maxIter)) {
+        patch.maxIter = Math.max(1, Math.floor(_toNum(controls.maxIter) || 1));
+      }
+      if ("fractalType" in controls && _applyIntControl("fractalType", controls.fractalType)) {
+        patch.fractalType = Math.max(0, Math.floor(_toNum(controls.fractalType) || 0));
+      }
+      if ("zoom" in controls && _applyNumericControl("zoom", controls.zoom)) patch.zoom = _toNum(controls.zoom);
+      if ("dx" in controls && _applyNumericControl("dx", controls.dx)) patch.dx = _toNum(controls.dx);
+      if ("dy" in controls && _applyNumericControl("dy", controls.dy)) patch.dy = _toNum(controls.dy);
+      if ("escapeR" in controls && _applyNumericControl("escapeR", controls.escapeR)) patch.escapeR = _toNum(controls.escapeR);
+      if ("epsilon" in controls && _applyNumericControl("epsilon", controls.epsilon)) patch.epsilon = _toNum(controls.epsilon);
+      if ("gamma" in controls && _applyNumericControl("gamma", controls.gamma)) patch.gamma = _toNum(controls.gamma);
+      if ("layerGammaStep" in controls && _applyNumericControl("layerGammaStep", controls.layerGammaStep)) {
+        patch.layerGammaStep = _toNum(controls.layerGammaStep);
+      }
+      if ("layerSeparation" in controls && _applyNumericControl("layerSeparation", controls.layerSeparation)) {
+        patch.worldOffset = _toNum(controls.layerSeparation);
+      }
+      if ("hueOffset" in controls && _applyNumericControl("hueOffset", controls.hueOffset)) patch.hueOffset = _toNum(controls.hueOffset);
+      if ("nLayers" in controls && _applyIntControl("nLayers", controls.nLayers)) {
+        patch.nLayers = Math.max(1, Math.floor(_toNum(controls.nLayers) || 1));
+      }
+      if ("gridDivs" in controls && _applyIntControl("gridDivs", controls.gridDivs)) {
+        patch.gridDivs = Math.max(1, Math.floor(_toNum(controls.gridDivs) || 1));
+      }
+      if ("escapeMode" in controls) {
+        const n = _toNum(controls.escapeMode);
+        if (n != null) {
+          setControlValue("escapeMode", Math.round(n) | 0);
+          patch.escapeMode = Math.round(n) | 0;
+        }
+      }
+      if ("convergenceTest" in controls) {
+        _applyBoolControl("convergenceTest", controls.convergenceTest);
+        patch.convergenceTest = !!controls.convergenceTest;
+      }
+      if ("colorScheme" in controls) {
+        const n = _toNum(controls.colorScheme);
+        if (n != null) {
+          setControlValue("colorScheme", Math.round(n) | 0);
+          patch.scheme = Math.round(n) | 0;
+        }
+      }
+      if ("lowThresh" in controls && _applyNumericControl("lowThresh", controls.lowThresh)) patch.lowT = _toNum(controls.lowThresh);
+      if ("highThresh" in controls && _applyNumericControl("highThresh", controls.highThresh)) patch.highT = _toNum(controls.highThresh);
+      if ("thresholdBasis" in controls) {
+        const n = _toNum(controls.thresholdBasis);
+        if (n != null) {
+          setControlValue("thresholdBasis", Math.round(n) | 0);
+          patch.basis = Math.round(n) | 0;
+        }
+      }
+      if ("dispMode" in controls) {
+        const n = _toNum(controls.dispMode);
+        if (n != null) {
+          setControlValue("dispMode", Math.round(n) | 0);
+          patch.dispMode = Math.round(n) | 0;
+        }
+      }
+      if ("dispAmp" in controls && _applyNumericControl("dispAmp", controls.dispAmp)) patch.dispAmp = _toNum(controls.dispAmp);
+      if ("dispCurve" in controls && _applyNumericControl("dispCurve", controls.dispCurve)) patch.dispCurve = _toNum(controls.dispCurve);
+      if ("dispLimitOn" in controls) {
+        _applyBoolControl("dispLimitOn", controls.dispLimitOn);
+        patch.dispLimitOn = !!controls.dispLimitOn;
+      }
+      if ("bowlOn" in controls) {
+        _applyBoolControl("bowlOn", controls.bowlOn);
+        patch.bowlOn = !!controls.bowlOn;
+      }
+      if ("bowlDepth" in controls && _applyNumericControl("bowlDepth", controls.bowlDepth)) patch.bowlDepth = _toNum(controls.bowlDepth);
+      if ("quadScale" in controls && _applyNumericControl("quadScale", controls.quadScale)) patch.quadScale = _toNum(controls.quadScale);
+      if ("wallJump" in controls && _applyNumericControl("wallJump", controls.wallJump)) patch.wallJump = _toNum(controls.wallJump);
+      if ("slopeLimit" in controls && _applyNumericControl("slopeLimit", controls.slopeLimit)) {
+        const deg = _toNum(controls.slopeLimit);
+        if (deg != null) {
+          const rad = deg * Math.PI / 180;
+          const rnorm = Math.sin(rad) * Math.sin(rad);
+          patch.slopeLimit = rnorm;
+        }
+      }
+      if ("lightingOn" in controls) {
+        _applyBoolControl("lightingOn", controls.lightingOn);
+        patch.lightingOn = !!controls.lightingOn;
+      }
+      const anyLight = "lightX" in controls || "lightY" in controls || "lightZ" in controls;
+      if (anyLight) {
+        const lp = [...renderGlobals.paramsState.lightPos || [0, 0, 0]];
+        if ("lightX" in controls) {
+          const n = _toNum(controls.lightX);
+          if (n != null) {
+            _applyNumericControl("lightX", n);
+            lp[0] = n;
+          }
+        }
+        if ("lightY" in controls) {
+          const n = _toNum(controls.lightY);
+          if (n != null) {
+            _applyNumericControl("lightY", n);
+            lp[1] = n;
+          }
+        }
+        if ("lightZ" in controls) {
+          const n = _toNum(controls.lightZ);
+          if (n != null) {
+            _applyNumericControl("lightZ", n);
+            lp[2] = n;
+          }
+        }
+        patch.lightPos = lp;
+      }
+      if ("specPower" in controls && _applyNumericControl("specPower", controls.specPower)) {
+        patch.specPower = _toNum(controls.specPower);
+      }
+      if ("fieldMode" in controls) {
+        const n = _toNum(controls.fieldMode);
+        if (n != null) {
+          setControlValue("fieldMode", Math.round(n) | 0);
+          patch.fieldMode = Math.round(n) | 0;
+        }
+      }
+      if ("meshStep" in controls && _applyIntControl("meshStep", controls.meshStep)) {
+        patch.meshStep = Math.max(1, Math.floor(_toNum(controls.meshStep) || 1));
+      }
+      if ("capBias" in controls && _applyNumericControl("capBias", controls.capBias)) patch.capBias = _toNum(controls.capBias);
+      if ("gradScale" in controls && _applyNumericControl("gradScale", controls.gradScale)) patch.gradScale = _toNum(controls.gradScale);
+      if ("thickness" in controls && _applyNumericControl("thickness", controls.thickness)) patch.thickness = _toNum(controls.thickness);
+      if ("feather" in controls && _applyNumericControl("feather", controls.feather)) patch.feather = _toNum(controls.feather);
+      if ("contourOn" in controls) {
+        _applyBoolControl("contourOn", controls.contourOn);
+        patch.contourOn = !!controls.contourOn;
+      }
+      if ("contourOnly" in controls) {
+        _applyBoolControl("contourOnly", controls.contourOnly);
+        patch.contourOnly = !!controls.contourOnly;
+      }
+      if ("contourFront" in controls) {
+        _applyBoolControl("contourFront", controls.contourFront);
+        patch.contourFront = !!controls.contourFront;
+      }
+      if (Object.keys(patch).length) S(patch);
+      if ("scaleOps" in controls) {
+        const ops = Array.isArray(controls.scaleOps) ? controls.scaleOps : null;
+        if (ops) {
+          if (scaleOpsApi && typeof scaleOpsApi.setOps === "function") {
+            scaleOpsApi.setOps(ops);
+          } else {
+            const norm = [];
+            for (let i = 0; i < ops.length && norm.length < 16; ++i) {
+              const c = _normOpCode(ops[i]);
+              if (c != null) norm.push(c);
+            }
+            S({ scaleOps: norm.slice(), scaleMode: _opsToMask(norm) });
+          }
+        }
+      }
+      return { ok: true };
+    }
+    async function copyTextToClipboard(text) {
+      const s = String(text || "");
+      if (!s) return false;
+      if (navigator?.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(s);
+          return true;
+        } catch {
+        }
+      }
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = s;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        ta.style.top = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return !!ok;
+      } catch {
+      }
+      return false;
+    }
+    async function readTextFromClipboard() {
+      if (navigator?.clipboard?.readText) {
+        try {
+          const s = await navigator.clipboard.readText();
+          return typeof s === "string" ? s : "";
+        } catch {
+        }
+      }
+      return "";
+    }
+    if (presetExportBtn && presetJson) {
+      presetExportBtn.addEventListener("click", () => {
+        const obj = buildPresetObject();
+        try {
+          presetJson.value = JSON.stringify(obj, null, 2);
+          setPresetStatus("Exported");
+        } catch {
+          setPresetStatus("Export failed");
+        }
+      });
+    }
+    if (presetCopyBtn && presetJson) {
+      presetCopyBtn.addEventListener("click", async () => {
+        const ok = await copyTextToClipboard(presetJson.value);
+        setPresetStatus(ok ? "Copied" : "Copy failed");
+      });
+    }
+    if (presetPasteBtn && presetJson) {
+      presetPasteBtn.addEventListener("click", async () => {
+        const s = await readTextFromClipboard();
+        if (!s) {
+          setPresetStatus("Clipboard empty");
+          return;
+        }
+        presetJson.value = s;
+        setPresetStatus("Pasted");
+      });
+    }
+    if (presetApplyBtn && presetJson) {
+      presetApplyBtn.addEventListener("click", () => {
+        const raw = String(presetJson.value || "").trim();
+        if (!raw) {
+          setPresetStatus("No JSON to apply");
+          return;
+        }
+        let obj = null;
+        try {
+          obj = JSON.parse(raw);
+        } catch {
+          setPresetStatus("Invalid JSON");
+          return;
+        }
+        const res = applyPresetObject(obj);
+        setPresetStatus(res.ok ? "Applied" : `Apply failed: ${res.err || "unknown"}`);
+      });
+    }
     applyLayerModeUI(!!renderGlobals.paramsState.layerMode);
     setSlabControlsEnabled(normRenderMode(renderGlobals.paramsState.renderMode) === "slab");
     applyRenderModeUI(renderGlobals.paramsState.renderMode);
