@@ -23,6 +23,8 @@ You can:
 - Edit in real time with instantaneous updates to fine tune your favorite images.
 - Click on the canvas to get camera control with WASD support. Press esc to quit.
 - Download the image at full resolution (use reset camera if you moved so you can get the full image!). 8K images can be up to 50MB raw
+- Play music (requires isolated context to use the audio worklet system correctly, see tinybuild.config.js for headers used)
+- Animate the fractals to the music
 
 Some limits:
 - No deep zoom as we rely on base 32 bit float precision. We make up for it with the modifiers. It bottoms out around 7 decimals of precision.
@@ -40,6 +42,7 @@ See [`./tinybuild.config.js`](./tinybuild.config.js) for settings.
 Add build:true for build-only, add serve:true for serve-only, or set bundle or server to false alternatively.
 
 Click to go to youtube:
+[![VideoM](https://img.youtube.com/vi/G-FtKNiawx0/maxresdefault.jpg)](https://www.youtube.com/watch?v=G-FtKNiawx0)
 [![Video1](https://img.youtube.com/vi/3Sco25ak8AA/maxresdefault.jpg)](https://www.youtube.com/watch?v=3Sco25ak8AA)
 Click to go to youtube:
 [![Video4](https://img.youtube.com/vi/3WHPgqEGz9A/maxresdefault.jpg)](https://www.youtube.com/watch?v=3WHPgqEGz9A)
@@ -96,6 +99,7 @@ Click to go to youtube:
 [![Video2](https://img.youtube.com/vi/uiNGqn5zEUs/maxresdefault.jpg)](https://www.youtube.com/watch?v=uiNGqn5zEUs)
 Click to go to youtube:
 [![Video3](https://img.youtube.com/vi/89uVpb0QUw8/maxresdefault.jpg)](https://www.youtube.com/watch?v=89uVpb0QUw8)
+
 
 
 
