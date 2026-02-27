@@ -98,7 +98,6 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
 }
 `;
 
-
 export class RenderPipelineGPU {
   constructor(device, context, vsCode = vert, fsCode = frag, opts = {}) {
     this.device = device;
@@ -245,6 +244,11 @@ export class RenderPipelineGPU {
         },
       ],
     };
+
+    this._gradOverrideTex = null;
+    this._gradOverrideView = null;
+    this._gradOverrideSampler = null;
+    this._gradientBindStamp = 1;
 
     this._createFallbackTextures();
     this._ensureGradientTexture(this._gradientSize);
@@ -481,10 +485,45 @@ export class RenderPipelineGPU {
   }
 
   _getGradientView() {
+    if (this._gradOverrideView) return this._gradOverrideView;
     if (this._gradientView) return this._gradientView;
     if (this._fallbackGradView) return this._fallbackGradView;
     if (this._ensureFallbackGradientTexture()) return this._fallbackGradView;
     return null;
+  }
+
+  setGradientOverride(tex, view, sampler = null) {
+    const v =
+      view ||
+      (tex && typeof tex.createView === "function"
+        ? (() => {
+            try {
+              return tex.createView({ dimension: "2d" });
+            } catch {}
+            try {
+              return tex.createView();
+            } catch {}
+            return null;
+          })()
+        : null);
+
+    this._gradOverrideTex = tex || null;
+    this._gradOverrideView = v || null;
+    this._gradOverrideSampler = sampler || null;
+
+    this._gradientBindStamp = ((this._gradientBindStamp | 0) + 1) | 0;
+
+    this._rebuildBg0ForGradientIfNeeded();
+  }
+
+  clearGradientOverride() {
+    this._gradOverrideTex = null;
+    this._gradOverrideView = null;
+    this._gradOverrideSampler = null;
+
+    this._gradientBindStamp = ((this._gradientBindStamp | 0) + 1) | 0;
+
+    this._rebuildBg0ForGradientIfNeeded();
   }
 
   _ensureArrayViewFromTexture(tex, layersCount) {
@@ -529,6 +568,8 @@ export class RenderPipelineGPU {
     const gradView = this._getGradientView();
     if (!gradView) return;
 
+    const sharedSampler = this._gradOverrideSampler || this.sampler;
+
     for (let i = 0; i < this.chunks.length; ++i) {
       const info = this.chunks[i];
       const fractalView =
@@ -540,7 +581,7 @@ export class RenderPipelineGPU {
           layout: bgLayout0,
           entries: [
             { binding: 0, resource: fractalView },
-            { binding: 1, resource: this.sampler },
+            { binding: 1, resource: sharedSampler },
             {
               binding: 2,
               resource: {
@@ -554,7 +595,9 @@ export class RenderPipelineGPU {
             { binding: 5, resource: gradView },
           ],
         });
-      } catch {}
+      } catch (e) {
+        console.warn("_rebuildBg0ForGradientIfNeeded failed for chunk", i, e);
+      }
     }
   }
 
@@ -608,7 +651,7 @@ export class RenderPipelineGPU {
         },
         {
           binding: 4,
-          visibility: GPUShaderStage.FRAGMENT,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
           buffer: { type: "uniform" },
         },
         {
@@ -974,6 +1017,9 @@ export class RenderPipelineGPU {
       );
     }
 
+    const sharedSampler = this._gradOverrideSampler || this.sampler;
+    const gradStamp = this._gradientBindStamp | 0 || 0;
+
     const nextChunks = chunks || [];
     const nextCount = nextChunks.length | 0;
 
@@ -1046,7 +1092,7 @@ export class RenderPipelineGPU {
         );
       }
 
-      const key = `${layersCount}|${requireSdf ? 1 : 0}`;
+      const key = `${layersCount}|${requireSdf ? 1 : 0}|g${gradStamp}`;
       const prevKey = info._bindKey || "";
 
       info._fractalArrayView = fractalArrayView;
@@ -1058,7 +1104,7 @@ export class RenderPipelineGPU {
           layout: bgLayout0,
           entries: [
             { binding: 0, resource: fractalArrayView },
-            { binding: 1, resource: this.sampler },
+            { binding: 1, resource: sharedSampler },
             {
               binding: 2,
               resource: {
@@ -1135,16 +1181,33 @@ export class RenderPipelineGPU {
     const layerIndex = _u32(paramsState.layerIndex, 0);
     const scheme = _u32(paramsState.scheme, 0);
 
-    const useHueGradient =
-      paramsState.useHueGradient != null
-        ? !!paramsState.useHueGradient
-        : paramsState.hueGradientOn != null
-          ? !!paramsState.hueGradientOn
-          : paramsState.hueGradient != null
-            ? !!paramsState.hueGradient
-            : false;
+    const wantGradMode = _u32(paramsState.gradTexMode, 0) === 1;
 
-    const dispMode = _u32(paramsState.dispMode, 0);
+    let useHueGradient;
+    if (paramsState.useHueGradient != null) {
+      useHueGradient = !!paramsState.useHueGradient;
+    } else if (paramsState.hueGradientOn != null) {
+      useHueGradient = !!paramsState.hueGradientOn;
+    } else if (paramsState.hueGradient != null) {
+      useHueGradient = !!paramsState.hueGradient;
+    } else {
+      useHueGradient = wantGradMode;
+    }
+
+    const sdfDispMode = _u32(paramsState.dispMode, 0);
+
+    let dispSource;
+    if (paramsState.dispSource != null) {
+      dispSource = _u32(paramsState.dispSource, 0);
+    } else if (paramsState.dispSourceMode != null) {
+      dispSource = _u32(paramsState.dispSourceMode, 0);
+    } else {
+      dispSource = sdfDispMode !== 0 ? 1 : 0;
+    }
+
+    let dispBits = 0;
+    if ((dispSource & 1) !== 0 && sdfDispMode !== 0) dispBits |= 1;
+    if ((dispSource & 2) !== 0) dispBits |= 2;
 
     const bowlOn = !!paramsState.bowlOn;
     const lightingOn = !!paramsState.lightingOn;
@@ -1193,7 +1256,7 @@ export class RenderPipelineGPU {
     dv.setUint32(0, layerIndex >>> 0, true);
     dv.setUint32(4, scheme >>> 0, true);
     dv.setUint32(8, useHueGradient ? 1 : 0, true);
-    dv.setUint32(12, dispMode >>> 0, true);
+    dv.setUint32(12, dispBits >>> 0, true);
 
     dv.setUint32(16, bowlOn ? 1 : 0, true);
     dv.setUint32(20, lightingOn ? 1 : 0, true);
@@ -1217,8 +1280,31 @@ export class RenderPipelineGPU {
 
     dv.setFloat32(80, worldOffset, true);
     dv.setFloat32(84, worldStart, true);
-    dv.setFloat32(88, 0.0, true);
-    dv.setFloat32(92, 0.0, true);
+
+    const timeSec =
+      paramsState.timeSec != null
+        ? _f32(paramsState.timeSec, 0.0)
+        : paramsState.iTime != null
+          ? _f32(paramsState.iTime, 0.0)
+          : paramsState.time != null
+            ? _f32(paramsState.time, 0.0)
+            : 0.0;
+
+    const wantHueDisp = (dispBits & 2) !== 0;
+
+    const kickRaw =
+      paramsState.dispHueKick01 != null
+        ? _f32(paramsState.dispHueKick01, 0.0)
+        : paramsState.dispHueKick != null
+          ? _f32(paramsState.dispHueKick, 0.0)
+          : wantHueDisp
+            ? 1.0
+            : 0.0;
+
+    const kick01 = kickRaw <= 0 ? 0 : kickRaw >= 1 ? 1 : kickRaw;
+
+    dv.setFloat32(88, timeSec, true);
+    dv.setFloat32(92, kick01, true);
 
     this.device.queue.writeBuffer(
       this.renderUniformBuffer,

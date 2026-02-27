@@ -119,10 +119,10 @@ export class SdfComputeGPU {
       if (needRecreate) {
         try {
           if (c.sdfTex) c.sdfTex.destroy();
-        } catch (_) {}
+        } catch (e) {console.error(e);}
         try {
           if (c.flagTex) c.flagTex.destroy();
-        } catch (_) {}
+        } catch (e) {console.error(e);}
 
         const sdfTex = this.device.createTexture({
           size: [w, h, 1],
@@ -200,7 +200,7 @@ export class SdfComputeGPU {
               dimension: "2d-array",
               arrayLayerCount: 1,
             });
-          } catch (_) {}
+          } catch (e) {console.error(e);}
         }
         if (!c.flagView) {
           try {
@@ -208,7 +208,7 @@ export class SdfComputeGPU {
               dimension: "2d-array",
               arrayLayerCount: 1,
             });
-          } catch (_) {}
+          } catch (e) {console.error(e);}
         }
 
         if (!c._sdfLayerBgs) c._sdfLayerBgs = new Map();
@@ -235,7 +235,7 @@ export class SdfComputeGPU {
           baseArrayLayer: 0,
           arrayLayerCount: 1,
         });
-      } catch (_) {
+      } catch (e) {console.error(e);
         return chunk.fractalTex.createView({ dimension: "2d" });
       }
     }
@@ -389,10 +389,10 @@ export class SdfComputeGPU {
     for (const c of chunks) {
       try {
         if (c.sdfTex) c.sdfTex.destroy();
-      } catch (_) {}
+      } catch (e) {console.error(e);}
       try {
         if (c.flagTex) c.flagTex.destroy();
-      } catch (_) {}
+      } catch (e) {console.error(e);}
 
       if (c._sdfLayerBgs) c._sdfLayerBgs.clear();
 

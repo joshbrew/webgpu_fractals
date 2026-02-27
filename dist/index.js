@@ -1,9 +1,2246 @@
 (() => {
+  var __create = Object.create;
+  var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __getProtoOf = Object.getPrototypeOf;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
   var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
     get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
   }) : x)(function(x) {
     if (typeof require !== "undefined") return require.apply(this, arguments);
     throw Error('Dynamic require of "' + x + '" is not supported');
+  });
+  var __commonJS = (cb, mod) => function __require2() {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    }
+    return to;
+  };
+  var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+    // If the importer is in node compatibility mode or this is not an ESM
+    // file that has been converted to a CommonJS file using a Babel-
+    // compatible transform (i.e. "__esModule" has not been set), then set
+    // "default" to the CommonJS "module.exports" for node compatibility.
+    isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+    mod
+  ));
+
+  // node_modules/howler/dist/howler.js
+  var require_howler = __commonJS({
+    "node_modules/howler/dist/howler.js"(exports) {
+      (function() {
+        "use strict";
+        var HowlerGlobal2 = function() {
+          this.init();
+        };
+        HowlerGlobal2.prototype = {
+          /**
+           * Initialize the global Howler object.
+           * @return {Howler}
+           */
+          init: function() {
+            var self = this || Howler3;
+            self._counter = 1e3;
+            self._html5AudioPool = [];
+            self.html5PoolSize = 10;
+            self._codecs = {};
+            self._howls = [];
+            self._muted = false;
+            self._volume = 1;
+            self._canPlayEvent = "canplaythrough";
+            self._navigator = typeof window !== "undefined" && window.navigator ? window.navigator : null;
+            self.masterGain = null;
+            self.noAudio = false;
+            self.usingWebAudio = true;
+            self.autoSuspend = true;
+            self.ctx = null;
+            self.autoUnlock = true;
+            self._setup();
+            return self;
+          },
+          /**
+           * Get/set the global volume for all sounds.
+           * @param  {Float} vol Volume from 0.0 to 1.0.
+           * @return {Howler/Float}     Returns self or current volume.
+           */
+          volume: function(vol) {
+            var self = this || Howler3;
+            vol = parseFloat(vol);
+            if (!self.ctx) {
+              setupAudioContext();
+            }
+            if (typeof vol !== "undefined" && vol >= 0 && vol <= 1) {
+              self._volume = vol;
+              if (self._muted) {
+                return self;
+              }
+              if (self.usingWebAudio) {
+                self.masterGain.gain.setValueAtTime(vol, Howler3.ctx.currentTime);
+              }
+              for (var i = 0; i < self._howls.length; i++) {
+                if (!self._howls[i]._webAudio) {
+                  var ids = self._howls[i]._getSoundIds();
+                  for (var j = 0; j < ids.length; j++) {
+                    var sound = self._howls[i]._soundById(ids[j]);
+                    if (sound && sound._node) {
+                      sound._node.volume = sound._volume * vol;
+                    }
+                  }
+                }
+              }
+              return self;
+            }
+            return self._volume;
+          },
+          /**
+           * Handle muting and unmuting globally.
+           * @param  {Boolean} muted Is muted or not.
+           */
+          mute: function(muted) {
+            var self = this || Howler3;
+            if (!self.ctx) {
+              setupAudioContext();
+            }
+            self._muted = muted;
+            if (self.usingWebAudio) {
+              self.masterGain.gain.setValueAtTime(muted ? 0 : self._volume, Howler3.ctx.currentTime);
+            }
+            for (var i = 0; i < self._howls.length; i++) {
+              if (!self._howls[i]._webAudio) {
+                var ids = self._howls[i]._getSoundIds();
+                for (var j = 0; j < ids.length; j++) {
+                  var sound = self._howls[i]._soundById(ids[j]);
+                  if (sound && sound._node) {
+                    sound._node.muted = muted ? true : sound._muted;
+                  }
+                }
+              }
+            }
+            return self;
+          },
+          /**
+           * Handle stopping all sounds globally.
+           */
+          stop: function() {
+            var self = this || Howler3;
+            for (var i = 0; i < self._howls.length; i++) {
+              self._howls[i].stop();
+            }
+            return self;
+          },
+          /**
+           * Unload and destroy all currently loaded Howl objects.
+           * @return {Howler}
+           */
+          unload: function() {
+            var self = this || Howler3;
+            for (var i = self._howls.length - 1; i >= 0; i--) {
+              self._howls[i].unload();
+            }
+            if (self.usingWebAudio && self.ctx && typeof self.ctx.close !== "undefined") {
+              self.ctx.close();
+              self.ctx = null;
+              setupAudioContext();
+            }
+            return self;
+          },
+          /**
+           * Check for codec support of specific extension.
+           * @param  {String} ext Audio file extention.
+           * @return {Boolean}
+           */
+          codecs: function(ext) {
+            return (this || Howler3)._codecs[ext.replace(/^x-/, "")];
+          },
+          /**
+           * Setup various state values for global tracking.
+           * @return {Howler}
+           */
+          _setup: function() {
+            var self = this || Howler3;
+            self.state = self.ctx ? self.ctx.state || "suspended" : "suspended";
+            self._autoSuspend();
+            if (!self.usingWebAudio) {
+              if (typeof Audio !== "undefined") {
+                try {
+                  var test = new Audio();
+                  if (typeof test.oncanplaythrough === "undefined") {
+                    self._canPlayEvent = "canplay";
+                  }
+                } catch (e) {
+                  self.noAudio = true;
+                }
+              } else {
+                self.noAudio = true;
+              }
+            }
+            try {
+              var test = new Audio();
+              if (test.muted) {
+                self.noAudio = true;
+              }
+            } catch (e) {
+            }
+            if (!self.noAudio) {
+              self._setupCodecs();
+            }
+            return self;
+          },
+          /**
+           * Check for browser support for various codecs and cache the results.
+           * @return {Howler}
+           */
+          _setupCodecs: function() {
+            var self = this || Howler3;
+            var audioTest = null;
+            try {
+              audioTest = typeof Audio !== "undefined" ? new Audio() : null;
+            } catch (err) {
+              return self;
+            }
+            if (!audioTest || typeof audioTest.canPlayType !== "function") {
+              return self;
+            }
+            var mpegTest = audioTest.canPlayType("audio/mpeg;").replace(/^no$/, "");
+            var ua = self._navigator ? self._navigator.userAgent : "";
+            var checkOpera = ua.match(/OPR\/(\d+)/g);
+            var isOldOpera = checkOpera && parseInt(checkOpera[0].split("/")[1], 10) < 33;
+            var checkSafari = ua.indexOf("Safari") !== -1 && ua.indexOf("Chrome") === -1;
+            var safariVersion = ua.match(/Version\/(.*?) /);
+            var isOldSafari = checkSafari && safariVersion && parseInt(safariVersion[1], 10) < 15;
+            self._codecs = {
+              mp3: !!(!isOldOpera && (mpegTest || audioTest.canPlayType("audio/mp3;").replace(/^no$/, ""))),
+              mpeg: !!mpegTest,
+              opus: !!audioTest.canPlayType('audio/ogg; codecs="opus"').replace(/^no$/, ""),
+              ogg: !!audioTest.canPlayType('audio/ogg; codecs="vorbis"').replace(/^no$/, ""),
+              oga: !!audioTest.canPlayType('audio/ogg; codecs="vorbis"').replace(/^no$/, ""),
+              wav: !!(audioTest.canPlayType('audio/wav; codecs="1"') || audioTest.canPlayType("audio/wav")).replace(/^no$/, ""),
+              aac: !!audioTest.canPlayType("audio/aac;").replace(/^no$/, ""),
+              caf: !!audioTest.canPlayType("audio/x-caf;").replace(/^no$/, ""),
+              m4a: !!(audioTest.canPlayType("audio/x-m4a;") || audioTest.canPlayType("audio/m4a;") || audioTest.canPlayType("audio/aac;")).replace(/^no$/, ""),
+              m4b: !!(audioTest.canPlayType("audio/x-m4b;") || audioTest.canPlayType("audio/m4b;") || audioTest.canPlayType("audio/aac;")).replace(/^no$/, ""),
+              mp4: !!(audioTest.canPlayType("audio/x-mp4;") || audioTest.canPlayType("audio/mp4;") || audioTest.canPlayType("audio/aac;")).replace(/^no$/, ""),
+              weba: !!(!isOldSafari && audioTest.canPlayType('audio/webm; codecs="vorbis"').replace(/^no$/, "")),
+              webm: !!(!isOldSafari && audioTest.canPlayType('audio/webm; codecs="vorbis"').replace(/^no$/, "")),
+              dolby: !!audioTest.canPlayType('audio/mp4; codecs="ec-3"').replace(/^no$/, ""),
+              flac: !!(audioTest.canPlayType("audio/x-flac;") || audioTest.canPlayType("audio/flac;")).replace(/^no$/, "")
+            };
+            return self;
+          },
+          /**
+           * Some browsers/devices will only allow audio to be played after a user interaction.
+           * Attempt to automatically unlock audio on the first user interaction.
+           * Concept from: http://paulbakaus.com/tutorials/html5/web-audio-on-ios/
+           * @return {Howler}
+           */
+          _unlockAudio: function() {
+            var self = this || Howler3;
+            if (self._audioUnlocked || !self.ctx) {
+              return;
+            }
+            self._audioUnlocked = false;
+            self.autoUnlock = false;
+            if (!self._mobileUnloaded && self.ctx.sampleRate !== 44100) {
+              self._mobileUnloaded = true;
+              self.unload();
+            }
+            self._scratchBuffer = self.ctx.createBuffer(1, 1, 22050);
+            var unlock = function(e) {
+              while (self._html5AudioPool.length < self.html5PoolSize) {
+                try {
+                  var audioNode = new Audio();
+                  audioNode._unlocked = true;
+                  self._releaseHtml5Audio(audioNode);
+                } catch (e2) {
+                  self.noAudio = true;
+                  break;
+                }
+              }
+              for (var i = 0; i < self._howls.length; i++) {
+                if (!self._howls[i]._webAudio) {
+                  var ids = self._howls[i]._getSoundIds();
+                  for (var j = 0; j < ids.length; j++) {
+                    var sound = self._howls[i]._soundById(ids[j]);
+                    if (sound && sound._node && !sound._node._unlocked) {
+                      sound._node._unlocked = true;
+                      sound._node.load();
+                    }
+                  }
+                }
+              }
+              self._autoResume();
+              var source = self.ctx.createBufferSource();
+              source.buffer = self._scratchBuffer;
+              source.connect(self.ctx.destination);
+              if (typeof source.start === "undefined") {
+                source.noteOn(0);
+              } else {
+                source.start(0);
+              }
+              if (typeof self.ctx.resume === "function") {
+                self.ctx.resume();
+              }
+              source.onended = function() {
+                source.disconnect(0);
+                self._audioUnlocked = true;
+                document.removeEventListener("touchstart", unlock, true);
+                document.removeEventListener("touchend", unlock, true);
+                document.removeEventListener("click", unlock, true);
+                document.removeEventListener("keydown", unlock, true);
+                for (var i2 = 0; i2 < self._howls.length; i2++) {
+                  self._howls[i2]._emit("unlock");
+                }
+              };
+            };
+            document.addEventListener("touchstart", unlock, true);
+            document.addEventListener("touchend", unlock, true);
+            document.addEventListener("click", unlock, true);
+            document.addEventListener("keydown", unlock, true);
+            return self;
+          },
+          /**
+           * Get an unlocked HTML5 Audio object from the pool. If none are left,
+           * return a new Audio object and throw a warning.
+           * @return {Audio} HTML5 Audio object.
+           */
+          _obtainHtml5Audio: function() {
+            var self = this || Howler3;
+            if (self._html5AudioPool.length) {
+              return self._html5AudioPool.pop();
+            }
+            var testPlay = new Audio().play();
+            if (testPlay && typeof Promise !== "undefined" && (testPlay instanceof Promise || typeof testPlay.then === "function")) {
+              testPlay.catch(function() {
+                console.warn("HTML5 Audio pool exhausted, returning potentially locked audio object.");
+              });
+            }
+            return new Audio();
+          },
+          /**
+           * Return an activated HTML5 Audio object to the pool.
+           * @return {Howler}
+           */
+          _releaseHtml5Audio: function(audio) {
+            var self = this || Howler3;
+            if (audio._unlocked) {
+              self._html5AudioPool.push(audio);
+            }
+            return self;
+          },
+          /**
+           * Automatically suspend the Web Audio AudioContext after no sound has played for 30 seconds.
+           * This saves processing/energy and fixes various browser-specific bugs with audio getting stuck.
+           * @return {Howler}
+           */
+          _autoSuspend: function() {
+            var self = this;
+            if (!self.autoSuspend || !self.ctx || typeof self.ctx.suspend === "undefined" || !Howler3.usingWebAudio) {
+              return;
+            }
+            for (var i = 0; i < self._howls.length; i++) {
+              if (self._howls[i]._webAudio) {
+                for (var j = 0; j < self._howls[i]._sounds.length; j++) {
+                  if (!self._howls[i]._sounds[j]._paused) {
+                    return self;
+                  }
+                }
+              }
+            }
+            if (self._suspendTimer) {
+              clearTimeout(self._suspendTimer);
+            }
+            self._suspendTimer = setTimeout(function() {
+              if (!self.autoSuspend) {
+                return;
+              }
+              self._suspendTimer = null;
+              self.state = "suspending";
+              var handleSuspension = function() {
+                self.state = "suspended";
+                if (self._resumeAfterSuspend) {
+                  delete self._resumeAfterSuspend;
+                  self._autoResume();
+                }
+              };
+              self.ctx.suspend().then(handleSuspension, handleSuspension);
+            }, 3e4);
+            return self;
+          },
+          /**
+           * Automatically resume the Web Audio AudioContext when a new sound is played.
+           * @return {Howler}
+           */
+          _autoResume: function() {
+            var self = this;
+            if (!self.ctx || typeof self.ctx.resume === "undefined" || !Howler3.usingWebAudio) {
+              return;
+            }
+            if (self.state === "running" && self.ctx.state !== "interrupted" && self._suspendTimer) {
+              clearTimeout(self._suspendTimer);
+              self._suspendTimer = null;
+            } else if (self.state === "suspended" || self.state === "running" && self.ctx.state === "interrupted") {
+              self.ctx.resume().then(function() {
+                self.state = "running";
+                for (var i = 0; i < self._howls.length; i++) {
+                  self._howls[i]._emit("resume");
+                }
+              });
+              if (self._suspendTimer) {
+                clearTimeout(self._suspendTimer);
+                self._suspendTimer = null;
+              }
+            } else if (self.state === "suspending") {
+              self._resumeAfterSuspend = true;
+            }
+            return self;
+          }
+        };
+        var Howler3 = new HowlerGlobal2();
+        var Howl2 = function(o) {
+          var self = this;
+          if (!o.src || o.src.length === 0) {
+            console.error("An array of source files must be passed with any new Howl.");
+            return;
+          }
+          self.init(o);
+        };
+        Howl2.prototype = {
+          /**
+           * Initialize a new Howl group object.
+           * @param  {Object} o Passed in properties for this group.
+           * @return {Howl}
+           */
+          init: function(o) {
+            var self = this;
+            if (!Howler3.ctx) {
+              setupAudioContext();
+            }
+            self._autoplay = o.autoplay || false;
+            self._format = typeof o.format !== "string" ? o.format : [o.format];
+            self._html5 = o.html5 || false;
+            self._muted = o.mute || false;
+            self._loop = o.loop || false;
+            self._pool = o.pool || 5;
+            self._preload = typeof o.preload === "boolean" || o.preload === "metadata" ? o.preload : true;
+            self._rate = o.rate || 1;
+            self._sprite = o.sprite || {};
+            self._src = typeof o.src !== "string" ? o.src : [o.src];
+            self._volume = o.volume !== void 0 ? o.volume : 1;
+            self._xhr = {
+              method: o.xhr && o.xhr.method ? o.xhr.method : "GET",
+              headers: o.xhr && o.xhr.headers ? o.xhr.headers : null,
+              withCredentials: o.xhr && o.xhr.withCredentials ? o.xhr.withCredentials : false
+            };
+            self._duration = 0;
+            self._state = "unloaded";
+            self._sounds = [];
+            self._endTimers = {};
+            self._queue = [];
+            self._playLock = false;
+            self._onend = o.onend ? [{ fn: o.onend }] : [];
+            self._onfade = o.onfade ? [{ fn: o.onfade }] : [];
+            self._onload = o.onload ? [{ fn: o.onload }] : [];
+            self._onloaderror = o.onloaderror ? [{ fn: o.onloaderror }] : [];
+            self._onplayerror = o.onplayerror ? [{ fn: o.onplayerror }] : [];
+            self._onpause = o.onpause ? [{ fn: o.onpause }] : [];
+            self._onplay = o.onplay ? [{ fn: o.onplay }] : [];
+            self._onstop = o.onstop ? [{ fn: o.onstop }] : [];
+            self._onmute = o.onmute ? [{ fn: o.onmute }] : [];
+            self._onvolume = o.onvolume ? [{ fn: o.onvolume }] : [];
+            self._onrate = o.onrate ? [{ fn: o.onrate }] : [];
+            self._onseek = o.onseek ? [{ fn: o.onseek }] : [];
+            self._onunlock = o.onunlock ? [{ fn: o.onunlock }] : [];
+            self._onresume = [];
+            self._webAudio = Howler3.usingWebAudio && !self._html5;
+            if (typeof Howler3.ctx !== "undefined" && Howler3.ctx && Howler3.autoUnlock) {
+              Howler3._unlockAudio();
+            }
+            Howler3._howls.push(self);
+            if (self._autoplay) {
+              self._queue.push({
+                event: "play",
+                action: function() {
+                  self.play();
+                }
+              });
+            }
+            if (self._preload && self._preload !== "none") {
+              self.load();
+            }
+            return self;
+          },
+          /**
+           * Load the audio file.
+           * @return {Howler}
+           */
+          load: function() {
+            var self = this;
+            var url3 = null;
+            if (Howler3.noAudio) {
+              self._emit("loaderror", null, "No audio support.");
+              return;
+            }
+            if (typeof self._src === "string") {
+              self._src = [self._src];
+            }
+            for (var i = 0; i < self._src.length; i++) {
+              var ext, str;
+              if (self._format && self._format[i]) {
+                ext = self._format[i];
+              } else {
+                str = self._src[i];
+                if (typeof str !== "string") {
+                  self._emit("loaderror", null, "Non-string found in selected audio sources - ignoring.");
+                  continue;
+                }
+                ext = /^data:audio\/([^;,]+);/i.exec(str);
+                if (!ext) {
+                  ext = /\.([^.]+)$/.exec(str.split("?", 1)[0]);
+                }
+                if (ext) {
+                  ext = ext[1].toLowerCase();
+                }
+              }
+              if (!ext) {
+                console.warn('No file extension was found. Consider using the "format" property or specify an extension.');
+              }
+              if (ext && Howler3.codecs(ext)) {
+                url3 = self._src[i];
+                break;
+              }
+            }
+            if (!url3) {
+              self._emit("loaderror", null, "No codec support for selected audio sources.");
+              return;
+            }
+            self._src = url3;
+            self._state = "loading";
+            if (window.location.protocol === "https:" && url3.slice(0, 5) === "http:") {
+              self._html5 = true;
+              self._webAudio = false;
+            }
+            new Sound2(self);
+            if (self._webAudio) {
+              loadBuffer(self);
+            }
+            return self;
+          },
+          /**
+           * Play a sound or resume previous playback.
+           * @param  {String/Number} sprite   Sprite name for sprite playback or sound id to continue previous.
+           * @param  {Boolean} internal Internal Use: true prevents event firing.
+           * @return {Number}          Sound ID.
+           */
+          play: function(sprite, internal) {
+            var self = this;
+            var id = null;
+            if (typeof sprite === "number") {
+              id = sprite;
+              sprite = null;
+            } else if (typeof sprite === "string" && self._state === "loaded" && !self._sprite[sprite]) {
+              return null;
+            } else if (typeof sprite === "undefined") {
+              sprite = "__default";
+              if (!self._playLock) {
+                var num2 = 0;
+                for (var i = 0; i < self._sounds.length; i++) {
+                  if (self._sounds[i]._paused && !self._sounds[i]._ended) {
+                    num2++;
+                    id = self._sounds[i]._id;
+                  }
+                }
+                if (num2 === 1) {
+                  sprite = null;
+                } else {
+                  id = null;
+                }
+              }
+            }
+            var sound = id ? self._soundById(id) : self._inactiveSound();
+            if (!sound) {
+              return null;
+            }
+            if (id && !sprite) {
+              sprite = sound._sprite || "__default";
+            }
+            if (self._state !== "loaded") {
+              sound._sprite = sprite;
+              sound._ended = false;
+              var soundId = sound._id;
+              self._queue.push({
+                event: "play",
+                action: function() {
+                  self.play(soundId);
+                }
+              });
+              return soundId;
+            }
+            if (id && !sound._paused) {
+              if (!internal) {
+                self._loadQueue("play");
+              }
+              return sound._id;
+            }
+            if (self._webAudio) {
+              Howler3._autoResume();
+            }
+            var seek = Math.max(0, sound._seek > 0 ? sound._seek : self._sprite[sprite][0] / 1e3);
+            var duration = Math.max(0, (self._sprite[sprite][0] + self._sprite[sprite][1]) / 1e3 - seek);
+            var timeout = duration * 1e3 / Math.abs(sound._rate);
+            var start = self._sprite[sprite][0] / 1e3;
+            var stop = (self._sprite[sprite][0] + self._sprite[sprite][1]) / 1e3;
+            sound._sprite = sprite;
+            sound._ended = false;
+            var setParams = function() {
+              sound._paused = false;
+              sound._seek = seek;
+              sound._start = start;
+              sound._stop = stop;
+              sound._loop = !!(sound._loop || self._sprite[sprite][2]);
+            };
+            if (seek >= stop) {
+              self._ended(sound);
+              return;
+            }
+            var node = sound._node;
+            if (self._webAudio) {
+              var playWebAudio = function() {
+                self._playLock = false;
+                setParams();
+                self._refreshBuffer(sound);
+                var vol = sound._muted || self._muted ? 0 : sound._volume;
+                node.gain.setValueAtTime(vol, Howler3.ctx.currentTime);
+                sound._playStart = Howler3.ctx.currentTime;
+                if (typeof node.bufferSource.start === "undefined") {
+                  sound._loop ? node.bufferSource.noteGrainOn(0, seek, 86400) : node.bufferSource.noteGrainOn(0, seek, duration);
+                } else {
+                  sound._loop ? node.bufferSource.start(0, seek, 86400) : node.bufferSource.start(0, seek, duration);
+                }
+                if (timeout !== Infinity) {
+                  self._endTimers[sound._id] = setTimeout(self._ended.bind(self, sound), timeout);
+                }
+                if (!internal) {
+                  setTimeout(function() {
+                    self._emit("play", sound._id);
+                    self._loadQueue();
+                  }, 0);
+                }
+              };
+              if (Howler3.state === "running" && Howler3.ctx.state !== "interrupted") {
+                playWebAudio();
+              } else {
+                self._playLock = true;
+                self.once("resume", playWebAudio);
+                self._clearTimer(sound._id);
+              }
+            } else {
+              var playHtml5 = function() {
+                node.currentTime = seek;
+                node.muted = sound._muted || self._muted || Howler3._muted || node.muted;
+                node.volume = sound._volume * Howler3.volume();
+                node.playbackRate = sound._rate;
+                try {
+                  var play = node.play();
+                  if (play && typeof Promise !== "undefined" && (play instanceof Promise || typeof play.then === "function")) {
+                    self._playLock = true;
+                    setParams();
+                    play.then(function() {
+                      self._playLock = false;
+                      node._unlocked = true;
+                      if (!internal) {
+                        self._emit("play", sound._id);
+                      } else {
+                        self._loadQueue();
+                      }
+                    }).catch(function() {
+                      self._playLock = false;
+                      self._emit("playerror", sound._id, "Playback was unable to start. This is most commonly an issue on mobile devices and Chrome where playback was not within a user interaction.");
+                      sound._ended = true;
+                      sound._paused = true;
+                    });
+                  } else if (!internal) {
+                    self._playLock = false;
+                    setParams();
+                    self._emit("play", sound._id);
+                  }
+                  node.playbackRate = sound._rate;
+                  if (node.paused) {
+                    self._emit("playerror", sound._id, "Playback was unable to start. This is most commonly an issue on mobile devices and Chrome where playback was not within a user interaction.");
+                    return;
+                  }
+                  if (sprite !== "__default" || sound._loop) {
+                    self._endTimers[sound._id] = setTimeout(self._ended.bind(self, sound), timeout);
+                  } else {
+                    self._endTimers[sound._id] = function() {
+                      self._ended(sound);
+                      node.removeEventListener("ended", self._endTimers[sound._id], false);
+                    };
+                    node.addEventListener("ended", self._endTimers[sound._id], false);
+                  }
+                } catch (err) {
+                  self._emit("playerror", sound._id, err);
+                }
+              };
+              if (node.src === "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA") {
+                node.src = self._src;
+                node.load();
+              }
+              var loadedNoReadyState = window && window.ejecta || !node.readyState && Howler3._navigator.isCocoonJS;
+              if (node.readyState >= 3 || loadedNoReadyState) {
+                playHtml5();
+              } else {
+                self._playLock = true;
+                self._state = "loading";
+                var listener = function() {
+                  self._state = "loaded";
+                  playHtml5();
+                  node.removeEventListener(Howler3._canPlayEvent, listener, false);
+                };
+                node.addEventListener(Howler3._canPlayEvent, listener, false);
+                self._clearTimer(sound._id);
+              }
+            }
+            return sound._id;
+          },
+          /**
+           * Pause playback and save current position.
+           * @param  {Number} id The sound ID (empty to pause all in group).
+           * @return {Howl}
+           */
+          pause: function(id) {
+            var self = this;
+            if (self._state !== "loaded" || self._playLock) {
+              self._queue.push({
+                event: "pause",
+                action: function() {
+                  self.pause(id);
+                }
+              });
+              return self;
+            }
+            var ids = self._getSoundIds(id);
+            for (var i = 0; i < ids.length; i++) {
+              self._clearTimer(ids[i]);
+              var sound = self._soundById(ids[i]);
+              if (sound && !sound._paused) {
+                sound._seek = self.seek(ids[i]);
+                sound._rateSeek = 0;
+                sound._paused = true;
+                self._stopFade(ids[i]);
+                if (sound._node) {
+                  if (self._webAudio) {
+                    if (!sound._node.bufferSource) {
+                      continue;
+                    }
+                    if (typeof sound._node.bufferSource.stop === "undefined") {
+                      sound._node.bufferSource.noteOff(0);
+                    } else {
+                      sound._node.bufferSource.stop(0);
+                    }
+                    self._cleanBuffer(sound._node);
+                  } else if (!isNaN(sound._node.duration) || sound._node.duration === Infinity) {
+                    sound._node.pause();
+                  }
+                }
+              }
+              if (!arguments[1]) {
+                self._emit("pause", sound ? sound._id : null);
+              }
+            }
+            return self;
+          },
+          /**
+           * Stop playback and reset to start.
+           * @param  {Number} id The sound ID (empty to stop all in group).
+           * @param  {Boolean} internal Internal Use: true prevents event firing.
+           * @return {Howl}
+           */
+          stop: function(id, internal) {
+            var self = this;
+            if (self._state !== "loaded" || self._playLock) {
+              self._queue.push({
+                event: "stop",
+                action: function() {
+                  self.stop(id);
+                }
+              });
+              return self;
+            }
+            var ids = self._getSoundIds(id);
+            for (var i = 0; i < ids.length; i++) {
+              self._clearTimer(ids[i]);
+              var sound = self._soundById(ids[i]);
+              if (sound) {
+                sound._seek = sound._start || 0;
+                sound._rateSeek = 0;
+                sound._paused = true;
+                sound._ended = true;
+                self._stopFade(ids[i]);
+                if (sound._node) {
+                  if (self._webAudio) {
+                    if (sound._node.bufferSource) {
+                      if (typeof sound._node.bufferSource.stop === "undefined") {
+                        sound._node.bufferSource.noteOff(0);
+                      } else {
+                        sound._node.bufferSource.stop(0);
+                      }
+                      self._cleanBuffer(sound._node);
+                    }
+                  } else if (!isNaN(sound._node.duration) || sound._node.duration === Infinity) {
+                    sound._node.currentTime = sound._start || 0;
+                    sound._node.pause();
+                    if (sound._node.duration === Infinity) {
+                      self._clearSound(sound._node);
+                    }
+                  }
+                }
+                if (!internal) {
+                  self._emit("stop", sound._id);
+                }
+              }
+            }
+            return self;
+          },
+          /**
+           * Mute/unmute a single sound or all sounds in this Howl group.
+           * @param  {Boolean} muted Set to true to mute and false to unmute.
+           * @param  {Number} id    The sound ID to update (omit to mute/unmute all).
+           * @return {Howl}
+           */
+          mute: function(muted, id) {
+            var self = this;
+            if (self._state !== "loaded" || self._playLock) {
+              self._queue.push({
+                event: "mute",
+                action: function() {
+                  self.mute(muted, id);
+                }
+              });
+              return self;
+            }
+            if (typeof id === "undefined") {
+              if (typeof muted === "boolean") {
+                self._muted = muted;
+              } else {
+                return self._muted;
+              }
+            }
+            var ids = self._getSoundIds(id);
+            for (var i = 0; i < ids.length; i++) {
+              var sound = self._soundById(ids[i]);
+              if (sound) {
+                sound._muted = muted;
+                if (sound._interval) {
+                  self._stopFade(sound._id);
+                }
+                if (self._webAudio && sound._node) {
+                  sound._node.gain.setValueAtTime(muted ? 0 : sound._volume, Howler3.ctx.currentTime);
+                } else if (sound._node) {
+                  sound._node.muted = Howler3._muted ? true : muted;
+                }
+                self._emit("mute", sound._id);
+              }
+            }
+            return self;
+          },
+          /**
+           * Get/set the volume of this sound or of the Howl group. This method can optionally take 0, 1 or 2 arguments.
+           *   volume() -> Returns the group's volume value.
+           *   volume(id) -> Returns the sound id's current volume.
+           *   volume(vol) -> Sets the volume of all sounds in this Howl group.
+           *   volume(vol, id) -> Sets the volume of passed sound id.
+           * @return {Howl/Number} Returns self or current volume.
+           */
+          volume: function() {
+            var self = this;
+            var args = arguments;
+            var vol, id;
+            if (args.length === 0) {
+              return self._volume;
+            } else if (args.length === 1 || args.length === 2 && typeof args[1] === "undefined") {
+              var ids = self._getSoundIds();
+              var index = ids.indexOf(args[0]);
+              if (index >= 0) {
+                id = parseInt(args[0], 10);
+              } else {
+                vol = parseFloat(args[0]);
+              }
+            } else if (args.length >= 2) {
+              vol = parseFloat(args[0]);
+              id = parseInt(args[1], 10);
+            }
+            var sound;
+            if (typeof vol !== "undefined" && vol >= 0 && vol <= 1) {
+              if (self._state !== "loaded" || self._playLock) {
+                self._queue.push({
+                  event: "volume",
+                  action: function() {
+                    self.volume.apply(self, args);
+                  }
+                });
+                return self;
+              }
+              if (typeof id === "undefined") {
+                self._volume = vol;
+              }
+              id = self._getSoundIds(id);
+              for (var i = 0; i < id.length; i++) {
+                sound = self._soundById(id[i]);
+                if (sound) {
+                  sound._volume = vol;
+                  if (!args[2]) {
+                    self._stopFade(id[i]);
+                  }
+                  if (self._webAudio && sound._node && !sound._muted) {
+                    sound._node.gain.setValueAtTime(vol, Howler3.ctx.currentTime);
+                  } else if (sound._node && !sound._muted) {
+                    sound._node.volume = vol * Howler3.volume();
+                  }
+                  self._emit("volume", sound._id);
+                }
+              }
+            } else {
+              sound = id ? self._soundById(id) : self._sounds[0];
+              return sound ? sound._volume : 0;
+            }
+            return self;
+          },
+          /**
+           * Fade a currently playing sound between two volumes (if no id is passed, all sounds will fade).
+           * @param  {Number} from The value to fade from (0.0 to 1.0).
+           * @param  {Number} to   The volume to fade to (0.0 to 1.0).
+           * @param  {Number} len  Time in milliseconds to fade.
+           * @param  {Number} id   The sound id (omit to fade all sounds).
+           * @return {Howl}
+           */
+          fade: function(from, to, len, id) {
+            var self = this;
+            if (self._state !== "loaded" || self._playLock) {
+              self._queue.push({
+                event: "fade",
+                action: function() {
+                  self.fade(from, to, len, id);
+                }
+              });
+              return self;
+            }
+            from = Math.min(Math.max(0, parseFloat(from)), 1);
+            to = Math.min(Math.max(0, parseFloat(to)), 1);
+            len = parseFloat(len);
+            self.volume(from, id);
+            var ids = self._getSoundIds(id);
+            for (var i = 0; i < ids.length; i++) {
+              var sound = self._soundById(ids[i]);
+              if (sound) {
+                if (!id) {
+                  self._stopFade(ids[i]);
+                }
+                if (self._webAudio && !sound._muted) {
+                  var currentTime = Howler3.ctx.currentTime;
+                  var end = currentTime + len / 1e3;
+                  sound._volume = from;
+                  sound._node.gain.setValueAtTime(from, currentTime);
+                  sound._node.gain.linearRampToValueAtTime(to, end);
+                }
+                self._startFadeInterval(sound, from, to, len, ids[i], typeof id === "undefined");
+              }
+            }
+            return self;
+          },
+          /**
+           * Starts the internal interval to fade a sound.
+           * @param  {Object} sound Reference to sound to fade.
+           * @param  {Number} from The value to fade from (0.0 to 1.0).
+           * @param  {Number} to   The volume to fade to (0.0 to 1.0).
+           * @param  {Number} len  Time in milliseconds to fade.
+           * @param  {Number} id   The sound id to fade.
+           * @param  {Boolean} isGroup   If true, set the volume on the group.
+           */
+          _startFadeInterval: function(sound, from, to, len, id, isGroup) {
+            var self = this;
+            var vol = from;
+            var diff = to - from;
+            var steps = Math.abs(diff / 0.01);
+            var stepLen = Math.max(4, steps > 0 ? len / steps : len);
+            var lastTick = Date.now();
+            sound._fadeTo = to;
+            sound._interval = setInterval(function() {
+              var tick = (Date.now() - lastTick) / len;
+              lastTick = Date.now();
+              vol += diff * tick;
+              vol = Math.round(vol * 100) / 100;
+              if (diff < 0) {
+                vol = Math.max(to, vol);
+              } else {
+                vol = Math.min(to, vol);
+              }
+              if (self._webAudio) {
+                sound._volume = vol;
+              } else {
+                self.volume(vol, sound._id, true);
+              }
+              if (isGroup) {
+                self._volume = vol;
+              }
+              if (to < from && vol <= to || to > from && vol >= to) {
+                clearInterval(sound._interval);
+                sound._interval = null;
+                sound._fadeTo = null;
+                self.volume(to, sound._id);
+                self._emit("fade", sound._id);
+              }
+            }, stepLen);
+          },
+          /**
+           * Internal method that stops the currently playing fade when
+           * a new fade starts, volume is changed or the sound is stopped.
+           * @param  {Number} id The sound id.
+           * @return {Howl}
+           */
+          _stopFade: function(id) {
+            var self = this;
+            var sound = self._soundById(id);
+            if (sound && sound._interval) {
+              if (self._webAudio) {
+                sound._node.gain.cancelScheduledValues(Howler3.ctx.currentTime);
+              }
+              clearInterval(sound._interval);
+              sound._interval = null;
+              self.volume(sound._fadeTo, id);
+              sound._fadeTo = null;
+              self._emit("fade", id);
+            }
+            return self;
+          },
+          /**
+           * Get/set the loop parameter on a sound. This method can optionally take 0, 1 or 2 arguments.
+           *   loop() -> Returns the group's loop value.
+           *   loop(id) -> Returns the sound id's loop value.
+           *   loop(loop) -> Sets the loop value for all sounds in this Howl group.
+           *   loop(loop, id) -> Sets the loop value of passed sound id.
+           * @return {Howl/Boolean} Returns self or current loop value.
+           */
+          loop: function() {
+            var self = this;
+            var args = arguments;
+            var loop, id, sound;
+            if (args.length === 0) {
+              return self._loop;
+            } else if (args.length === 1) {
+              if (typeof args[0] === "boolean") {
+                loop = args[0];
+                self._loop = loop;
+              } else {
+                sound = self._soundById(parseInt(args[0], 10));
+                return sound ? sound._loop : false;
+              }
+            } else if (args.length === 2) {
+              loop = args[0];
+              id = parseInt(args[1], 10);
+            }
+            var ids = self._getSoundIds(id);
+            for (var i = 0; i < ids.length; i++) {
+              sound = self._soundById(ids[i]);
+              if (sound) {
+                sound._loop = loop;
+                if (self._webAudio && sound._node && sound._node.bufferSource) {
+                  sound._node.bufferSource.loop = loop;
+                  if (loop) {
+                    sound._node.bufferSource.loopStart = sound._start || 0;
+                    sound._node.bufferSource.loopEnd = sound._stop;
+                    if (self.playing(ids[i])) {
+                      self.pause(ids[i], true);
+                      self.play(ids[i], true);
+                    }
+                  }
+                }
+              }
+            }
+            return self;
+          },
+          /**
+           * Get/set the playback rate of a sound. This method can optionally take 0, 1 or 2 arguments.
+           *   rate() -> Returns the first sound node's current playback rate.
+           *   rate(id) -> Returns the sound id's current playback rate.
+           *   rate(rate) -> Sets the playback rate of all sounds in this Howl group.
+           *   rate(rate, id) -> Sets the playback rate of passed sound id.
+           * @return {Howl/Number} Returns self or the current playback rate.
+           */
+          rate: function() {
+            var self = this;
+            var args = arguments;
+            var rate, id;
+            if (args.length === 0) {
+              id = self._sounds[0]._id;
+            } else if (args.length === 1) {
+              var ids = self._getSoundIds();
+              var index = ids.indexOf(args[0]);
+              if (index >= 0) {
+                id = parseInt(args[0], 10);
+              } else {
+                rate = parseFloat(args[0]);
+              }
+            } else if (args.length === 2) {
+              rate = parseFloat(args[0]);
+              id = parseInt(args[1], 10);
+            }
+            var sound;
+            if (typeof rate === "number") {
+              if (self._state !== "loaded" || self._playLock) {
+                self._queue.push({
+                  event: "rate",
+                  action: function() {
+                    self.rate.apply(self, args);
+                  }
+                });
+                return self;
+              }
+              if (typeof id === "undefined") {
+                self._rate = rate;
+              }
+              id = self._getSoundIds(id);
+              for (var i = 0; i < id.length; i++) {
+                sound = self._soundById(id[i]);
+                if (sound) {
+                  if (self.playing(id[i])) {
+                    sound._rateSeek = self.seek(id[i]);
+                    sound._playStart = self._webAudio ? Howler3.ctx.currentTime : sound._playStart;
+                  }
+                  sound._rate = rate;
+                  if (self._webAudio && sound._node && sound._node.bufferSource) {
+                    sound._node.bufferSource.playbackRate.setValueAtTime(rate, Howler3.ctx.currentTime);
+                  } else if (sound._node) {
+                    sound._node.playbackRate = rate;
+                  }
+                  var seek = self.seek(id[i]);
+                  var duration = (self._sprite[sound._sprite][0] + self._sprite[sound._sprite][1]) / 1e3 - seek;
+                  var timeout = duration * 1e3 / Math.abs(sound._rate);
+                  if (self._endTimers[id[i]] || !sound._paused) {
+                    self._clearTimer(id[i]);
+                    self._endTimers[id[i]] = setTimeout(self._ended.bind(self, sound), timeout);
+                  }
+                  self._emit("rate", sound._id);
+                }
+              }
+            } else {
+              sound = self._soundById(id);
+              return sound ? sound._rate : self._rate;
+            }
+            return self;
+          },
+          /**
+           * Get/set the seek position of a sound. This method can optionally take 0, 1 or 2 arguments.
+           *   seek() -> Returns the first sound node's current seek position.
+           *   seek(id) -> Returns the sound id's current seek position.
+           *   seek(seek) -> Sets the seek position of the first sound node.
+           *   seek(seek, id) -> Sets the seek position of passed sound id.
+           * @return {Howl/Number} Returns self or the current seek position.
+           */
+          seek: function() {
+            var self = this;
+            var args = arguments;
+            var seek, id;
+            if (args.length === 0) {
+              if (self._sounds.length) {
+                id = self._sounds[0]._id;
+              }
+            } else if (args.length === 1) {
+              var ids = self._getSoundIds();
+              var index = ids.indexOf(args[0]);
+              if (index >= 0) {
+                id = parseInt(args[0], 10);
+              } else if (self._sounds.length) {
+                id = self._sounds[0]._id;
+                seek = parseFloat(args[0]);
+              }
+            } else if (args.length === 2) {
+              seek = parseFloat(args[0]);
+              id = parseInt(args[1], 10);
+            }
+            if (typeof id === "undefined") {
+              return 0;
+            }
+            if (typeof seek === "number" && (self._state !== "loaded" || self._playLock)) {
+              self._queue.push({
+                event: "seek",
+                action: function() {
+                  self.seek.apply(self, args);
+                }
+              });
+              return self;
+            }
+            var sound = self._soundById(id);
+            if (sound) {
+              if (typeof seek === "number" && seek >= 0) {
+                var playing = self.playing(id);
+                if (playing) {
+                  self.pause(id, true);
+                }
+                sound._seek = seek;
+                sound._ended = false;
+                self._clearTimer(id);
+                if (!self._webAudio && sound._node && !isNaN(sound._node.duration)) {
+                  sound._node.currentTime = seek;
+                }
+                var seekAndEmit = function() {
+                  if (playing) {
+                    self.play(id, true);
+                  }
+                  self._emit("seek", id);
+                };
+                if (playing && !self._webAudio) {
+                  var emitSeek = function() {
+                    if (!self._playLock) {
+                      seekAndEmit();
+                    } else {
+                      setTimeout(emitSeek, 0);
+                    }
+                  };
+                  setTimeout(emitSeek, 0);
+                } else {
+                  seekAndEmit();
+                }
+              } else {
+                if (self._webAudio) {
+                  var realTime = self.playing(id) ? Howler3.ctx.currentTime - sound._playStart : 0;
+                  var rateSeek = sound._rateSeek ? sound._rateSeek - sound._seek : 0;
+                  return sound._seek + (rateSeek + realTime * Math.abs(sound._rate));
+                } else {
+                  return sound._node.currentTime;
+                }
+              }
+            }
+            return self;
+          },
+          /**
+           * Check if a specific sound is currently playing or not (if id is provided), or check if at least one of the sounds in the group is playing or not.
+           * @param  {Number}  id The sound id to check. If none is passed, the whole sound group is checked.
+           * @return {Boolean} True if playing and false if not.
+           */
+          playing: function(id) {
+            var self = this;
+            if (typeof id === "number") {
+              var sound = self._soundById(id);
+              return sound ? !sound._paused : false;
+            }
+            for (var i = 0; i < self._sounds.length; i++) {
+              if (!self._sounds[i]._paused) {
+                return true;
+              }
+            }
+            return false;
+          },
+          /**
+           * Get the duration of this sound. Passing a sound id will return the sprite duration.
+           * @param  {Number} id The sound id to check. If none is passed, return full source duration.
+           * @return {Number} Audio duration in seconds.
+           */
+          duration: function(id) {
+            var self = this;
+            var duration = self._duration;
+            var sound = self._soundById(id);
+            if (sound) {
+              duration = self._sprite[sound._sprite][1] / 1e3;
+            }
+            return duration;
+          },
+          /**
+           * Returns the current loaded state of this Howl.
+           * @return {String} 'unloaded', 'loading', 'loaded'
+           */
+          state: function() {
+            return this._state;
+          },
+          /**
+           * Unload and destroy the current Howl object.
+           * This will immediately stop all sound instances attached to this group.
+           */
+          unload: function() {
+            var self = this;
+            var sounds = self._sounds;
+            for (var i = 0; i < sounds.length; i++) {
+              if (!sounds[i]._paused) {
+                self.stop(sounds[i]._id);
+              }
+              if (!self._webAudio) {
+                self._clearSound(sounds[i]._node);
+                sounds[i]._node.removeEventListener("error", sounds[i]._errorFn, false);
+                sounds[i]._node.removeEventListener(Howler3._canPlayEvent, sounds[i]._loadFn, false);
+                sounds[i]._node.removeEventListener("ended", sounds[i]._endFn, false);
+                Howler3._releaseHtml5Audio(sounds[i]._node);
+              }
+              delete sounds[i]._node;
+              self._clearTimer(sounds[i]._id);
+            }
+            var index = Howler3._howls.indexOf(self);
+            if (index >= 0) {
+              Howler3._howls.splice(index, 1);
+            }
+            var remCache = true;
+            for (i = 0; i < Howler3._howls.length; i++) {
+              if (Howler3._howls[i]._src === self._src || self._src.indexOf(Howler3._howls[i]._src) >= 0) {
+                remCache = false;
+                break;
+              }
+            }
+            if (cache && remCache) {
+              delete cache[self._src];
+            }
+            Howler3.noAudio = false;
+            self._state = "unloaded";
+            self._sounds = [];
+            self = null;
+            return null;
+          },
+          /**
+           * Listen to a custom event.
+           * @param  {String}   event Event name.
+           * @param  {Function} fn    Listener to call.
+           * @param  {Number}   id    (optional) Only listen to events for this sound.
+           * @param  {Number}   once  (INTERNAL) Marks event to fire only once.
+           * @return {Howl}
+           */
+          on: function(event, fn, id, once) {
+            var self = this;
+            var events = self["_on" + event];
+            if (typeof fn === "function") {
+              events.push(once ? { id, fn, once } : { id, fn });
+            }
+            return self;
+          },
+          /**
+           * Remove a custom event. Call without parameters to remove all events.
+           * @param  {String}   event Event name.
+           * @param  {Function} fn    Listener to remove. Leave empty to remove all.
+           * @param  {Number}   id    (optional) Only remove events for this sound.
+           * @return {Howl}
+           */
+          off: function(event, fn, id) {
+            var self = this;
+            var events = self["_on" + event];
+            var i = 0;
+            if (typeof fn === "number") {
+              id = fn;
+              fn = null;
+            }
+            if (fn || id) {
+              for (i = 0; i < events.length; i++) {
+                var isId = id === events[i].id;
+                if (fn === events[i].fn && isId || !fn && isId) {
+                  events.splice(i, 1);
+                  break;
+                }
+              }
+            } else if (event) {
+              self["_on" + event] = [];
+            } else {
+              var keys = Object.keys(self);
+              for (i = 0; i < keys.length; i++) {
+                if (keys[i].indexOf("_on") === 0 && Array.isArray(self[keys[i]])) {
+                  self[keys[i]] = [];
+                }
+              }
+            }
+            return self;
+          },
+          /**
+           * Listen to a custom event and remove it once fired.
+           * @param  {String}   event Event name.
+           * @param  {Function} fn    Listener to call.
+           * @param  {Number}   id    (optional) Only listen to events for this sound.
+           * @return {Howl}
+           */
+          once: function(event, fn, id) {
+            var self = this;
+            self.on(event, fn, id, 1);
+            return self;
+          },
+          /**
+           * Emit all events of a specific type and pass the sound id.
+           * @param  {String} event Event name.
+           * @param  {Number} id    Sound ID.
+           * @param  {Number} msg   Message to go with event.
+           * @return {Howl}
+           */
+          _emit: function(event, id, msg) {
+            var self = this;
+            var events = self["_on" + event];
+            for (var i = events.length - 1; i >= 0; i--) {
+              if (!events[i].id || events[i].id === id || event === "load") {
+                setTimeout(function(fn) {
+                  fn.call(this, id, msg);
+                }.bind(self, events[i].fn), 0);
+                if (events[i].once) {
+                  self.off(event, events[i].fn, events[i].id);
+                }
+              }
+            }
+            self._loadQueue(event);
+            return self;
+          },
+          /**
+           * Queue of actions initiated before the sound has loaded.
+           * These will be called in sequence, with the next only firing
+           * after the previous has finished executing (even if async like play).
+           * @return {Howl}
+           */
+          _loadQueue: function(event) {
+            var self = this;
+            if (self._queue.length > 0) {
+              var task = self._queue[0];
+              if (task.event === event) {
+                self._queue.shift();
+                self._loadQueue();
+              }
+              if (!event) {
+                task.action();
+              }
+            }
+            return self;
+          },
+          /**
+           * Fired when playback ends at the end of the duration.
+           * @param  {Sound} sound The sound object to work with.
+           * @return {Howl}
+           */
+          _ended: function(sound) {
+            var self = this;
+            var sprite = sound._sprite;
+            if (!self._webAudio && sound._node && !sound._node.paused && !sound._node.ended && sound._node.currentTime < sound._stop) {
+              setTimeout(self._ended.bind(self, sound), 100);
+              return self;
+            }
+            var loop = !!(sound._loop || self._sprite[sprite][2]);
+            self._emit("end", sound._id);
+            if (!self._webAudio && loop) {
+              self.stop(sound._id, true).play(sound._id);
+            }
+            if (self._webAudio && loop) {
+              self._emit("play", sound._id);
+              sound._seek = sound._start || 0;
+              sound._rateSeek = 0;
+              sound._playStart = Howler3.ctx.currentTime;
+              var timeout = (sound._stop - sound._start) * 1e3 / Math.abs(sound._rate);
+              self._endTimers[sound._id] = setTimeout(self._ended.bind(self, sound), timeout);
+            }
+            if (self._webAudio && !loop) {
+              sound._paused = true;
+              sound._ended = true;
+              sound._seek = sound._start || 0;
+              sound._rateSeek = 0;
+              self._clearTimer(sound._id);
+              self._cleanBuffer(sound._node);
+              Howler3._autoSuspend();
+            }
+            if (!self._webAudio && !loop) {
+              self.stop(sound._id, true);
+            }
+            return self;
+          },
+          /**
+           * Clear the end timer for a sound playback.
+           * @param  {Number} id The sound ID.
+           * @return {Howl}
+           */
+          _clearTimer: function(id) {
+            var self = this;
+            if (self._endTimers[id]) {
+              if (typeof self._endTimers[id] !== "function") {
+                clearTimeout(self._endTimers[id]);
+              } else {
+                var sound = self._soundById(id);
+                if (sound && sound._node) {
+                  sound._node.removeEventListener("ended", self._endTimers[id], false);
+                }
+              }
+              delete self._endTimers[id];
+            }
+            return self;
+          },
+          /**
+           * Return the sound identified by this ID, or return null.
+           * @param  {Number} id Sound ID
+           * @return {Object}    Sound object or null.
+           */
+          _soundById: function(id) {
+            var self = this;
+            for (var i = 0; i < self._sounds.length; i++) {
+              if (id === self._sounds[i]._id) {
+                return self._sounds[i];
+              }
+            }
+            return null;
+          },
+          /**
+           * Return an inactive sound from the pool or create a new one.
+           * @return {Sound} Sound playback object.
+           */
+          _inactiveSound: function() {
+            var self = this;
+            self._drain();
+            for (var i = 0; i < self._sounds.length; i++) {
+              if (self._sounds[i]._ended) {
+                return self._sounds[i].reset();
+              }
+            }
+            return new Sound2(self);
+          },
+          /**
+           * Drain excess inactive sounds from the pool.
+           */
+          _drain: function() {
+            var self = this;
+            var limit = self._pool;
+            var cnt = 0;
+            var i = 0;
+            if (self._sounds.length < limit) {
+              return;
+            }
+            for (i = 0; i < self._sounds.length; i++) {
+              if (self._sounds[i]._ended) {
+                cnt++;
+              }
+            }
+            for (i = self._sounds.length - 1; i >= 0; i--) {
+              if (cnt <= limit) {
+                return;
+              }
+              if (self._sounds[i]._ended) {
+                if (self._webAudio && self._sounds[i]._node) {
+                  self._sounds[i]._node.disconnect(0);
+                }
+                self._sounds.splice(i, 1);
+                cnt--;
+              }
+            }
+          },
+          /**
+           * Get all ID's from the sounds pool.
+           * @param  {Number} id Only return one ID if one is passed.
+           * @return {Array}    Array of IDs.
+           */
+          _getSoundIds: function(id) {
+            var self = this;
+            if (typeof id === "undefined") {
+              var ids = [];
+              for (var i = 0; i < self._sounds.length; i++) {
+                ids.push(self._sounds[i]._id);
+              }
+              return ids;
+            } else {
+              return [id];
+            }
+          },
+          /**
+           * Load the sound back into the buffer source.
+           * @param  {Sound} sound The sound object to work with.
+           * @return {Howl}
+           */
+          _refreshBuffer: function(sound) {
+            var self = this;
+            sound._node.bufferSource = Howler3.ctx.createBufferSource();
+            sound._node.bufferSource.buffer = cache[self._src];
+            if (sound._panner) {
+              sound._node.bufferSource.connect(sound._panner);
+            } else {
+              sound._node.bufferSource.connect(sound._node);
+            }
+            sound._node.bufferSource.loop = sound._loop;
+            if (sound._loop) {
+              sound._node.bufferSource.loopStart = sound._start || 0;
+              sound._node.bufferSource.loopEnd = sound._stop || 0;
+            }
+            sound._node.bufferSource.playbackRate.setValueAtTime(sound._rate, Howler3.ctx.currentTime);
+            return self;
+          },
+          /**
+           * Prevent memory leaks by cleaning up the buffer source after playback.
+           * @param  {Object} node Sound's audio node containing the buffer source.
+           * @return {Howl}
+           */
+          _cleanBuffer: function(node) {
+            var self = this;
+            var isIOS = Howler3._navigator && Howler3._navigator.vendor.indexOf("Apple") >= 0;
+            if (!node.bufferSource) {
+              return self;
+            }
+            if (Howler3._scratchBuffer && node.bufferSource) {
+              node.bufferSource.onended = null;
+              node.bufferSource.disconnect(0);
+              if (isIOS) {
+                try {
+                  node.bufferSource.buffer = Howler3._scratchBuffer;
+                } catch (e) {
+                }
+              }
+            }
+            node.bufferSource = null;
+            return self;
+          },
+          /**
+           * Set the source to a 0-second silence to stop any downloading (except in IE).
+           * @param  {Object} node Audio node to clear.
+           */
+          _clearSound: function(node) {
+            var checkIE = /MSIE |Trident\//.test(Howler3._navigator && Howler3._navigator.userAgent);
+            if (!checkIE) {
+              node.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+            }
+          }
+        };
+        var Sound2 = function(howl) {
+          this._parent = howl;
+          this.init();
+        };
+        Sound2.prototype = {
+          /**
+           * Initialize a new Sound object.
+           * @return {Sound}
+           */
+          init: function() {
+            var self = this;
+            var parent = self._parent;
+            self._muted = parent._muted;
+            self._loop = parent._loop;
+            self._volume = parent._volume;
+            self._rate = parent._rate;
+            self._seek = 0;
+            self._paused = true;
+            self._ended = true;
+            self._sprite = "__default";
+            self._id = ++Howler3._counter;
+            parent._sounds.push(self);
+            self.create();
+            return self;
+          },
+          /**
+           * Create and setup a new sound object, whether HTML5 Audio or Web Audio.
+           * @return {Sound}
+           */
+          create: function() {
+            var self = this;
+            var parent = self._parent;
+            var volume = Howler3._muted || self._muted || self._parent._muted ? 0 : self._volume;
+            if (parent._webAudio) {
+              self._node = typeof Howler3.ctx.createGain === "undefined" ? Howler3.ctx.createGainNode() : Howler3.ctx.createGain();
+              self._node.gain.setValueAtTime(volume, Howler3.ctx.currentTime);
+              self._node.paused = true;
+              self._node.connect(Howler3.masterGain);
+            } else if (!Howler3.noAudio) {
+              self._node = Howler3._obtainHtml5Audio();
+              self._errorFn = self._errorListener.bind(self);
+              self._node.addEventListener("error", self._errorFn, false);
+              self._loadFn = self._loadListener.bind(self);
+              self._node.addEventListener(Howler3._canPlayEvent, self._loadFn, false);
+              self._endFn = self._endListener.bind(self);
+              self._node.addEventListener("ended", self._endFn, false);
+              self._node.src = parent._src;
+              self._node.preload = parent._preload === true ? "auto" : parent._preload;
+              self._node.volume = volume * Howler3.volume();
+              self._node.load();
+            }
+            return self;
+          },
+          /**
+           * Reset the parameters of this sound to the original state (for recycle).
+           * @return {Sound}
+           */
+          reset: function() {
+            var self = this;
+            var parent = self._parent;
+            self._muted = parent._muted;
+            self._loop = parent._loop;
+            self._volume = parent._volume;
+            self._rate = parent._rate;
+            self._seek = 0;
+            self._rateSeek = 0;
+            self._paused = true;
+            self._ended = true;
+            self._sprite = "__default";
+            self._id = ++Howler3._counter;
+            return self;
+          },
+          /**
+           * HTML5 Audio error listener callback.
+           */
+          _errorListener: function() {
+            var self = this;
+            self._parent._emit("loaderror", self._id, self._node.error ? self._node.error.code : 0);
+            self._node.removeEventListener("error", self._errorFn, false);
+          },
+          /**
+           * HTML5 Audio canplaythrough listener callback.
+           */
+          _loadListener: function() {
+            var self = this;
+            var parent = self._parent;
+            parent._duration = Math.ceil(self._node.duration * 10) / 10;
+            if (Object.keys(parent._sprite).length === 0) {
+              parent._sprite = { __default: [0, parent._duration * 1e3] };
+            }
+            if (parent._state !== "loaded") {
+              parent._state = "loaded";
+              parent._emit("load");
+              parent._loadQueue();
+            }
+            self._node.removeEventListener(Howler3._canPlayEvent, self._loadFn, false);
+          },
+          /**
+           * HTML5 Audio ended listener callback.
+           */
+          _endListener: function() {
+            var self = this;
+            var parent = self._parent;
+            if (parent._duration === Infinity) {
+              parent._duration = Math.ceil(self._node.duration * 10) / 10;
+              if (parent._sprite.__default[1] === Infinity) {
+                parent._sprite.__default[1] = parent._duration * 1e3;
+              }
+              parent._ended(self);
+            }
+            self._node.removeEventListener("ended", self._endFn, false);
+          }
+        };
+        var cache = {};
+        var loadBuffer = function(self) {
+          var url3 = self._src;
+          if (cache[url3]) {
+            self._duration = cache[url3].duration;
+            loadSound(self);
+            return;
+          }
+          if (/^data:[^;]+;base64,/.test(url3)) {
+            var data = atob(url3.split(",")[1]);
+            var dataView = new Uint8Array(data.length);
+            for (var i = 0; i < data.length; ++i) {
+              dataView[i] = data.charCodeAt(i);
+            }
+            decodeAudioData(dataView.buffer, self);
+          } else {
+            var xhr = new XMLHttpRequest();
+            xhr.open(self._xhr.method, url3, true);
+            xhr.withCredentials = self._xhr.withCredentials;
+            xhr.responseType = "arraybuffer";
+            if (self._xhr.headers) {
+              Object.keys(self._xhr.headers).forEach(function(key) {
+                xhr.setRequestHeader(key, self._xhr.headers[key]);
+              });
+            }
+            xhr.onload = function() {
+              var code = (xhr.status + "")[0];
+              if (code !== "0" && code !== "2" && code !== "3") {
+                self._emit("loaderror", null, "Failed loading audio file with status: " + xhr.status + ".");
+                return;
+              }
+              decodeAudioData(xhr.response, self);
+            };
+            xhr.onerror = function() {
+              if (self._webAudio) {
+                self._html5 = true;
+                self._webAudio = false;
+                self._sounds = [];
+                delete cache[url3];
+                self.load();
+              }
+            };
+            safeXhrSend(xhr);
+          }
+        };
+        var safeXhrSend = function(xhr) {
+          try {
+            xhr.send();
+          } catch (e) {
+            xhr.onerror();
+          }
+        };
+        var decodeAudioData = function(arraybuffer, self) {
+          var error = function() {
+            self._emit("loaderror", null, "Decoding audio data failed.");
+          };
+          var success = function(buffer) {
+            if (buffer && self._sounds.length > 0) {
+              cache[self._src] = buffer;
+              loadSound(self, buffer);
+            } else {
+              error();
+            }
+          };
+          if (typeof Promise !== "undefined" && Howler3.ctx.decodeAudioData.length === 1) {
+            Howler3.ctx.decodeAudioData(arraybuffer).then(success).catch(error);
+          } else {
+            Howler3.ctx.decodeAudioData(arraybuffer, success, error);
+          }
+        };
+        var loadSound = function(self, buffer) {
+          if (buffer && !self._duration) {
+            self._duration = buffer.duration;
+          }
+          if (Object.keys(self._sprite).length === 0) {
+            self._sprite = { __default: [0, self._duration * 1e3] };
+          }
+          if (self._state !== "loaded") {
+            self._state = "loaded";
+            self._emit("load");
+            self._loadQueue();
+          }
+        };
+        var setupAudioContext = function() {
+          if (!Howler3.usingWebAudio) {
+            return;
+          }
+          try {
+            if (typeof AudioContext !== "undefined") {
+              Howler3.ctx = new AudioContext();
+            } else if (typeof webkitAudioContext !== "undefined") {
+              Howler3.ctx = new webkitAudioContext();
+            } else {
+              Howler3.usingWebAudio = false;
+            }
+          } catch (e) {
+            Howler3.usingWebAudio = false;
+          }
+          if (!Howler3.ctx) {
+            Howler3.usingWebAudio = false;
+          }
+          var iOS = /iP(hone|od|ad)/.test(Howler3._navigator && Howler3._navigator.platform);
+          var appVersion = Howler3._navigator && Howler3._navigator.appVersion.match(/OS (\d+)_(\d+)_?(\d+)?/);
+          var version = appVersion ? parseInt(appVersion[1], 10) : null;
+          if (iOS && version && version < 9) {
+            var safari = /safari/.test(Howler3._navigator && Howler3._navigator.userAgent.toLowerCase());
+            if (Howler3._navigator && !safari) {
+              Howler3.usingWebAudio = false;
+            }
+          }
+          if (Howler3.usingWebAudio) {
+            Howler3.masterGain = typeof Howler3.ctx.createGain === "undefined" ? Howler3.ctx.createGainNode() : Howler3.ctx.createGain();
+            Howler3.masterGain.gain.setValueAtTime(Howler3._muted ? 0 : Howler3._volume, Howler3.ctx.currentTime);
+            Howler3.masterGain.connect(Howler3.ctx.destination);
+          }
+          Howler3._setup();
+        };
+        if (typeof define === "function" && define.amd) {
+          define([], function() {
+            return {
+              Howler: Howler3,
+              Howl: Howl2
+            };
+          });
+        }
+        if (typeof exports !== "undefined") {
+          exports.Howler = Howler3;
+          exports.Howl = Howl2;
+        }
+        if (typeof global !== "undefined") {
+          global.HowlerGlobal = HowlerGlobal2;
+          global.Howler = Howler3;
+          global.Howl = Howl2;
+          global.Sound = Sound2;
+        } else if (typeof window !== "undefined") {
+          window.HowlerGlobal = HowlerGlobal2;
+          window.Howler = Howler3;
+          window.Howl = Howl2;
+          window.Sound = Sound2;
+        }
+      })();
+      (function() {
+        "use strict";
+        HowlerGlobal.prototype._pos = [0, 0, 0];
+        HowlerGlobal.prototype._orientation = [0, 0, -1, 0, 1, 0];
+        HowlerGlobal.prototype.stereo = function(pan) {
+          var self = this;
+          if (!self.ctx || !self.ctx.listener) {
+            return self;
+          }
+          for (var i = self._howls.length - 1; i >= 0; i--) {
+            self._howls[i].stereo(pan);
+          }
+          return self;
+        };
+        HowlerGlobal.prototype.pos = function(x, y, z) {
+          var self = this;
+          if (!self.ctx || !self.ctx.listener) {
+            return self;
+          }
+          y = typeof y !== "number" ? self._pos[1] : y;
+          z = typeof z !== "number" ? self._pos[2] : z;
+          if (typeof x === "number") {
+            self._pos = [x, y, z];
+            if (typeof self.ctx.listener.positionX !== "undefined") {
+              self.ctx.listener.positionX.setTargetAtTime(self._pos[0], Howler.ctx.currentTime, 0.1);
+              self.ctx.listener.positionY.setTargetAtTime(self._pos[1], Howler.ctx.currentTime, 0.1);
+              self.ctx.listener.positionZ.setTargetAtTime(self._pos[2], Howler.ctx.currentTime, 0.1);
+            } else {
+              self.ctx.listener.setPosition(self._pos[0], self._pos[1], self._pos[2]);
+            }
+          } else {
+            return self._pos;
+          }
+          return self;
+        };
+        HowlerGlobal.prototype.orientation = function(x, y, z, xUp, yUp, zUp) {
+          var self = this;
+          if (!self.ctx || !self.ctx.listener) {
+            return self;
+          }
+          var or = self._orientation;
+          y = typeof y !== "number" ? or[1] : y;
+          z = typeof z !== "number" ? or[2] : z;
+          xUp = typeof xUp !== "number" ? or[3] : xUp;
+          yUp = typeof yUp !== "number" ? or[4] : yUp;
+          zUp = typeof zUp !== "number" ? or[5] : zUp;
+          if (typeof x === "number") {
+            self._orientation = [x, y, z, xUp, yUp, zUp];
+            if (typeof self.ctx.listener.forwardX !== "undefined") {
+              self.ctx.listener.forwardX.setTargetAtTime(x, Howler.ctx.currentTime, 0.1);
+              self.ctx.listener.forwardY.setTargetAtTime(y, Howler.ctx.currentTime, 0.1);
+              self.ctx.listener.forwardZ.setTargetAtTime(z, Howler.ctx.currentTime, 0.1);
+              self.ctx.listener.upX.setTargetAtTime(xUp, Howler.ctx.currentTime, 0.1);
+              self.ctx.listener.upY.setTargetAtTime(yUp, Howler.ctx.currentTime, 0.1);
+              self.ctx.listener.upZ.setTargetAtTime(zUp, Howler.ctx.currentTime, 0.1);
+            } else {
+              self.ctx.listener.setOrientation(x, y, z, xUp, yUp, zUp);
+            }
+          } else {
+            return or;
+          }
+          return self;
+        };
+        Howl.prototype.init = /* @__PURE__ */ (function(_super) {
+          return function(o) {
+            var self = this;
+            self._orientation = o.orientation || [1, 0, 0];
+            self._stereo = o.stereo || null;
+            self._pos = o.pos || null;
+            self._pannerAttr = {
+              coneInnerAngle: typeof o.coneInnerAngle !== "undefined" ? o.coneInnerAngle : 360,
+              coneOuterAngle: typeof o.coneOuterAngle !== "undefined" ? o.coneOuterAngle : 360,
+              coneOuterGain: typeof o.coneOuterGain !== "undefined" ? o.coneOuterGain : 0,
+              distanceModel: typeof o.distanceModel !== "undefined" ? o.distanceModel : "inverse",
+              maxDistance: typeof o.maxDistance !== "undefined" ? o.maxDistance : 1e4,
+              panningModel: typeof o.panningModel !== "undefined" ? o.panningModel : "HRTF",
+              refDistance: typeof o.refDistance !== "undefined" ? o.refDistance : 1,
+              rolloffFactor: typeof o.rolloffFactor !== "undefined" ? o.rolloffFactor : 1
+            };
+            self._onstereo = o.onstereo ? [{ fn: o.onstereo }] : [];
+            self._onpos = o.onpos ? [{ fn: o.onpos }] : [];
+            self._onorientation = o.onorientation ? [{ fn: o.onorientation }] : [];
+            return _super.call(this, o);
+          };
+        })(Howl.prototype.init);
+        Howl.prototype.stereo = function(pan, id) {
+          var self = this;
+          if (!self._webAudio) {
+            return self;
+          }
+          if (self._state !== "loaded") {
+            self._queue.push({
+              event: "stereo",
+              action: function() {
+                self.stereo(pan, id);
+              }
+            });
+            return self;
+          }
+          var pannerType = typeof Howler.ctx.createStereoPanner === "undefined" ? "spatial" : "stereo";
+          if (typeof id === "undefined") {
+            if (typeof pan === "number") {
+              self._stereo = pan;
+              self._pos = [pan, 0, 0];
+            } else {
+              return self._stereo;
+            }
+          }
+          var ids = self._getSoundIds(id);
+          for (var i = 0; i < ids.length; i++) {
+            var sound = self._soundById(ids[i]);
+            if (sound) {
+              if (typeof pan === "number") {
+                sound._stereo = pan;
+                sound._pos = [pan, 0, 0];
+                if (sound._node) {
+                  sound._pannerAttr.panningModel = "equalpower";
+                  if (!sound._panner || !sound._panner.pan) {
+                    setupPanner(sound, pannerType);
+                  }
+                  if (pannerType === "spatial") {
+                    if (typeof sound._panner.positionX !== "undefined") {
+                      sound._panner.positionX.setValueAtTime(pan, Howler.ctx.currentTime);
+                      sound._panner.positionY.setValueAtTime(0, Howler.ctx.currentTime);
+                      sound._panner.positionZ.setValueAtTime(0, Howler.ctx.currentTime);
+                    } else {
+                      sound._panner.setPosition(pan, 0, 0);
+                    }
+                  } else {
+                    sound._panner.pan.setValueAtTime(pan, Howler.ctx.currentTime);
+                  }
+                }
+                self._emit("stereo", sound._id);
+              } else {
+                return sound._stereo;
+              }
+            }
+          }
+          return self;
+        };
+        Howl.prototype.pos = function(x, y, z, id) {
+          var self = this;
+          if (!self._webAudio) {
+            return self;
+          }
+          if (self._state !== "loaded") {
+            self._queue.push({
+              event: "pos",
+              action: function() {
+                self.pos(x, y, z, id);
+              }
+            });
+            return self;
+          }
+          y = typeof y !== "number" ? 0 : y;
+          z = typeof z !== "number" ? -0.5 : z;
+          if (typeof id === "undefined") {
+            if (typeof x === "number") {
+              self._pos = [x, y, z];
+            } else {
+              return self._pos;
+            }
+          }
+          var ids = self._getSoundIds(id);
+          for (var i = 0; i < ids.length; i++) {
+            var sound = self._soundById(ids[i]);
+            if (sound) {
+              if (typeof x === "number") {
+                sound._pos = [x, y, z];
+                if (sound._node) {
+                  if (!sound._panner || sound._panner.pan) {
+                    setupPanner(sound, "spatial");
+                  }
+                  if (typeof sound._panner.positionX !== "undefined") {
+                    sound._panner.positionX.setValueAtTime(x, Howler.ctx.currentTime);
+                    sound._panner.positionY.setValueAtTime(y, Howler.ctx.currentTime);
+                    sound._panner.positionZ.setValueAtTime(z, Howler.ctx.currentTime);
+                  } else {
+                    sound._panner.setPosition(x, y, z);
+                  }
+                }
+                self._emit("pos", sound._id);
+              } else {
+                return sound._pos;
+              }
+            }
+          }
+          return self;
+        };
+        Howl.prototype.orientation = function(x, y, z, id) {
+          var self = this;
+          if (!self._webAudio) {
+            return self;
+          }
+          if (self._state !== "loaded") {
+            self._queue.push({
+              event: "orientation",
+              action: function() {
+                self.orientation(x, y, z, id);
+              }
+            });
+            return self;
+          }
+          y = typeof y !== "number" ? self._orientation[1] : y;
+          z = typeof z !== "number" ? self._orientation[2] : z;
+          if (typeof id === "undefined") {
+            if (typeof x === "number") {
+              self._orientation = [x, y, z];
+            } else {
+              return self._orientation;
+            }
+          }
+          var ids = self._getSoundIds(id);
+          for (var i = 0; i < ids.length; i++) {
+            var sound = self._soundById(ids[i]);
+            if (sound) {
+              if (typeof x === "number") {
+                sound._orientation = [x, y, z];
+                if (sound._node) {
+                  if (!sound._panner) {
+                    if (!sound._pos) {
+                      sound._pos = self._pos || [0, 0, -0.5];
+                    }
+                    setupPanner(sound, "spatial");
+                  }
+                  if (typeof sound._panner.orientationX !== "undefined") {
+                    sound._panner.orientationX.setValueAtTime(x, Howler.ctx.currentTime);
+                    sound._panner.orientationY.setValueAtTime(y, Howler.ctx.currentTime);
+                    sound._panner.orientationZ.setValueAtTime(z, Howler.ctx.currentTime);
+                  } else {
+                    sound._panner.setOrientation(x, y, z);
+                  }
+                }
+                self._emit("orientation", sound._id);
+              } else {
+                return sound._orientation;
+              }
+            }
+          }
+          return self;
+        };
+        Howl.prototype.pannerAttr = function() {
+          var self = this;
+          var args = arguments;
+          var o, id, sound;
+          if (!self._webAudio) {
+            return self;
+          }
+          if (args.length === 0) {
+            return self._pannerAttr;
+          } else if (args.length === 1) {
+            if (typeof args[0] === "object") {
+              o = args[0];
+              if (typeof id === "undefined") {
+                if (!o.pannerAttr) {
+                  o.pannerAttr = {
+                    coneInnerAngle: o.coneInnerAngle,
+                    coneOuterAngle: o.coneOuterAngle,
+                    coneOuterGain: o.coneOuterGain,
+                    distanceModel: o.distanceModel,
+                    maxDistance: o.maxDistance,
+                    refDistance: o.refDistance,
+                    rolloffFactor: o.rolloffFactor,
+                    panningModel: o.panningModel
+                  };
+                }
+                self._pannerAttr = {
+                  coneInnerAngle: typeof o.pannerAttr.coneInnerAngle !== "undefined" ? o.pannerAttr.coneInnerAngle : self._coneInnerAngle,
+                  coneOuterAngle: typeof o.pannerAttr.coneOuterAngle !== "undefined" ? o.pannerAttr.coneOuterAngle : self._coneOuterAngle,
+                  coneOuterGain: typeof o.pannerAttr.coneOuterGain !== "undefined" ? o.pannerAttr.coneOuterGain : self._coneOuterGain,
+                  distanceModel: typeof o.pannerAttr.distanceModel !== "undefined" ? o.pannerAttr.distanceModel : self._distanceModel,
+                  maxDistance: typeof o.pannerAttr.maxDistance !== "undefined" ? o.pannerAttr.maxDistance : self._maxDistance,
+                  refDistance: typeof o.pannerAttr.refDistance !== "undefined" ? o.pannerAttr.refDistance : self._refDistance,
+                  rolloffFactor: typeof o.pannerAttr.rolloffFactor !== "undefined" ? o.pannerAttr.rolloffFactor : self._rolloffFactor,
+                  panningModel: typeof o.pannerAttr.panningModel !== "undefined" ? o.pannerAttr.panningModel : self._panningModel
+                };
+              }
+            } else {
+              sound = self._soundById(parseInt(args[0], 10));
+              return sound ? sound._pannerAttr : self._pannerAttr;
+            }
+          } else if (args.length === 2) {
+            o = args[0];
+            id = parseInt(args[1], 10);
+          }
+          var ids = self._getSoundIds(id);
+          for (var i = 0; i < ids.length; i++) {
+            sound = self._soundById(ids[i]);
+            if (sound) {
+              var pa = sound._pannerAttr;
+              pa = {
+                coneInnerAngle: typeof o.coneInnerAngle !== "undefined" ? o.coneInnerAngle : pa.coneInnerAngle,
+                coneOuterAngle: typeof o.coneOuterAngle !== "undefined" ? o.coneOuterAngle : pa.coneOuterAngle,
+                coneOuterGain: typeof o.coneOuterGain !== "undefined" ? o.coneOuterGain : pa.coneOuterGain,
+                distanceModel: typeof o.distanceModel !== "undefined" ? o.distanceModel : pa.distanceModel,
+                maxDistance: typeof o.maxDistance !== "undefined" ? o.maxDistance : pa.maxDistance,
+                refDistance: typeof o.refDistance !== "undefined" ? o.refDistance : pa.refDistance,
+                rolloffFactor: typeof o.rolloffFactor !== "undefined" ? o.rolloffFactor : pa.rolloffFactor,
+                panningModel: typeof o.panningModel !== "undefined" ? o.panningModel : pa.panningModel
+              };
+              var panner = sound._panner;
+              if (!panner) {
+                if (!sound._pos) {
+                  sound._pos = self._pos || [0, 0, -0.5];
+                }
+                setupPanner(sound, "spatial");
+                panner = sound._panner;
+              }
+              panner.coneInnerAngle = pa.coneInnerAngle;
+              panner.coneOuterAngle = pa.coneOuterAngle;
+              panner.coneOuterGain = pa.coneOuterGain;
+              panner.distanceModel = pa.distanceModel;
+              panner.maxDistance = pa.maxDistance;
+              panner.refDistance = pa.refDistance;
+              panner.rolloffFactor = pa.rolloffFactor;
+              panner.panningModel = pa.panningModel;
+            }
+          }
+          return self;
+        };
+        Sound.prototype.init = /* @__PURE__ */ (function(_super) {
+          return function() {
+            var self = this;
+            var parent = self._parent;
+            self._orientation = parent._orientation;
+            self._stereo = parent._stereo;
+            self._pos = parent._pos;
+            self._pannerAttr = parent._pannerAttr;
+            _super.call(this);
+            if (self._stereo) {
+              parent.stereo(self._stereo);
+            } else if (self._pos) {
+              parent.pos(self._pos[0], self._pos[1], self._pos[2], self._id);
+            }
+          };
+        })(Sound.prototype.init);
+        Sound.prototype.reset = /* @__PURE__ */ (function(_super) {
+          return function() {
+            var self = this;
+            var parent = self._parent;
+            self._orientation = parent._orientation;
+            self._stereo = parent._stereo;
+            self._pos = parent._pos;
+            self._pannerAttr = parent._pannerAttr;
+            if (self._stereo) {
+              parent.stereo(self._stereo);
+            } else if (self._pos) {
+              parent.pos(self._pos[0], self._pos[1], self._pos[2], self._id);
+            } else if (self._panner) {
+              self._panner.disconnect(0);
+              self._panner = void 0;
+              parent._refreshBuffer(self);
+            }
+            return _super.call(this);
+          };
+        })(Sound.prototype.reset);
+        var setupPanner = function(sound, type) {
+          type = type || "spatial";
+          if (type === "spatial") {
+            sound._panner = Howler.ctx.createPanner();
+            sound._panner.coneInnerAngle = sound._pannerAttr.coneInnerAngle;
+            sound._panner.coneOuterAngle = sound._pannerAttr.coneOuterAngle;
+            sound._panner.coneOuterGain = sound._pannerAttr.coneOuterGain;
+            sound._panner.distanceModel = sound._pannerAttr.distanceModel;
+            sound._panner.maxDistance = sound._pannerAttr.maxDistance;
+            sound._panner.refDistance = sound._pannerAttr.refDistance;
+            sound._panner.rolloffFactor = sound._pannerAttr.rolloffFactor;
+            sound._panner.panningModel = sound._pannerAttr.panningModel;
+            if (typeof sound._panner.positionX !== "undefined") {
+              sound._panner.positionX.setValueAtTime(sound._pos[0], Howler.ctx.currentTime);
+              sound._panner.positionY.setValueAtTime(sound._pos[1], Howler.ctx.currentTime);
+              sound._panner.positionZ.setValueAtTime(sound._pos[2], Howler.ctx.currentTime);
+            } else {
+              sound._panner.setPosition(sound._pos[0], sound._pos[1], sound._pos[2]);
+            }
+            if (typeof sound._panner.orientationX !== "undefined") {
+              sound._panner.orientationX.setValueAtTime(sound._orientation[0], Howler.ctx.currentTime);
+              sound._panner.orientationY.setValueAtTime(sound._orientation[1], Howler.ctx.currentTime);
+              sound._panner.orientationZ.setValueAtTime(sound._orientation[2], Howler.ctx.currentTime);
+            } else {
+              sound._panner.setOrientation(sound._orientation[0], sound._orientation[1], sound._orientation[2]);
+            }
+          } else {
+            sound._panner = Howler.ctx.createStereoPanner();
+            sound._panner.pan.setValueAtTime(sound._stereo, Howler.ctx.currentTime);
+          }
+          sound._panner.connect(sound._node);
+          if (!sound._paused) {
+            sound._parent.pause(sound._id, true).play(sound._id, true);
+          }
+        };
+      })();
+    }
   });
 
   // shaders/fractalComponent.html
@@ -580,6 +2817,579 @@
 \r
       <details class="section">\r
         <summary>\r
+          <span class="section-title">Sound Palette</span>\r
+          <span class="section-badge" title="Audio-driven palette overrides"\r
+            >audio</span\r
+          >\r
+        </summary>\r
+\r
+        <div class="row">\r
+          <div\r
+            class="sound-preview"\r
+            style="display: grid; gap: 8px; width: 100%"\r
+          >\r
+            <canvas\r
+              id="sndMiniCanvas"\r
+              width="512"\r
+              height="48"\r
+              aria-label="Audio palette gradient preview"\r
+              title="Live audio palette gradient preview"\r
+              style="\r
+                width: 100%;\r
+                height: 56px;\r
+                display: block;\r
+                border-radius: 8px;\r
+                border: 1px solid rgba(255, 255, 255, 0.14);\r
+                background: #0e1014;\r
+              "\r
+            ></canvas>\r
+\r
+            <div\r
+              class="sound-preview-meta"\r
+              style="\r
+                display: flex;\r
+                gap: 8px;\r
+                align-items: center;\r
+                flex-wrap: wrap;\r
+              "\r
+            >\r
+              <span id="sndPreviewStatus" class="pill">idle</span>\r
+              <span id="sndPreviewMetrics" class="pill mono">\r
+                peak 0.000 | bpm 0.0 | beat 0.000 | hue 0.000000\r
+              </span>\r
+            </div>\r
+\r
+            <div id="sndPreviewLog" class="hint mono" aria-live="polite">\r
+              Choose a file with "Play song" to start the sidebar audio palette\r
+              preview.\r
+            </div>\r
+          </div>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control check"\r
+            title="Enable audio-driven palette gradient + hue driving"\r
+          >\r
+            <input id="sndEnable" type="checkbox" />\r
+            <span class="check-text">Enable audio palette</span>\r
+          </label>\r
+\r
+          <div class="hint">\r
+            Uses the audio worker to generate a live palette gradient from the\r
+            playing song while the base palette stays tied to the main Palette\r
+            selector.\r
+          </div>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label class="control" title="Overall audio volume">\r
+            <span class="lbl">Volume</span>\r
+            <input\r
+              id="sndVolume"\r
+              type="range"\r
+              min="0"\r
+              max="4"\r
+              step="0.01"\r
+              value="1"\r
+              style="width: 180px"\r
+            />\r
+          </label>\r
+\r
+          <span id="sndVolumeOut" class="pill mono" title="Current volume"\r
+            >1.00</span\r
+          >\r
+        </div>\r
+\r
+        <div class="row button-row">\r
+          <button\r
+            id="sndMp3Btn"\r
+            type="button"\r
+            title="Choose and play an audio file"\r
+            disabled\r
+          >\r
+            Play song\r
+          </button>\r
+\r
+          <button id="sndStopBtn" type="button" title="Stop audio" disabled>\r
+            Stop\r
+          </button>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label class="control check" title="Loop song/file">\r
+            <input id="sndLoop" type="checkbox" checked />\r
+            <span class="check-text">Loop</span>\r
+          </label>\r
+\r
+          <span class="spacer"></span>\r
+\r
+          <span id="sndUploadName" class="pill" title="Selected file"\r
+            >none</span\r
+          >\r
+\r
+          <input\r
+            id="sndUpload"\r
+            type="file"\r
+            accept="audio/*"\r
+            style="display: none"\r
+          />\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control select"\r
+            title="Sound-to-color mapping mode (worker)"\r
+          >\r
+            <span class="lbl">Sound mode</span>\r
+            <select id="sndSoundMode"></select>\r
+            <span class="spacer"></span>\r
+          </label>\r
+\r
+          <label class="control" title="Reaction strength">\r
+            <span class="lbl">Strength</span>\r
+            <input\r
+              id="sndSoundStrength"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="3"\r
+              step="0.01"\r
+              value="1"\r
+            />\r
+          </label>\r
+\r
+          <label\r
+            class="control"\r
+            title="Base hue shift for the audio palette generator"\r
+          >\r
+            <span class="lbl">Base hue shift</span>\r
+            <input\r
+              id="sndBaseHueShift"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="-10"\r
+              max="10"\r
+              step="0.001"\r
+              value="0"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label class="control" title="Auto hue drift (smooth roll)">\r
+            <span class="lbl">Auto drift</span>\r
+            <input\r
+              id="sndAutoHueDrift"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="2"\r
+              step="0.01"\r
+              value="0.1"\r
+            />\r
+          </label>\r
+\r
+          <label class="control" title="Beat flash">\r
+            <span class="lbl">Beat flash</span>\r
+            <input\r
+              id="sndBeatFlash"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="3"\r
+              step="0.01"\r
+              value="0.35"\r
+            />\r
+          </label>\r
+\r
+          <label class="control" title="Beat fade">\r
+            <span class="lbl">Beat fade</span>\r
+            <input\r
+              id="sndBeatFade"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0.70"\r
+              max="0.999"\r
+              step="0.001"\r
+              value="0.9"\r
+            />\r
+          </label>\r
+\r
+          <label class="control" title="Beat hue jump">\r
+            <span class="lbl">Beat step</span>\r
+            <input\r
+              id="sndBeatStep"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="0.5"\r
+              step="0.01"\r
+              value="0.08"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control select"\r
+            title="Modulate fractal gamma with the audio palette beat/phase. This triggers recompute at a limited rate."\r
+          >\r
+            <span class="lbl">Gamma drive</span>\r
+            <select id="sndGammaMode" title="Gamma modulation mode">\r
+              <option value="0">Off</option>\r
+              <option value="1">Step (beat phase)</option>\r
+              <option value="2">Sine (smooth)</option>\r
+              <option value="3">Wander (segments)</option>\r
+            </select>\r
+            <span class="spacer"></span>\r
+          </label>\r
+\r
+          <label class="control" title="Step amplitude (mode: Step)">\r
+            <span class="lbl">Amount</span>\r
+            <input\r
+              id="sndGammaAmount"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="10"\r
+              step="0.001"\r
+              value="0.15"\r
+            />\r
+          </label>\r
+\r
+          <label\r
+            class="control"\r
+            title="Minimum gamma (modes: Sine/Wander, also clamps Step)"\r
+          >\r
+            <span class="lbl">Min</span>\r
+            <input\r
+              id="sndGammaMin"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0.05"\r
+              max="50"\r
+              step="0.001"\r
+              value="-0.5"\r
+            />\r
+          </label>\r
+\r
+          <label\r
+            class="control"\r
+            title="Maximum gamma (modes: Sine/Wander, also clamps Step)"\r
+          >\r
+            <span class="lbl">Max</span>\r
+            <input\r
+              id="sndGammaMax"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0.05"\r
+              max="50"\r
+              step="0.001"\r
+              value="0.5"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control"\r
+            title="Max gamma updates per second (limits recompute rate)"\r
+          >\r
+            <span class="lbl">Max Hz</span>\r
+            <input\r
+              id="sndGammaMaxHz"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0.1"\r
+              max="240"\r
+              step="0.1"\r
+              value="60.0"\r
+            />\r
+          </label>\r
+\r
+          <label class="control" title="Speed multiplier (modes: Sine/Wander)">\r
+            <span class="lbl">Speed</span>\r
+            <input\r
+              id="sndGammaSpeed"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="16"\r
+              step="0.01"\r
+              value="1.0"\r
+            />\r
+          </label>\r
+\r
+          <label\r
+            class="control"\r
+            title="Gamma phase auto-drift (Hz). 0 uses the worker phase (tied to hue). >0 runs its own independent phase."\r
+          >\r
+            <span class="lbl">Auto drift</span>\r
+            <input\r
+              id="sndGammaAutoDrift"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0"\r
+              max="16"\r
+              step="0.01"\r
+              value="0"\r
+            />\r
+          </label>\r
+\r
+          <label\r
+            class="control"\r
+            title="Ignore tiny gamma changes smaller than this (avoids constant recompute)"\r
+          >\r
+            <span class="lbl">Eps</span>\r
+            <input\r
+              id="sndGammaEps"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0.000001"\r
+              max="0.1"\r
+              step="0.0001"\r
+              value="0.0005"\r
+            />\r
+          </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label\r
+            class="control"\r
+            title="How long each wander segment lasts (mode: Wander)"\r
+          >\r
+            <span class="lbl">Wander sec</span>\r
+            <input\r
+              id="sndGammaWanderSec"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0.5"\r
+              max="30"\r
+              step="0.1"\r
+              value="4.0"\r
+            />\r
+          </label>\r
+\r
+          <label\r
+            class="control"\r
+            title="How long it blends between wander targets (mode: Wander)"\r
+          >\r
+            <span class="lbl">Blend sec</span>\r
+            <input\r
+              id="sndGammaWanderBlendSec"\r
+              class="numeric-input"\r
+              type="number"\r
+              min="0.05"\r
+              max="10"\r
+              step="0.05"\r
+              value="0.6"\r
+            />\r
+          </label>\r
+\r
+          <span class="spacer"></span>\r
+        </div>\r
+\r
+        <div class="hint">\r
+          Gamma drive triggers fractal recompute at most <b>Max Hz</b> times per\r
+          second. <b>Auto drift</b> is independent from hue: set it to 0 to\r
+          follow the song phase, or set a nonzero Hz to run its own oscillator.\r
+          <b>Sine</b> oscillates smoothly between Min/Max offsets.\r
+          <b>Wander</b> picks a new center/amplitude every few seconds and\r
+          blends over Blend sec.\r
+        </div>\r
+\r
+        <details class="section">\r
+          <summary>\r
+            <span class="section-title">Sound shaping</span>\r
+            <span class="section-badge" title="Advanced palette shaping"\r
+              >adv</span\r
+            >\r
+          </summary>\r
+\r
+          <div class="row">\r
+            <label class="control" title="Hue wiggle">\r
+              <span class="lbl">Hue wiggle</span>\r
+              <input\r
+                id="sndHueWiggle"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="0"\r
+                max="2"\r
+                step="0.01"\r
+                value="0.25"\r
+              />\r
+            </label>\r
+\r
+            <label class="control" title="Shimmer">\r
+              <span class="lbl">Shimmer</span>\r
+              <input\r
+                id="sndShimmer"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="0"\r
+                max="2"\r
+                step="0.01"\r
+                value="0.22"\r
+              />\r
+            </label>\r
+\r
+            <label class="control" title="Warp amount">\r
+              <span class="lbl">Warp</span>\r
+              <input\r
+                id="sndWarp"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="0"\r
+                max="2"\r
+                step="0.01"\r
+                value="0.22"\r
+              />\r
+            </label>\r
+          </div>\r
+\r
+          <div class="row">\r
+            <label class="control" title="Color pop (saturation)">\r
+              <span class="lbl">Color pop</span>\r
+              <input\r
+                id="sndColorPop"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="0"\r
+                max="2"\r
+                step="0.01"\r
+                value="0.25"\r
+              />\r
+            </label>\r
+\r
+            <label class="control" title="Brightness bounce">\r
+              <span class="lbl">Brightness</span>\r
+              <input\r
+                id="sndBrightnessBounce"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="0"\r
+                max="2"\r
+                step="0.01"\r
+                value="0.22"\r
+              />\r
+            </label>\r
+          </div>\r
+\r
+          <div class="row">\r
+            <label class="control" title="Smooth up (react faster)">\r
+              <span class="lbl">Smooth up</span>\r
+              <input\r
+                id="sndSmoothUp"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="0.01"\r
+                max="1"\r
+                step="0.01"\r
+                value="0.35"\r
+              />\r
+            </label>\r
+\r
+            <label class="control" title="Smooth down (linger)">\r
+              <span class="lbl">Smooth down</span>\r
+              <input\r
+                id="sndSmoothDown"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="0.001"\r
+                max="1"\r
+                step="0.001"\r
+                value="0.08"\r
+              />\r
+            </label>\r
+\r
+            <label class="control" title="Frequency smoothing">\r
+              <span class="lbl">Freq smooth</span>\r
+              <input\r
+                id="sndFreqSmooth"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="0"\r
+                max="16"\r
+                step="1"\r
+                value="2"\r
+              />\r
+            </label>\r
+          </div>\r
+\r
+          <div class="row">\r
+            <label class="control" title="Contrast (more punch)">\r
+              <span class="lbl">Contrast</span>\r
+              <input\r
+                id="sndContrast"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="0.1"\r
+                max="64"\r
+                step="0.1"\r
+                value="9"\r
+              />\r
+            </label>\r
+\r
+            <label class="control" title="Boost (overall)">\r
+              <span class="lbl">Boost</span>\r
+              <input\r
+                id="sndBoost"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="0"\r
+                max="8"\r
+                step="0.01"\r
+                value="1"\r
+              />\r
+            </label>\r
+\r
+            <label class="control" title="Noise gate (ignore quiet)">\r
+              <span class="lbl">Gate</span>\r
+              <input\r
+                id="sndNoiseGate"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="0"\r
+                max="0.5"\r
+                step="0.001"\r
+                value="0"\r
+              />\r
+            </label>\r
+\r
+            <label class="control" title="Bass vs treble bias">\r
+              <span class="lbl">Bass/Treble</span>\r
+              <input\r
+                id="sndBassVsTreble"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="-1"\r
+                max="1"\r
+                step="0.01"\r
+                value="0"\r
+              />\r
+            </label>\r
+          </div>\r
+\r
+          <div class="row">\r
+            <label class="control" title="Worker updates per second">\r
+              <span class="lbl">Updates/s</span>\r
+              <input\r
+                id="sndFps"\r
+                class="numeric-input"\r
+                type="number"\r
+                min="5"\r
+                max="120"\r
+                step="1"\r
+                value="30"\r
+              />\r
+            </label>\r
+          </div>\r
+        </details>\r
+      </details>\r
+\r
+      <details class="section">\r
+        <summary>\r
           <span class="section-title">Warps</span>\r
           <span\r
             class="section-badge"\r
@@ -913,6 +3723,22 @@
               value="1"\r
             />\r
           </label>\r
+        </div>\r
+\r
+        <div class="row">\r
+          <label class="control select" title="What drives vertex displacement">\r
+            <span class="lbl">Disp source</span>\r
+            <select id="dispSource" title="Vertex displacement source">\r
+              <option value="0">Off</option>\r
+              <option value="1">SDF</option>\r
+              <option value="2">Hue bounce</option>\r
+            </select>\r
+            <span class="spacer"></span>\r
+          </label>\r
+          <div class="hint">\r
+            SDF uses the SDF mode picker below. Hue bounce animates using time\r
+            and the fractal color texture.\r
+          </div>\r
         </div>\r
 \r
         <div class="row">\r
@@ -1256,6 +4082,379 @@
   </aside>\r
 </div>\r
 `;
+
+  // render/state.js
+  var renderGlobals = {
+    computeDirty: true,
+    cameraDirty: true,
+    displacementDirty: true,
+    gridDirty: true,
+    paramsState: {
+      gridSize: 1542,
+      splitCount: 8e6,
+      layerIndex: 0,
+      layers: 100,
+      nLayers: 1,
+      renderMode: "fractal",
+      layerMode: false,
+      maxIter: 150,
+      fractalType: 0,
+      // scaleOps is the ordered ops list (duplicates allowed). scaleMode is the legacy bitmask union.
+      // Default keeps old behavior: Multiply only.
+      scaleOps: [1],
+      scaleMode: 1,
+      zoom: 4,
+      dx: 0,
+      dy: 0,
+      escapeR: 4,
+      zMin: 0,
+      dz: 0.01,
+      gamma: 1,
+      // stepped gamma across layers
+      // - if layerGammaStep != 0: gamma(li) steps across layers; base gamma is treated as the floor
+      // - else if layerGammaRange != 0: gamma ramps by range; base gamma is treated as the floor
+      // - else: optional ramp toward layerGammaStart but clamped so base gamma remains the floor
+      layerGammaStart: 1,
+      layerGammaStep: 1e-3,
+      layerGammaRange: 0,
+      epsilon: 1e-6,
+      convergenceTest: false,
+      escapeMode: 0,
+      scheme: 0,
+      hueOffset: 0,
+      // 0 = default internal hue-wheel gradient
+      // 1 = SoundPaletteSystem palette texture
+      gradTexMode: 0,
+      gridDivs: 256,
+      dispMode: 0,
+      dispAmp: 0.15,
+      dispCurve: 3,
+      dispLimitOn: false,
+      slopeLimit: 0.5,
+      wallJump: 0.05,
+      bowlOn: false,
+      bowlDepth: 0.25,
+      quadScale: 1,
+      worldOffset: 0,
+      worldStart: 0,
+      lightingOn: false,
+      lightPos: [0, 0, 5],
+      specPower: 32,
+      lowT: 0,
+      highT: 1,
+      alphaMode: 0,
+      basis: 0,
+      normalMode: 2,
+      // slab renderer knobs (optional, safe defaults)
+      fieldMode: 0,
+      meshStep: 1,
+      capBias: 0,
+      gradScale: 1,
+      thickness: 0.25,
+      feather: 0,
+      // slab contour debug toggles (packed into slab alphaMode bits)
+      contourOn: true,
+      contourOnly: true,
+      contourFront: true
+    }
+  };
+  var F = { C: 1, D: 2, R: 4, G: 8 };
+  var DIRTY_MAP = {
+    gridSize: F.C | F.D,
+    splitCount: F.C | F.D,
+    layers: F.C,
+    nLayers: F.C,
+    layerIndex: F.C,
+    maxIter: F.C,
+    fractalType: F.C,
+    // new ordered list (duplicates allowed)
+    scaleOps: F.C,
+    // legacy union bitmask (still supported for backward compat)
+    scaleMode: F.C,
+    zoom: F.C,
+    dx: F.C,
+    dy: F.C,
+    escapeR: F.C,
+    zMin: F.C,
+    dz: F.C,
+    gamma: F.C,
+    layerGammaStart: F.C,
+    layerGammaStep: F.C,
+    layerGammaRange: F.C,
+    epsilon: F.C,
+    convergenceTest: F.C,
+    escapeMode: F.C,
+    renderMode: F.R | F.D,
+    // toggling layerMode must force: recompute (layer count changes), SDF teardown, and render rebind
+    layerMode: F.C | F.D | F.R,
+    dispAmp: F.D,
+    dispMode: F.D,
+    dispCurve: F.D,
+    wallJump: F.D,
+    quadScale: F.D | F.R,
+    bowlOn: F.D | F.R,
+    bowlDepth: F.D | F.R,
+    connectivityMode: F.D,
+    normalMode: F.D,
+    slopeLimit: F.D,
+    // these affect the layer-space sampling and must trigger fractal compute as well
+    worldOffset: F.C | F.D | F.R,
+    worldStart: F.C | F.D | F.R,
+    hueOffset: F.R,
+    scheme: F.R,
+    colorScheme: F.R,
+    lightingOn: F.R | F.D,
+    lightPos: F.R,
+    specPower: F.R,
+    dispLimitOn: F.R,
+    gridDivs: F.R | F.G,
+    lowT: F.R | F.D,
+    highT: F.R | F.D,
+    basis: F.R | F.D,
+    alphaMode: F.R | F.G,
+    // gradient source toggle
+    gradTexMode: F.R,
+    // slab renderer knobs
+    fieldMode: F.D,
+    meshStep: F.D,
+    capBias: F.D,
+    gradScale: F.D,
+    thickness: F.R,
+    feather: F.R,
+    // slab contour debug toggles
+    contourOn: F.R,
+    contourOnly: F.R,
+    contourFront: F.R
+  };
+  var pending = { paramsState: {} };
+  var dirtyBits = 0;
+  var hasPending = false;
+  function setState(partial) {
+    if (!partial || typeof partial !== "object") return;
+    Object.assign(pending.paramsState, partial);
+    hasPending = true;
+    for (const k in partial) {
+      const bits = DIRTY_MAP[k];
+      dirtyBits |= bits != null ? bits : F.R;
+    }
+  }
+  var MAX_SCALE_OPS = 16;
+  var _SCALE_OP_BITS = [
+    1,
+    // 1 Multiply
+    2,
+    // 2 Divide
+    4,
+    // 3 Sine
+    8,
+    // 4 Tangent
+    16,
+    // 5 Cosine
+    32,
+    // 6 Exp-Zoom
+    64,
+    // 7 Log-Shrink
+    128,
+    // 8 Aniso Warp
+    256,
+    // 9 Rotate
+    512,
+    // 10 Radial Twist
+    1024,
+    // 11 HyperWarp
+    2048,
+    // 12 RadialHyper
+    4096,
+    // 13 Swirl
+    8192,
+    // 14 Modular
+    16384,
+    // 15 AxisSwap
+    32768,
+    // 16 MixedWarp
+    65536,
+    // 17 Jitter
+    131072,
+    // 18 PowerWarp
+    262144
+    // 19 SmoothFade
+  ];
+  function _isValidScaleOpCode(n) {
+    n = n | 0;
+    return n >= 1 && n <= _SCALE_OP_BITS.length;
+  }
+  function _normScaleOps(raw) {
+    if (!raw) return [];
+    let a = raw;
+    if (typeof raw === "string") {
+      const s = raw.trim();
+      if (!s) return [];
+      a = s.split(",").map((x) => x.trim());
+    }
+    if (!Array.isArray(a)) return [];
+    const out = [];
+    for (let i = 0; i < a.length && out.length < MAX_SCALE_OPS; ++i) {
+      const v = a[i];
+      const n = typeof v === "number" ? v : Number(String(v).trim());
+      if (!Number.isFinite(n)) continue;
+      const c = n | 0;
+      if (_isValidScaleOpCode(c)) out.push(c);
+    }
+    return out;
+  }
+  function _scaleModeMaskFromOps(ops) {
+    let m = 0;
+    for (let i = 0; i < ops.length; ++i) {
+      const c = ops[i] | 0;
+      if (_isValidScaleOpCode(c)) m |= _SCALE_OP_BITS[c - 1] | 0;
+    }
+    return m >>> 0;
+  }
+  function _opsFromScaleModeMask(mask) {
+    const m = Number(mask) >>> 0 | 0;
+    if (!m) return [];
+    const out = [];
+    for (let code = 1; code <= _SCALE_OP_BITS.length && out.length < MAX_SCALE_OPS; ++code) {
+      const bit = _SCALE_OP_BITS[code - 1] | 0;
+      if (m & bit) out.push(code);
+    }
+    return out;
+  }
+  function normalizeScaleArgsInParams(ps) {
+    if (!ps || typeof ps !== "object") return;
+    const hasOps = Array.isArray(ps.scaleOps) || typeof ps.scaleOps === "string";
+    const hasMask = ps.scaleMode !== void 0 && ps.scaleMode !== null;
+    if (hasOps) {
+      const ops = _normScaleOps(ps.scaleOps);
+      ps.scaleOps = ops;
+      ps.scaleMode = _scaleModeMaskFromOps(ops);
+      return;
+    }
+    if (hasMask) {
+      const ops = _opsFromScaleModeMask(ps.scaleMode);
+      ps.scaleOps = ops;
+      ps.scaleMode = _scaleModeMaskFromOps(ops);
+      return;
+    }
+    ps.scaleOps = [];
+    ps.scaleMode = 0;
+  }
+  function cloneParamsForCompute(baseParams, overrides) {
+    const p = Object.assign({}, baseParams || null, overrides || null);
+    if (Array.isArray(p.lightPos))
+      p.lightPos = [p.lightPos[0] || 0, p.lightPos[1] || 0, p.lightPos[2] || 0];
+    normalizeScaleArgsInParams(p);
+    if (Array.isArray(p.scaleOps)) p.scaleOps = p.scaleOps.slice(0);
+    return p;
+  }
+  function flushPending() {
+    if (!hasPending) return;
+    const ps = renderGlobals.paramsState;
+    const prevLayerMode = !!ps.layerMode;
+    Object.assign(ps, pending.paramsState);
+    pending.paramsState = {};
+    hasPending = false;
+    normalizeScaleArgsInParams(ps);
+    const nextLayerMode = !!ps.layerMode;
+    if (nextLayerMode && !prevLayerMode) {
+      ps.dispMode = 0;
+      ps.lightingOn = false;
+      const rm = (ps.renderMode == null ? "" : String(ps.renderMode)).trim().toLowerCase();
+      if (rm === "slab" || rm === "1") ps.renderMode = "fractal";
+      renderGlobals.computeDirty = true;
+      renderGlobals.displacementDirty = true;
+      renderGlobals.cameraDirty = true;
+    }
+    renderGlobals.computeDirty ||= !!(dirtyBits & F.C);
+    renderGlobals.displacementDirty ||= !!(dirtyBits & F.D);
+    renderGlobals.cameraDirty ||= !!(dirtyBits & F.R);
+    renderGlobals.gridDirty ||= !!(dirtyBits & F.G);
+    dirtyBits = 0;
+  }
+  function _safeGamma(g) {
+    const x = Number.isFinite(+g) ? +g : 1;
+    return x;
+  }
+  function requestedLayersFromParams(params = renderGlobals.paramsState) {
+    const p = params;
+    if (!p || !p.layerMode) return 1;
+    const raw = p.nLayers ?? p.layers ?? 1;
+    const n = Math.floor(Number(raw) || 0);
+    return Math.max(1, n);
+  }
+  function resolveGammaSeries(params, count) {
+    const p = params || {};
+    const baseGamma = _safeGamma(Number.isFinite(+p.gamma) ? +p.gamma : 1);
+    if (count <= 1) return { gammaStart: baseGamma, gammaRange: 0 };
+    const step = Number.isFinite(+p.layerGammaStep) ? +p.layerGammaStep : 0;
+    const rangeExplicit = Number.isFinite(+p.layerGammaRange) ? +p.layerGammaRange : 0;
+    const gStartRaw = Number.isFinite(+p.layerGammaStart) ? +p.layerGammaStart : baseGamma;
+    if (step !== 0) {
+      const total2 = step * (count - 1);
+      const gammaStart = total2 >= 0 ? baseGamma : baseGamma - total2;
+      return { gammaStart, gammaRange: total2 };
+    }
+    if (rangeExplicit !== 0) {
+      const total2 = rangeExplicit;
+      const gammaStart = total2 >= 0 ? baseGamma : baseGamma - total2;
+      return { gammaStart, gammaRange: total2 };
+    }
+    const target = _safeGamma(gStartRaw);
+    const clampedTarget = target >= baseGamma ? target : baseGamma;
+    const total = clampedTarget - baseGamma;
+    return { gammaStart: baseGamma, gammaRange: total };
+  }
+  function gammaForLayerIndex(gammaStart, gammaRange, li, count) {
+    if (count <= 1) return _safeGamma(gammaStart);
+    const denom = count - 1;
+    const t = denom > 0 ? li / denom : 0;
+    return _safeGamma(gammaStart + t * gammaRange);
+  }
+  function availableFractalLayers(chunks = []) {
+    if (!Array.isArray(chunks) || chunks.length === 0) return 1;
+    let maxLayers = 1;
+    for (const c of chunks) {
+      const a = Array.isArray(c.fractalLayerViews) && c.fractalLayerViews || Array.isArray(c.layerViews) && c.layerViews || Array.isArray(c.fractalViews) && c.fractalViews || null;
+      if (a && a.length) maxLayers = Math.max(maxLayers, a.length);
+      else if (c.fractalView) maxLayers = Math.max(maxLayers, 1);
+    }
+    return Math.max(1, maxLayers);
+  }
+  function clampLayerIndex(li, n) {
+    const nn = Math.max(1, n | 0);
+    const x = Number.isFinite(+li) ? +li | 0 : 0;
+    if (x < 0) return 0;
+    if (x >= nn) return nn - 1;
+    return x;
+  }
+  function normalizeFractalChunkLayers(chunks, count) {
+    if (!Array.isArray(chunks) || chunks.length === 0) return;
+    const n = Math.max(1, count | 0);
+    for (const c of chunks) {
+      let views = Array.isArray(c.fractalLayerViews) && c.fractalLayerViews || Array.isArray(c.layerViews) && c.layerViews || Array.isArray(c.fractalViews) && c.fractalViews || null;
+      if (!views && c.fractalView) views = [c.fractalView];
+      if (!Array.isArray(views)) views = views ? [views] : [];
+      if (n > 1) {
+        const base = views[0] || c.fractalView || null;
+        const arr = new Array(n);
+        for (let i = 0; i < n; i++) arr[i] = views[i] || base;
+        c.fractalLayerViews = arr;
+        c.layerViews = arr;
+        c.fractalView = c.fractalView || arr[0] || null;
+      } else {
+        const one = views[0] || c.fractalView || null;
+        c.fractalLayerViews = [one].filter((v) => v != null);
+        c.layerViews = c.fractalLayerViews;
+        c.fractalView = one;
+      }
+    }
+  }
+  function normRenderMode(v) {
+    const s = (v == null ? "" : String(v)).trim().toLowerCase();
+    if (s === "slab" || s === "1") return "slab";
+    if (s === "raw" || s === "blit" || s === "debug" || s === "2") return "raw";
+    return "fractal";
+  }
 
   // shaders/fractalCompute.wgsl
   var fractalCompute_default = "// shaders/fractalCompute.wgsl\r\n// Compute WGSL (entry point: main)\r\nstruct Params {\r\n  gridSize: u32,\r\n  maxIter: u32,\r\n  fractalType: u32,\r\n  _padA: u32,\r\n\r\n  // 16 ordered ops (0 ends early), packed as 4 vec4<u32> for 16-byte alignment\r\n  scaleOps: array<vec4<u32>, 4>,\r\n\r\n  zoom: f32,\r\n  dx: f32,\r\n  dy: f32,\r\n  escapeR: f32,\r\n  gamma: f32,\r\n  layerIndex: u32,\r\n  epsilon: f32,\r\n  convergenceTest: u32,\r\n  escapeMode: u32,\r\n  tileOffsetX: u32,\r\n  tileOffsetY: u32,\r\n  tileWidth: u32,\r\n  tileHeight: u32,\r\n  aspect: f32,\r\n  _pad0: u32,\r\n  _pad1: u32,\r\n  _pad2: u32,        // adjust so struct size remains multiple of 16 (or fits your uniformBufferSize)\r\n};\r\n@group(0) @binding(0) var<uniform> params: Params;\r\n@group(1) @binding(0) var storageTex: texture_storage_2d_array<rgba8unorm, write>;\r\n\r\nfn scaleOpAt(i: u32) -> u32 {\r\n  let v = params.scaleOps[i >> 2u];\r\n  let j = i32(i & 3u);\r\n  return v[j];\r\n}\r\n\r\n// Helpers:\r\nfn shipPower(ax: f32, ay: f32, p: f32) -> vec2<f32> {\r\n  // r = sqrt(ax^2 + ay^2)^p ; \u03B8 = atan2(ay,ax)*p\r\n  let r2 = ax*ax + ay*ay;\r\n  // avoid negative or zero? r2>=0\r\n  let r = pow(r2, 0.5 * p);\r\n  let theta = atan2(ay, ax) * p;\r\n  return vec2<f32>(r * cos(theta), r * sin(theta));\r\n}\r\n\r\nfn invPower(qx: f32, qy: f32, p: f32) -> vec2<f32> {\r\n  // 1/(qx+ i qy)^p via polar\r\n  let r2 = qx*qx + qy*qy + 1e-9;\r\n  let rp = pow(r2, 0.5 * p);\r\n  let th = atan2(qy, qx) * p;\r\n  let inv = 1.0 / rp;\r\n  return vec2<f32>(inv * cos(th), -inv * sin(th));\r\n}\r\n\r\nstruct InitialZ { qx: f32, qy: f32, px: f32, py: f32 };\r\n\r\nfn getInitialZ(typ: u32, x0: f32, y0: f32) -> InitialZ {\r\n  // Newton-typ indices: 26,40-46\r\n  let isNewton =\r\n      (typ == 26u) || (typ == 40u) || (typ == 41u) || (typ == 42u)\r\n      || (typ == 43u) || (typ == 44u) || (typ == 45u) || (typ == 46u);\r\n  if (isNewton) {\r\n    return InitialZ(1.0, 0.0, 0.0, 0.0);\r\n  }\r\n  // inverse families 30-39 start at c\r\n  if (typ >= 30u && typ <= 39u) {\r\n    return InitialZ(x0, y0, 0.0, 0.0);\r\n  }\r\n\r\n  // Basic Julia starts at the pixel's complex coordinate c = (x0,y0)\r\n  if (typ == 71u) {\r\n    return InitialZ(x0, y0, 0.0, 0.0);\r\n  }\r\n\r\n  // default start at 0\r\n  return InitialZ(0.0, 0.0, 0.0, 0.0);\r\n}\r\n\r\n// Main fractal step returning new z and new px,py:\r\nstruct FractalResult { nx: f32, ny: f32, npx: f32, npy: f32 };\r\n\r\nfn computeFractal(\r\n  typ: u32,\r\n  qx: f32, qy: f32, px: f32, py: f32,\r\n  cx: f32, cy: f32,\r\n  gamma: f32,\r\n  iter: u32,\r\n) -> FractalResult {\r\n\r\n  let s = 1.0 + f32(iter) * (gamma - 1.0);\r\n  var ccx = cx;\r\n  var ccy = cy;\r\n\r\n  for (var ti: u32 = 0u; ti < 16u; ti = ti + 1u) {\r\n    let op = scaleOpAt(ti);\r\n    if (op == 0u) {\r\n      break;\r\n    }\r\n\r\n    switch(op) {\r\n      case 1u: { // Multiply\r\n        ccx = ccx * s;\r\n        ccy = ccy * s;\r\n      }\r\n\r\n      case 2u: { // Divide\r\n        ccx = ccx / s;\r\n        ccy = ccy / s;\r\n      }\r\n\r\n      case 3u: { // Sine warp\r\n        let m = sin(s);\r\n        ccx = ccx * m;\r\n        ccy = ccy * m;\r\n      }\r\n\r\n      case 4u: { // Tangent warp\r\n        let m = tan(s);\r\n        ccx = ccx * m;\r\n        ccy = ccy * m;\r\n      }\r\n\r\n      case 5u: { // Cosine warp\r\n        let m = cos(s);\r\n        ccx = ccx * m;\r\n        ccy = ccy * m;\r\n      }\r\n\r\n      case 6u: { // Exponential zoom\r\n        let m = exp(s);\r\n        ccx = ccx * m;\r\n        ccy = ccy * m;\r\n      }\r\n\r\n      case 7u: { // Logarithmic shrink\r\n        let m = log(s + 1e-3);\r\n        ccx = ccx * m;\r\n        ccy = ccy * m;\r\n      }\r\n\r\n      case 8u: { // Anisotropic warp (x\xB7s, y\xF7s)\r\n        ccx = ccx * s;\r\n        ccy = ccy / s;\r\n      }\r\n\r\n      case 9u: { // Rotate by s radians\r\n        let \u03B8 = s;\r\n        let x0 = ccx * cos(\u03B8) - ccy * sin(\u03B8);\r\n        let y0 = ccx * sin(\u03B8) + ccy * cos(\u03B8);\r\n        ccx = x0;\r\n        ccy = y0;\r\n      }\r\n\r\n      case 10u: { // Radial twist (r^s, \u03B8\xB7s)\r\n        let r0  = sqrt(ccx*ccx + ccy*ccy);\r\n        let \u03B80  = atan2(ccy, ccx);\r\n        let rp  = pow(r0, s);\r\n        let \u03B8p  = \u03B80 * s;\r\n        ccx = rp * cos(\u03B8p);\r\n        ccy = rp * sin(\u03B8p);\r\n      }\r\n\r\n      case 11u: { // Hyperbolic warp (sinh, cosh)\r\n        ccx = ccx * sinh(s);\r\n        ccy = ccy * cosh(s);\r\n      }\r\n\r\n      case 12u: { // Radial hyperbolic (sinh(r*s))\r\n        let r0  = sqrt(ccx*ccx + ccy*ccy);\r\n        let \u03B80  = atan2(ccy, ccx);\r\n        let rp  = sinh(r0 * s);\r\n        ccx = rp * cos(\u03B80);\r\n        ccy = rp * sin(\u03B80);\r\n      }\r\n\r\n      case 13u: { // Swirl (\u03B8 + r*s)\r\n        let r0  = sqrt(ccx*ccx + ccy*ccy);\r\n        let \u03B80  = atan2(ccy, ccx);\r\n        let \u03B8p  = \u03B80 + r0 * s;\r\n        ccx = r0 * cos(\u03B8p);\r\n        ccy = r0 * sin(\u03B8p);\r\n      }\r\n\r\n      case 14u: { // Modular wrap\r\n        let m0 = fract(s * 0.5) * 2.0;      // s mod 2\r\n        let ux = ccx * m0 + 1.0;\r\n        let uy = ccy * m0 + 1.0;\r\n        ccx = fract(ux * 0.5) * 2.0 - 1.0;\r\n        ccy = fract(uy * 0.5) * 2.0 - 1.0;\r\n      }\r\n\r\n      case 15u: { // Axis swap & scale\r\n        let tx = ccy * s;\r\n        let ty = ccx * s;\r\n        ccx = tx;\r\n        ccy = ty;\r\n      }\r\n\r\n      case 16u: { // Mixed warp (blend multiply & sine)\r\n        let \u03B1   = fract(s * 0.1);\r\n        let m1x = ccx * s;\r\n        let m2x = ccx * sin(s);\r\n        let m1y = ccy * s;\r\n        let m2y = ccy * sin(s);\r\n        ccx = mix(m1x, m2x, \u03B1);\r\n        ccy = mix(m1y, m2y, \u03B1);\r\n      }\r\n\r\n      case 17u: { // Jitter noise\r\n        let jx = fract(sin(ccx * s) * 43758.5453) - 0.5;\r\n        let jy = fract(sin(ccy * s) * 97531.2468) - 0.5;\r\n        ccx = ccx + jx * s * 0.2;\r\n        ccy = ccy + jy * s * 0.2;\r\n      }\r\n\r\n      case 18u: { // Signed power warp\r\n        ccx = sign(ccx) * pow(abs(ccx), s);\r\n        ccy = sign(ccy) * pow(abs(ccy), s);\r\n      }\r\n\r\n      case 19u: { // Smoothstep fade\r\n        let t0 = smoothstep(0.0, 1.0, s);\r\n        ccx = ccx * t0;\r\n        ccy = ccy * t0;\r\n      }\r\n\r\n      default: {}\r\n    }\r\n  }\r\n\r\n  let a = abs(qx);\r\n  let b = abs(qy);\r\n  var nx: f32 = 0.0;\r\n  var ny: f32 = 0.0;\r\n  var npx = px;\r\n  var npy = py;\r\n\r\n  switch(typ) {\r\n    case 1u: { // Tricorn\r\n      nx = qx*qx - qy*qy + ccx;\r\n      ny = -2.0*qx*qy + ccy;\r\n    }\r\n    case 2u: { // Burning Ship\r\n      nx = a*a - b*b + ccx;\r\n      ny = 2.0*a*b + ccy;\r\n    }\r\n    case 3u: { // Perpendicular Mandelbrot\r\n      nx = qx*qx - qy*qy + ccx;\r\n      ny = -2.0*a*qy + ccy;\r\n    }\r\n    case 4u: { // Celtic\r\n      nx = abs(qx*qx - qy*qy) + ccx;\r\n      ny = 2.0*qx*qy + ccy;\r\n    }\r\n    case 5u: { // Buffalo\r\n      nx = abs(qx*qx - qy*qy) + ccx;\r\n      ny = -2.0*qx*qy + ccy;\r\n    }\r\n    case 6u: { // Phoenix (\u03BB = -0.5)\r\n      nx = qx*qx - qy*qy + ccx - 0.5*px;\r\n      ny = 2.0*qx*qy + ccy - 0.5*py;\r\n      npx = qx;\r\n      npy = qy;\r\n    }\r\n    case 7u: { // Cubic Multibrot z^3 + c\r\n      let r2 = qx*qx + qy*qy;\r\n      let theta = atan2(qy, qx);\r\n      let r3 = pow(r2, 1.5);\r\n      nx = r3 * cos(3.0 * theta) + ccx;\r\n      ny = r3 * sin(3.0 * theta) + ccy;\r\n    }\r\n    case 8u: { // Quartic Multibrot z^4 + c\r\n      let r2 = qx*qx + qy*qy;\r\n      let theta = atan2(qy, qx);\r\n      let r4 = r2*r2;\r\n      nx = r4 * cos(4.0 * theta) + ccx;\r\n      ny = r4 * sin(4.0 * theta) + ccy;\r\n    }\r\n    case 9u: { // Cosine\r\n      nx = cos(qx)*cosh(qy) + ccx;\r\n      ny = -sin(qx)*sinh(qy) + ccy;\r\n    }\r\n    case 10u: { // Sine\r\n      nx = sin(qx)*cosh(qy) + ccx;\r\n      ny = cos(qx)*sinh(qy) + ccy;\r\n    }\r\n    case 11u: { // Heart\r\n      let rx = abs(qx);\r\n      nx = rx*rx - qy*qy + ccx;\r\n      ny = 2.0*rx*qy + ccy;\r\n    }\r\n    case 12u: { // Perpendicular Buffalo\r\n      nx = abs(qx*qx - qy*qy) + ccx;\r\n      ny = -2.0*a*qy + ccy;\r\n    }\r\n    case 13u: { // Spiral Mandelbrot with twist\r\n      let THETA = 0.35 + 2.0*gamma;\r\n      let wRe = cos(THETA);\r\n      let wIm = sin(THETA);\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n      let tx = wRe*zx2 - wIm*zy2;\r\n      let ty = wRe*zy2 + wIm*zx2;\r\n      nx = tx + ccx;\r\n      ny = ty + ccy;\r\n    }\r\n    case 14u: { // Quintic z^5 + c\r\n      let r2 = qx*qx + qy*qy;\r\n      let theta = atan2(qy, qx);\r\n      let r5 = pow(r2, 2.5);\r\n      nx = r5*cos(5.0*theta) + ccx;\r\n      ny = r5*sin(5.0*theta) + ccy;\r\n    }\r\n    case 15u: { // Sextic z^6 + c\r\n      let r2 = qx*qx + qy*qy;\r\n      let theta = atan2(qy, qx);\r\n      let r6 = r2*r2*r2;\r\n      nx = r6*cos(6.0*theta) + ccx;\r\n      ny = r6*sin(6.0*theta) + ccy;\r\n    }\r\n    case 16u: { // Tangent fractal tan(z)+c\r\n      let sin2x = sin(2.0*qx);\r\n      let sinh2y = sinh(2.0*qy);\r\n      let denom = cos(2.0*qx) + cosh(2.0*qy) + 1e-9;\r\n      nx = sin2x/denom + ccx;\r\n      ny = sinh2y/denom + ccy;\r\n    }\r\n    case 17u: { // Exponential fractal exp(z)+c\r\n      let ex = exp(qx);\r\n      nx = ex*cos(qy) + ccx;\r\n      ny = ex*sin(qy) + ccy;\r\n    }\r\n    case 18u: { // Septic z^7 + c\r\n      let r2 = qx*qx + qy*qy;\r\n      let theta = atan2(qy, qx);\r\n      let r7 = pow(r2, 3.5);\r\n      nx = r7*cos(7.0*theta) + ccx;\r\n      ny = r7*sin(7.0*theta) + ccy;\r\n    }\r\n    case 19u: { // Octic z^8 + c\r\n      let r2 = qx*qx + qy*qy;\r\n      let theta = atan2(qy, qx);\r\n      let r8 = r2*r2*r2*r2;\r\n      nx = r8*cos(8.0*theta) + ccx;\r\n      ny = r8*sin(8.0*theta) + ccy;\r\n    }\r\n    case 20u: { // Inverse Mandelbrot 1/z^2 + c\r\n      let r2 = qx*qx + qy*qy + 1e-9;\r\n      let invv = 1.0/(r2*r2);\r\n      nx = (qx*qx - qy*qy)*invv + ccx;\r\n      ny = (2.0*qx*qy)*invv + ccy;\r\n    }\r\n    case 21u: { // Burning Ship deep zoom\r\n      let centerRe = -1.7443359375;\r\n      let centerIm = -0.017451171875;\r\n      let sub = 0.04;\r\n      let dx2 = ccx*sub + centerRe;\r\n      let dy2 = ccy*sub + centerIm;\r\n      nx = a*a - b*b + dx2;\r\n      ny = 2.0*a*b + dy2;\r\n    }\r\n    case 22u: { // Cubic Burning Ship |z|^3 + c\r\n      let pr = shipPower(a, b, 3.0);\r\n      nx = pr.x + ccx;\r\n      ny = pr.y + ccy;\r\n    }\r\n    case 23u: { // Quartic Burning Ship |z|^4 + c\r\n      let pr = shipPower(a, b, 4.0);\r\n      nx = pr.x + ccx;\r\n      ny = pr.y + ccy;\r\n    }\r\n    case 24u: { // Quintic Burning Ship |z|^5 + c\r\n      let pr = shipPower(a, b, 5.0);\r\n      nx = pr.x + ccx;\r\n      ny = pr.y + ccy;\r\n    }\r\n    case 25u: { // Hexic Burning Ship |z|^6 + c\r\n      let pr = shipPower(a, b, 6.0);\r\n      nx = pr.x + ccx;\r\n      ny = pr.y + ccy;\r\n    }\r\n    case 26u: { // Nova: z - (z^3-1)/(3 z^2) + c\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n      let zx3 = zx2*qx - zy2*qy;\r\n      let zy3 = zx2*qy + zy2*qx;\r\n      let numx = zx3 - 1.0;\r\n      let numy = zy3;\r\n      let denx = 3.0*zx2;\r\n      let deny = 3.0*zy2;\r\n      let den2 = denx*denx + deny*deny + 1e-9;\r\n      let qxDiv = (numx*denx + numy*deny)/den2;\r\n      let qyDiv = (numy*denx - numx*deny)/den2;\r\n      nx = qx - qxDiv + ccx;\r\n      ny = qy - qyDiv + ccy;\r\n    }\r\n    case 27u: { // Man-o-War: z^2 + c + prev\r\n      nx = qx*qx - qy*qy + ccx + px;\r\n      ny = 2.0*qx*qy + ccy + py;\r\n      npx = qx;\r\n      npy = qy;\r\n    }\r\n    /* =============================================================== */\r\n    /* 28 -  Stretched-Celtic-Spiral                                   */\r\n    /* =============================================================== */\r\n    case 28u: {\r\n        let k = 1.5;                    /* stretch factor              */\r\n        let sx = qx * k;\r\n        let sy = qy / k;\r\n\r\n        /* perpendicular-Celtic core                                   */\r\n        var tx = abs(sx*sx - sy*sy);\r\n        var ty = -2.0*abs(sx)*sy;\r\n\r\n        /* gentle spiral twist using gamma & iteration #               */\r\n        let \u03C1   = length(vec2<f32>(tx, ty));\r\n        let \u03B8   = atan2(ty, tx)\r\n                + gamma * 6.2831853 * 0.1\r\n                + f32(iter) * 0.03;\r\n\r\n        nx = \u03C1 * cos(\u03B8) + cx;\r\n        ny = \u03C1 * sin(\u03B8) + cy;\r\n    }\r\n\r\n    /* =============================================================== */\r\n    /* 29 -  Polar-Flame fractal                                       */\r\n    /* =============================================================== */\r\n    case 29u: {\r\n        let r      = length(vec2<f32>(qx, qy)) + 1e-9;\r\n        let theta  = atan2(qy, qx);\r\n\r\n        /* flame parameters modulated by gamma                         */\r\n        let c0 = 0.25 + 0.15*gamma;\r\n        let c1 = 0.5  + 0.5 *gamma;\r\n\r\n        let r2    = r*r + c0;\r\n        let theta2= 2.0*theta + c1;\r\n\r\n        nx = r2 * cos(theta2) + cx;\r\n        ny = r2 * sin(theta2) + cy;\r\n    }\r\n    case 30u, 31u, 32u, 33u, 34u, 35u: { // inv 3..8\r\n      let p = f32(typ - 27u); // 30->3, 31->4, ..., 35->8\r\n      let pr = invPower(qx, qy, p);\r\n      nx = pr.x + ccx;\r\n      ny = pr.y + ccy;\r\n    }\r\n    case 36u: { // Inverse Burning-Ship\r\n      let a2 = abs(qx);\r\n      let b2 = abs(qy);\r\n      let r2 = qx*qx + qy*qy + 1e-9;\r\n      let invv = 1.0/(r2*r2);\r\n      nx = (a2*a2 - b2*b2)*invv + ccx;\r\n      ny = (2.0*a2*b2)*invv + ccy;\r\n    }\r\n    case 37u: { // Inverse Tricorn\r\n      let r2 = qx*qx + qy*qy + 1e-9;\r\n      let invv = 1.0/(r2*r2);\r\n      nx = (qx*qx - qy*qy)*invv + ccx;\r\n      ny = (-2.0*qx*qy)*invv + ccy;\r\n    }\r\n    case 38u: { // Inverse Celtic\r\n      let r2 = qx*qx + qy*qy + 1e-9;\r\n      let invv = 1.0/(r2*r2);\r\n      let rx = abs(qx*qx - qy*qy);\r\n      nx = rx*invv + ccx;\r\n      ny = (2.0*qx*qy)*invv + ccy;\r\n    }\r\n    case 39u: { // Inverse Phoenix\r\n      let r2 = qx*qx + qy*qy + 1e-9;\r\n      let invv = 1.0/(r2*r2);\r\n      let zx2 = (qx*qx - qy*qy)*invv;\r\n      let zy2 = (2.0*qx*qy)*invv;\r\n      nx = zx2 + ccx - 0.5*px;\r\n      ny = zy2 + ccy - 0.5*py;\r\n      npx = qx;\r\n      npy = qy;\r\n    }\r\n    case 40u: { // Tri-Nova\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n      let zx4 = zx2*zx2 - zy2*zy2;\r\n      let zy4 = 2.0*zx2*zy2;\r\n      nx = 1.3333333*qx - 0.3333333*zx4 + ccx;\r\n      ny = 1.3333333*qy - 0.3333333*zy4 + ccy;\r\n    }\r\n    case 41u: { // Nova-Mandelbrot\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n      let zx3 = zx2*qx - zy2*qy;\r\n      let zy3 = zx2*qy + zy2*qx;\r\n      let denx = 3.0*zx2;\r\n      let deny = 3.0*zy2;\r\n      let den2 = denx*denx + deny*deny + 1e-9;\r\n      let numx = zx3 - 1.0;\r\n      let numy = zy3;\r\n      let divx = (numx*denx + numy*deny)/den2;\r\n      let divy = (numy*denx - numx*deny)/den2;\r\n      nx = qx - divx + ccx;\r\n      ny = qy - divy + ccy;\r\n    }\r\n    case 42u: { // Nova 2 (inverse variant)\r\n      let r2_inv = 1.0/(qx*qx + qy*qy + 1e-9);\r\n      let izRe = qx * r2_inv;\r\n      let izIm = -qy * r2_inv;\r\n      let zx2 = izRe*izRe - izIm*izIm;\r\n      let zy2 = 2.0*izRe*izIm;\r\n      let zx4 = zx2*zx2 - zy2*zy2;\r\n      let zy4 = 2.0*zx2*zy2;\r\n      let fRe = 1.3333333*izRe - 0.3333333*zx4 + ccx;\r\n      let fIm = 1.3333333*izIm - 0.3333333*zy4 + ccy;\r\n      let den = 1.0/(fRe*fRe + fIm*fIm + 1e-9);\r\n      nx = fRe*den;\r\n      ny = -fIm*den;\r\n    }\r\n    case 43u: { // Nova 2 variant\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n      let zx4 = zx2*zx2 - zy2*zy2;\r\n      let zy4 = 2.0*zx2*zy2;\r\n      let fRe = 1.3333333*qx - 0.3333333*zx4 + ccx;\r\n      let fIm = 1.3333333*qy - 0.3333333*zy4 + ccy;\r\n      let invR2 = 1.0/(fRe*fRe + fIm*fIm + 1e-9);\r\n      nx = fRe*invR2;\r\n      ny = -fIm*invR2;\r\n    }\r\n    case 44u: { // Quartic-Nova\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n      let zx3 = zx2*qx - zy2*qy;\r\n      let zy3 = zx2*qy + zy2*qx;\r\n      let zx4 = zx3*qx - zy3*qy;\r\n      let zy4 = zx3*qy + zy3*qx;\r\n      let numx = zx4 - 1.0;\r\n      let numy = zy4;\r\n      let denx = 4.0*(zx2*qx - zy2*qy);\r\n      let deny = 4.0*(zx2*qy + zy2*qx);\r\n      let den2 = denx*denx + deny*deny + 1e-9;\r\n      let divx = (numx*denx + numy*deny)/den2;\r\n      let divy = (numy*denx - numx*deny)/den2;\r\n      nx = qx - divx + ccx;\r\n      ny = qy - divy + ccy;\r\n    }\r\ncase 45u: { // Flower Nova\r\n  var zx0 = qx;\r\n  var zy0 = qy;\r\n  if (iter == 0u) {\r\n    zx0 = cx;\r\n    zy0 = cy;\r\n  }\r\n  let zx2 = zx0*zx0 - zy0*zy0;\r\n  let zy2 = 2.0*zx0*zy0;\r\n  let zx3 = zx2*zx0 - zy2*zy0;\r\n  let zy3 = zx2*zy0 + zy2*zx0;\r\n  let zx4 = zx3*zx0 - zy3*zy0;\r\n  let zy4 = zx3*zy0 + zy3*zx0;\r\n  let denx = 4.0*zx3;\r\n  let deny = 4.0*zy3;\r\n  let den2 = denx*denx + deny*deny + 1e-9;\r\n  let numx = zx4 - 1.0;\r\n  let numy = zy4;\r\n  let divx = (numx*denx + numy*deny) / den2;\r\n  let divy = (numy*denx - numx*deny) / den2;\r\n  let fx = zx0 - divx + ccx;\r\n  let fy = zy0 - divy + ccy;\r\n  nx = -fx;\r\n  ny = -fy;\r\n  break;\r\n}\r\ncase 46u: { // Scatter-Nova\r\n  var zx0 = qx;\r\n  var zy0 = qy;\r\n  if (iter == 0u) {\r\n    zx0 = cx;\r\n    zy0 = cy;\r\n  }\r\n  let zx2 = zx0*zx0 - zy0*zy0;\r\n  let zy2 = 2.0*zx0*zy0;\r\n  let zx3 = zx2*zx0 - zy2*zy0;\r\n  let zy3 = zx2*zy0 + zy2*zx0;\r\n  let zx4 = zx3*zx0 - zy3*zy0;\r\n  let zy4 = zx3*zy0 + zy3*zx0;\r\n  let denx = 4.0*zx3;\r\n  let deny = 4.0*zy3;\r\n  let den2 = denx*denx + deny*deny + 1e-9;\r\n  let numx = zx4 - 1.0;\r\n  let numy = zy4;\r\n  let divx = (numx*denx + numy*deny) / den2;\r\n  let divy = (numy*denx - numx*deny) / den2;\r\n  let fx = zx0 - divx + ccx;\r\n  let fy = zy0 - divy + ccy;\r\n  let invR2 = 1.0 / (fx*fx + fy*fy + 1e-9);\r\n  nx = fx * invR2;\r\n  ny = -fy * invR2;\r\n  break;\r\n}\r\n\r\n// 47: Twisted-Flower Nova\r\ncase 47u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx; zy0 = cy;\r\n    }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let denx = 4.0*zx3;\r\n    let deny = 4.0*zy3;\r\n    let den2 = denx*denx + deny*deny + 1e-9;\r\n    let numx = zx4 - 1.0;\r\n    let numy = zy4;\r\n    let divx = (numx*denx + numy*deny) / den2;\r\n    let divy = (numy*denx - numx*deny) / den2;\r\n    let fx = zx0 - divx + ccx;\r\n    let fy = zy0 - divy + ccy;\r\n    let r = length(vec2<f32>(fx, fy));\r\n    let theta = atan2(fy, fx);\r\n    let twist = theta + gamma * 2.0 * 3.14159265 * sin(f32(iter) * 0.2);\r\n    nx = r * cos(twist);\r\n    ny = r * sin(twist);\r\n    npx = qx;\r\n    npy = qy;\r\n    break;\r\n}\r\n\r\n// 48: Lobed-Scatter Nova\r\ncase 48u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numx = zx4 - 1.0;\r\n    let numy = zy4;\r\n    let denx = 4.0*zx3;\r\n    let deny = 4.0*zy3;\r\n    let den2 = denx*denx + deny*deny + 1e-9;\r\n    let divx = (numx*denx + numy*deny) / den2;\r\n    let divy = (numy*denx - numx*deny) / den2;\r\n    let fx = zx0 - divx + ccx;\r\n    let fy = zy0 - divy + ccy;\r\n    let invR2 = 1.0 / (fx*fx + fy*fy + 1e-9);\r\n    var sx = fx * invR2;\r\n    var sy = -fy * invR2;\r\n    let ang = atan2(sy, sx);\r\n    let r0  = length(vec2<f32>(sx, sy));\r\n    let lobes = 5.0 + sin(gamma * 10.0);\r\n    let petal = 1.0 + 0.3 * cos(ang * lobes + f32(iter) * 0.15);\r\n    nx = sx * petal;\r\n    ny = sy * petal;\r\n    npx = qx;\r\n    npy = qy;\r\n    break;\r\n}\r\n// 49: Hybrid-FlScatter Nova\r\ncase 49u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invDenF = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fxF = zx0 - ((numxF*denxF + numyF*denyF) * invDenF) + ccx;\r\n    let fyF = zy0 - ((numyF*denxF - numxF*denyF) * invDenF) + ccy;\r\n    let invR2 = 1.0 / (fxF*fxF + fyF*fyF + 1e-9);\r\n    let sx    = fxF * invR2;\r\n    let sy    = -fyF * invR2;\r\n    let blend = 0.5 + 0.5 * sin(gamma * 3.14159265 + f32(iter) * 0.05);\r\n    nx = mix(fxF, sx, blend);\r\n    ny = mix(fyF, sy, blend);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 50: Fractional-Nova\r\ncase 50u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let p   = 3.7;\r\n    let r0  = length(vec2<f32>(zx0, zy0));\r\n    let theta0 = atan2(zy0, zx0);\r\n    let rp  = pow(r0, p);\r\n    let xp  = rp * cos(p * theta0);\r\n    let yp  = rp * sin(p * theta0);\r\n    let rm1 = pow(r0, p - 1.0);\r\n    let xm1 = rm1 * cos((p - 1.0) * theta0);\r\n    let ym1 = rm1 * sin((p - 1.0) * theta0);\r\n    let denx = p * xm1;\r\n    let deny = p * ym1;\r\n    let d2   = denx*denx + deny*deny + 1e-9;\r\n    let divx = ((xp - 1.0) * denx + yp * deny) / d2;\r\n    let divy = ( yp * denx - (xp - 1.0) * deny) / d2;\r\n    nx = zx0 - divx + ccx;\r\n    ny = zy0 - divy + ccy;\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 51: Kaleido-Nova\r\ncase 51u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let zx2   = zx0*zx0 - zy0*zy0;\r\n    let zy2   = 2.0*zx0*zy0;\r\n    let zx3   = zx2*zx0 - zy2*zy0;\r\n    let zy3   = zx2*zy0 + zy2*zx0;\r\n    let zx4   = zx3*zx0 - zy3*zy0;\r\n    let zy4   = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invDen = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx    = zx0 - ((numxF*denxF + numyF*denyF) * invDen) + ccx;\r\n    let fy    = zy0 - ((numyF*denxF - numxF*denyF) * invDen) + ccy;\r\n\r\n    let sect   = 7.0;\r\n    let slice  = 2.0 * 3.14159265 / sect;\r\n    let angle  = atan2(fy, fx);\r\n    let aDiv  = floor(angle / slice);\r\n    let a2    = angle - aDiv * slice;\r\n    var aMir: f32;\r\n    if (a2 < slice * 0.5) {\r\n        aMir = a2;\r\n    } else {\r\n        aMir = slice - a2;\r\n    }\r\n    let angK  = aDiv * slice + aMir;\r\n    let rad0  = length(vec2<f32>(fx, fy));\r\n    nx = rad0 * cos(angK);\r\n    ny = rad0 * sin(angK);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 52: Cross-Nova\r\ncase 52u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    var sx = cx;\r\n    var sy = cy;\r\n    if ((iter & 1u) == 1u) {\r\n        sx = params.dx;\r\n        sy = params.dy;\r\n    }\r\n    let ux0 = zx0 + (sx - cx);\r\n    let uy0 = zy0 + (sy - cy);\r\n    let ux2 = ux0*ux0 - uy0*uy0;\r\n    let uy2 = 2.0*ux0*uy0;\r\n    let ux3 = ux2*ux0 - uy2*uy0;\r\n    let uy3 = ux2*uy0 + uy2*ux0;\r\n    let ux4 = ux3*ux0 - uy3*uy0;\r\n    let uy4 = ux3*uy0 + uy3*ux0;\r\n    let numx = ux4 - 1.0;\r\n    let numy = uy4;\r\n    let denx = 4.0*ux3;\r\n    let deny = 4.0*uy3;\r\n    let invD = 1.0 / (denx*denx + deny*deny + 1e-9);\r\n    let divx = (numx*denx + numy*deny) * invD;\r\n    let divy = (numy*denx - numx*deny) * invD;\r\n    let fx = ux0 - divx + ccx;\r\n    let fy = uy0 - divy + ccy;\r\n    nx = fx;\r\n    ny = fy;\r\n    npx = qx;\r\n    npy = qy;\r\n    break;\r\n}\r\n\r\n// 53: Mirror-Nova\r\ncase 53u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let zx2   = zx0*zx0 - zy0*zy0;\r\n    let zy2   = 2.0*zx0*zy0;\r\n    let zx3   = zx2*zx0 - zy2*zy0;\r\n    let zy3   = zx2*zy0 + zy2*zx0;\r\n    let zx4   = zx3*zx0 - zy3*zy0;\r\n    let zy4   = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invD  = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx    = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;\r\n    let fy    = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;\r\n\r\n    if ((iter & 1u) == 0u) {\r\n        nx = -fx; ny = fy;\r\n    } else {\r\n        nx = fx;  ny = -fy;\r\n    }\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 54: Spiro-Nova\r\ncase 54u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let zx2   = zx0*zx0 - zy0*zy0;\r\n    let zy2   = 2.0*zx0*zy0;\r\n    let zx3   = zx2*zx0 - zy2*zy0;\r\n    let zy3   = zx2*zy0 + zy2*zx0;\r\n    let zx4   = zx3*zx0 - zy3*zy0;\r\n    let zy4   = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invD  = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx    = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;\r\n    let fy    = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;\r\n\r\n    let theta   = atan2(fy, fx);\r\n    let r0      = length(vec2<f32>(fx, fy));\r\n    let tmpA    = gamma * 5.0;\r\n    let aDiv    = floor(tmpA / 4.0);\r\n    let freqA   = tmpA - aDiv * 4.0;\r\n    let aFreq   = 3.0 + freqA;\r\n    let tmpB    = gamma * 7.0;\r\n    let bDiv    = floor(tmpB / 5.0);\r\n    let freqB   = tmpB - bDiv * 5.0;\r\n    let bFreq   = 4.0 + freqB;\r\n    let amp     = 0.2 + 0.1 * sin(f32(iter) * 0.1);\r\n\r\n    nx = (r0 + amp * sin(aFreq * theta)) * cos(theta + amp * cos(bFreq * theta));\r\n    ny = (r0 + amp * sin(aFreq * theta)) * sin(theta + amp * cos(bFreq * theta));\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 55: Vibrant-Nova\r\ncase 55u: {\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let zx2   = zx0*zx0 - zy0*zy0;\r\n    let zy2   = 2.0*zx0*zy0;\r\n    let zx3   = zx2*zx0 - zy2*zy0;\r\n    let zy3   = zx2*zy0 + zy2*zx0;\r\n    let zx4   = zx3*zx0 - zy3*zy0;\r\n    let zy4   = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invD   = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx     = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;\r\n    let fy     = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;\r\n\r\n    let r0      = length(vec2<f32>(fx, fy));\r\n    let theta   = atan2(fy, fx);\r\n    let wave    = 1.0 + 0.3 * sin(6.0*theta + f32(iter)*0.2 + gamma*10.0);\r\n\r\n    nx = r0 * wave * cos(theta);\r\n    ny = r0 * wave * sin(theta);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n// 56: Julia-Nova Hybrid\r\ncase 56u: {\r\n    let jx = params.dx;\r\n    let jy = params.dy;\r\n    var zx0 = qx;\r\n    var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx;\r\n        zy0 = cy;\r\n    }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let numx = zx3 - 1.0;\r\n    let numy = zy3;\r\n    let denx = 3.0*zx2;\r\n    let deny = 3.0*zy2;\r\n    let invD = 1.0 / (denx*denx + deny*deny + 1e-9);\r\n    let divx = (numx*denx + numy*deny) * invD;\r\n    let divy = (numy*denx - numx*deny) * invD;\r\n    let fx = zx0 - divx + ccx;\r\n    let fy = zy0 - divy + ccy;\r\n    let alpha = 0.3 + 0.2 * sin(gamma * 6.28);\r\n    nx = fx + alpha * (fx - jx);\r\n    ny = fy + alpha * (fy - jy);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 57: Inverse-Spiral Nova\r\ncase 57u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numx = zx4 - 1.0; let numy = zy4;\r\n    let denx = 4.0*zx3; let deny = 4.0*zy3;\r\n    let invD = 1.0/(denx*denx + deny*deny + 1e-9);\r\n    let fx   = zx0 - (numx*denx + numy*deny)*invD + ccx;\r\n    let fy   = zy0 - (numy*denx - numx*deny)*invD + ccy;\r\n    let invR2= 1.0/(fx*fx + fy*fy + 1e-9);\r\n    var sx   = fx * invR2; var sy = -fy * invR2;\r\n    let \u03B8 = atan2(sy, sx);\r\n    let r = length(vec2<f32>(sx, sy));\r\n    let beta = 0.1 + 0.05*sin(f32(iter)*0.2);\r\n    let rw = r * exp(beta * \u03B8);\r\n    nx = rw * cos(\u03B8);\r\n    ny = rw * sin(\u03B8);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 58: Wavefront Nova\r\ncase 58u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let denx = 4.0*zx3; let deny = 4.0*zy3;\r\n    let numx = zx4 - 1.0; let numy = zy4;\r\n    let invD = 1.0/(denx*denx + deny*deny + 1e-9);\r\n    let fx   = zx0 - (numx*denx + numy*deny)*invD + ccx;\r\n    let fy   = zy0 - (numy*denx - numx*deny)*invD + ccy;\r\n    let r0    = length(vec2<f32>(fx, fy));\r\n    let phase = sin(f32(iter) * 0.3 + gamma * 12.0);\r\n    let offset= 0.2 * phase * sin(8.0 * r0);\r\n    let r1    = max(0.0, r0 + offset);\r\n    let \u03B8     = atan2(fy, fx);\r\n    nx = r1 * cos(\u03B8);\r\n    ny = r1 * sin(\u03B8);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 59: Vortex-Nova\r\ncase 59u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx; zy0 = cy;\r\n    }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invD = 1.0/(denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;\r\n    let fy = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;\r\n\r\n    let r   = length(vec2<f32>(fx, fy));\r\n    let baseAngle = atan2(fy, fx);\r\n    let swirlAmt  = 1.5 * exp(-r * 2.0);\r\n    let angle2    = baseAngle + swirlAmt;\r\n    nx = r * cos(angle2);\r\n    ny = r * sin(angle2);\r\n\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 60: Sine-Ring Nova\r\ncase 60u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx; zy0 = cy;\r\n    }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invD   = 1.0/(denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx0    = zx0 - ((numxF*denxF + numyF*denyF) * invD) + ccx;\r\n    let fy0    = zy0 - ((numyF*denxF - numxF*denyF) * invD) + ccy;\r\n\r\n    let r0    = length(vec2<f32>(fx0, fy0));\r\n    let \u03B8     = atan2(fy0, fx0);\r\n    let freq  = 10.0 + 5.0 * sin(gamma * 6.2831853);\r\n    let amp   = 0.1 + 0.05 * cos(f32(iter) * 0.1);\r\n    let ring  = r0 + amp * sin(freq * r0);\r\n    nx = ring * cos(\u03B8);\r\n    ny = ring * sin(\u03B8);\r\n\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 61: Inverse-Spiral Nova (gentler)\r\ncase 61u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) {\r\n        zx0 = cx; zy0 = cy;\r\n    }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numx = zx4 - 1.0;   let numy = zy4;\r\n    let denx = 4.0*zx3;     let deny = 4.0*zy3;\r\n    let invD = 1.0/(denx*denx + deny*deny + 1e-9);\r\n    let fx0  = zx0 - (numx*denx + numy*deny)*invD + ccx;\r\n    let fy0  = zy0 - (numy*denx - numx*deny)*invD + ccy;\r\n    let invR2= 1.0/(fx0*fx0 + fy0*fy0 + 1e-9);\r\n    let sx   = fx0 * invR2;\r\n    let sy   = -fy0 * invR2;\r\n\r\n    let \u03B8    = atan2(sy, sx);\r\n    let r    = length(vec2<f32>(sx, sy));\r\n    let t    = \u03B8 / 3.14159265;\r\n    let beta = 1.0 + 0.2 * t;\r\n    let rw   = pow(r, beta);\r\n\r\n    nx = rw * cos(\u03B8);\r\n    ny = rw * sin(\u03B8);\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n// 62: Inverse-Vortex Nova\r\ncase 62u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invDF  = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx0    = zx0 - ((numxF*denxF + numyF*denyF)*invDF) + ccx;\r\n    let fy0    = zy0 - ((numyF*denxF - numxF*denyF)*invDF) + ccy;\r\n\r\n    let r   = length(vec2<f32>(fx0, fy0));\r\n    let \u03B8   = atan2(fy0, fx0);\r\n    let swirlAmt = 1.5 * exp(-r * 2.0);\r\n    let \u03B82  = \u03B8 + swirlAmt;\r\n    var vx  = r * cos(\u03B82);\r\n    var vy  = r * sin(\u03B82);\r\n\r\n    let invR2 = 1.0 / (vx*vx + vy*vy + 1e-9);\r\n    nx = vx * invR2;\r\n    ny = -vy * invR2;\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 63: Inverse-Sine-Ring Nova\r\ncase 63u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n    let zx2 = zx0*zx0 - zy0*zy0;\r\n    let zy2 = 2.0*zx0*zy0;\r\n    let zx3 = zx2*zx0 - zy2*zy0;\r\n    let zy3 = zx2*zy0 + zy2*zx0;\r\n    let zx4 = zx3*zx0 - zy3*zy0;\r\n    let zy4 = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invDF  = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx0    = zx0 - ((numxF*denxF + numyF*denyF)*invDF) + ccx;\r\n    let fy0    = zy0 - ((numyF*denxF - numxF*denyF)*invDF) + ccy;\r\n\r\n    let r0   = length(vec2<f32>(fx0, fy0));\r\n    let \u03B8    = atan2(fy0, fx0);\r\n    let freq = 10.0 + 5.0 * sin(gamma * 6.2831853);\r\n    let amp  = 0.1 + 0.05 * cos(f32(iter) * 0.1);\r\n    var rx  = r0 + amp * sin(freq * r0);\r\n    var ry  = \u03B8;\r\n\r\n    let sx = rx * cos(ry);\r\n    let sy = rx * sin(ry);\r\n\r\n    let invR2 = 1.0 / (sx*sx + sy*sy + 1e-9);\r\n    nx = sx * invR2;\r\n    ny = -sy * invR2;\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 64: Inverse-Mirror Nova\r\ncase 64u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n\r\n    let zx2   = zx0*zx0 - zy0*zy0;\r\n    let zy2   = 2.0*zx0*zy0;\r\n    let zx3   = zx2*zx0 - zy2*zy0;\r\n    let zy3   = zx2*zy0 + zy2*zx0;\r\n    let zx4   = zx3*zx0 - zy3*zy0;\r\n    let zy4   = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invDF = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx0   = zx0 - ((numxF*denxF + numyF*denyF)*invDF) + ccx;\r\n    let fy0   = zy0 - ((numyF*denxF - numxF*denyF)*invDF) + ccy;\r\n\r\n    var mx: f32; var my: f32;\r\n    if ((iter & 1u) == 0u) {\r\n        mx = -fx0; my = fy0;\r\n    } else {\r\n        mx =  fx0; my = -fy0;\r\n    }\r\n\r\n    let invR2 = 1.0 / (mx*mx + my*my + 1e-9);\r\n    nx = mx * invR2;\r\n    ny = -my * invR2;\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\n\r\n// 65: Inverse-Vibrant Nova\r\ncase 65u: {\r\n    var zx0 = qx; var zy0 = qy;\r\n    if (iter == 0u) { zx0 = cx; zy0 = cy; }\r\n\r\n    let zx2   = zx0*zx0 - zy0*zy0;\r\n    let zy2   = 2.0*zx0*zy0;\r\n    let zx3   = zx2*zx0 - zy2*zy0;\r\n    let zy3   = zx2*zy0 + zy2*zx0;\r\n    let zx4   = zx3*zx0 - zy3*zy0;\r\n    let zy4   = zx3*zy0 + zy3*zx0;\r\n    let numxF = zx4 - 1.0;\r\n    let numyF = zy4;\r\n    let denxF = 4.0*zx3;\r\n    let denyF = 4.0*zy3;\r\n    let invDF = 1.0 / (denxF*denxF + denyF*denyF + 1e-9);\r\n    let fx0   = zx0 - ((numxF*denxF + numyF*denyF)*invDF) + ccx;\r\n    let fy0   = zy0 - ((numyF*denxF - numxF*denyF)*invDF) + ccy;\r\n\r\n    let r0     = length(vec2<f32>(fx0, fy0));\r\n    let theta  = atan2(fy0, fx0);\r\n    let wave   = 1.0 + 0.3 * sin(6.0*theta + f32(iter)*0.2 + gamma*10.0);\r\n    let vx     = r0 * wave * cos(theta);\r\n    let vy     = r0 * wave * sin(theta);\r\n\r\n    let invR2  = 1.0 / (vx*vx + vy*vy + 1e-9);\r\n    nx = vx * invR2;\r\n    ny = -vy * invR2;\r\n    npx = qx; npy = qy;\r\n    break;\r\n}\r\ncase 66u: {                // Golden-Ratio Rational\r\n    let phi  = 1.61803398875;\r\n    let crx = -phi;\r\n    let cry =  phi;\r\n    let cax =  phi - 1.0;\r\n    let cay =  0.5 * phi;\r\n\r\n    let zx2 = qx*qx - qy*qy;\r\n    let zy2 = 2.0 * qx * qy;\r\n\r\n    let numx = zx2 + crx;\r\n    let numy = zy2 + cry;\r\n    let denx = zx2 + cax;\r\n    let deny = zy2 + cay;\r\n    let den2 = denx*denx + deny*deny + 1e-9;\r\n\r\n    let divx = (numx*denx + numy*deny) / den2;\r\n    let divy = (numy*denx - numx*deny) / den2;\r\n\r\n    nx = divx + ccx;\r\n    ny = divy + ccy;\r\n}\r\n\r\ncase 67u: {                // SinCos-Kernel\r\n    let sinx = sin(qx) * cosh(qy);\r\n    let siny =  cos(qx) * sinh(qy);\r\n    let cosx = cos(qx) * cosh(qy);\r\n    let cosy = -sin(qx) * sinh(qy);\r\n\r\n    let prodx = sinx*cosx - siny*cosy;\r\n    let prody = sinx*cosy + siny*cosx;\r\n\r\n    nx = prodx + ccx;\r\n    ny = prody + ccy;\r\n}\r\n/* 68 : Golden-Push-Pull */\r\ncase 68u: {\r\n    let phi  = 1.61803398875;\r\n    let crex = -phi;  let crey =  phi;\r\n    let caex =  phi-1.0; let caey = 0.5*phi;\r\n\r\n    let zx2 = qx*qx - qy*qy;\r\n    let zy2 = 2.0*qx*qy;\r\n\r\n    let numx = zx2 + crex;\r\n    let numy = zy2 + crey;\r\n    let denx = zx2 + caex;\r\n    let deny = zy2 + caey;\r\n    let den2 = denx*denx + deny*deny + 1e-9;\r\n    let divx = (numx*denx + numy*deny) / den2;\r\n    let divy = (numy*denx - numx*deny) / den2;\r\n\r\n    let beta = 0.5 + 0.5 * sin(f32(iter) * 0.25);\r\n    let mixx = caex * (1.0-beta) + crex * beta;\r\n    let mixy = caey * (1.0-beta) + crey * beta;\r\n\r\n    nx = divx + mixx + ccx;\r\n    ny = divy + mixy + ccy;\r\n}\r\n\r\n/* 69 : Sinc-Kernel */\r\ncase 69u: {\r\n    let pi  = 3.14159265359;\r\n    let sinX =  sin(pi*qx) * cosh(pi*qy);\r\n    let sinY =  cos(pi*qx) * sinh(pi*qy);\r\n\r\n    let denX = pi * qx;\r\n    let denY = pi * qy;\r\n    let den2 = denX*denX + denY*denY + 1e-9;\r\n\r\n    let sincX = ( sinX*denX + sinY*denY) / den2;\r\n    let sincY = ( sinY*denX - sinX*denY) / den2;\r\n\r\n    nx = sincX + ccx;\r\n    ny = sincY + ccy;\r\n  }\r\n\r\n    // 70: Bizarre Grid\r\n    case 70u: {\r\n      var zx = qx;\r\n      var zy = qy;\r\n      if (iter == 0u) {\r\n        zx = cx;\r\n        zy = cy;\r\n      }\r\n\r\n      if (zx > 1.0) {\r\n        zx = 2.0 - zx;\r\n      }\r\n      if (zx < -1.0) {\r\n        zx = -2.0 - zx;\r\n      }\r\n      if (zy > 1.0) {\r\n        zy = 2.0 - zy;\r\n      }\r\n      if (zy < -1.0) {\r\n        zy = -2.0 - zy;\r\n      }\r\n\r\n      let r2 = zx*zx + zy*zy;\r\n      var scale = 1.0;\r\n      let Rmin2 = 0.25;\r\n      let Rmax2 = 2.25;\r\n\r\n      if (r2 < Rmin2) {\r\n        scale = Rmax2 / Rmin2;\r\n      } else if (r2 < Rmax2) {\r\n        scale = Rmax2 / r2;\r\n      }\r\n\r\n      zx = zx * scale * 1.5;\r\n      zy = zy * scale * 1.5;\r\n\r\n      let kx = params.dx;\r\n      let ky = params.dy;\r\n\r\n      nx = zx + kx;\r\n      ny = zy + ky;\r\n    }\r\n\r\n    // 71: Julia (z\xB2 + k, z\u2080 = c, k = dx + i dy)\r\n    case 71u: {\r\n      let kx = params.dx;\r\n      let ky = params.dy;\r\n\r\n      let zx2 = qx*qx - qy*qy;\r\n      let zy2 = 2.0*qx*qy;\r\n\r\n      nx = zx2 + kx + 0.3; //offset to not get a perfect circle\r\n      ny = zy2 + ky + 0.5;\r\n    }\r\n\r\n    default: { // Mandelbrot\r\n      nx = qx*qx - qy*qy + ccx;\r\n      ny = 2.0*qx*qy + ccy;\r\n    }\r\n  }\r\n  return FractalResult(nx, ny, npx, npy);\r\n}\r\n\r\n@compute @workgroup_size(8,8,1)\r\nfn main(@builtin(global_invocation_id) gid: vec3<u32>) {\r\n  // Local index within this strip texture\r\n  let lx = gid.x;\r\n  let ly = gid.y;\r\n\r\n  // Skip threads that fall outside the strip bounds for this dispatch\r\n  if (lx >= params.tileWidth || ly >= params.tileHeight) {\r\n    return;\r\n  }\r\n\r\n  // Global index within the *full* fractal grid (e.g. 8192\xD78192)\r\n  let gx = params.tileOffsetX + lx;\r\n  let gy = params.tileOffsetY + ly;\r\n\r\n  // Skip anything that lies outside the global grid\r\n  if (gx >= params.gridSize || gy >= params.gridSize) {\r\n    return;\r\n  }\r\n\r\n  // Normalized coordinates across the full grid [0,1]\r\n  // gridSize should be the full resolution (8192), not the strip size.\r\n  let invF = 1.0 / f32(params.gridSize - 1u);\r\n  let nxFull = f32(gx) * invF;\r\n  let nyFull = f32(gy) * invF;\r\n\r\n  // Center at zero, maintain aspect so it is not stretched\r\n  let centeredX = (nxFull - 0.5) * params.aspect;\r\n  let centeredY = (nyFull - 0.5);\r\n\r\n  // Zoom + pan - zoom is the size of the window in complex space\r\n  let cx = centeredX * params.zoom + params.dx;\r\n  let cy = centeredY * params.zoom + params.dy;\r\n\r\n  var init = getInitialZ(params.fractalType, cx, cy);\r\n  var qx = init.qx;\r\n  var qy = init.qy;\r\n  var px = init.px;\r\n  var py = init.py;\r\n\r\n  var iter: u32 = 0u;\r\n  let escapeR2 = params.escapeR * params.escapeR;\r\n\r\n  loop {\r\n    if (iter >= params.maxIter) {\r\n      break;\r\n    }\r\n    if (qx*qx + qy*qy > escapeR2) {\r\n      break;\r\n    }\r\n\r\n    let res = computeFractal(\r\n      params.fractalType, qx, qy, px, py,\r\n      cx, cy, params.gamma, iter\r\n    );\r\n\r\n    let nxz = res.nx;\r\n    let nyz = res.ny;\r\n    let npx = res.npx;\r\n    let npy = res.npy;\r\n\r\n    if (params.convergenceTest == 1u) {\r\n      if (params.escapeMode == 1u) {\r\n        if (nxz*nxz + nyz*nyz > escapeR2) {\r\n          iter = iter + 1u;\r\n          break;\r\n        }\r\n      } else {\r\n        let dx_ = nxz - qx;\r\n        let dy_ = nyz - qy;\r\n        if (dx_*dx_ + dy_*dy_ < params.epsilon * params.epsilon) {\r\n          iter = iter + 1u;\r\n          break;\r\n        }\r\n      }\r\n    } else {\r\n      if (nxz*nxz + nyz*nyz > escapeR2) {\r\n        iter = iter + 1u;\r\n        break;\r\n      }\r\n    }\r\n\r\n    px = npx; py = npy;\r\n    qx = nxz; qy = nyz;\r\n    iter = iter + 1u;\r\n  }\r\n\r\n  let ratio = f32(iter) / f32(params.maxIter);\r\n  let col = vec4<f32>(ratio, ratio, ratio, 1.0);\r\n\r\n  // IMPORTANT: write into the strip texture at local coords\r\n  textureStore(\r\n    storageTex,\r\n    vec2<i32>(i32(lx), i32(ly)),\r\n    i32(params.layerIndex),\r\n    col\r\n  );\r\n}\r\n";
@@ -1887,11 +5086,13 @@
         if (needRecreate) {
           try {
             if (c.sdfTex) c.sdfTex.destroy();
-          } catch (_) {
+          } catch (e) {
+            console.error(e);
           }
           try {
             if (c.flagTex) c.flagTex.destroy();
-          } catch (_) {
+          } catch (e) {
+            console.error(e);
           }
           const sdfTex = this.device.createTexture({
             size: [w, h, 1],
@@ -1958,7 +5159,8 @@
                 dimension: "2d-array",
                 arrayLayerCount: 1
               });
-            } catch (_) {
+            } catch (e) {
+              console.error(e);
             }
           }
           if (!c.flagView) {
@@ -1967,7 +5169,8 @@
                 dimension: "2d-array",
                 arrayLayerCount: 1
               });
-            } catch (_) {
+            } catch (e) {
+              console.error(e);
             }
           }
           if (!c._sdfLayerBgs) c._sdfLayerBgs = /* @__PURE__ */ new Map();
@@ -1992,7 +5195,8 @@
             baseArrayLayer: 0,
             arrayLayerCount: 1
           });
-        } catch (_) {
+        } catch (e) {
+          console.error(e);
           return chunk.fractalTex.createView({ dimension: "2d" });
         }
       }
@@ -2110,11 +5314,13 @@
       for (const c of chunks) {
         try {
           if (c.sdfTex) c.sdfTex.destroy();
-        } catch (_) {
+        } catch (e) {
+          console.error(e);
         }
         try {
           if (c.flagTex) c.flagTex.destroy();
-        } catch (_) {
+        } catch (e) {
+          console.error(e);
         }
         if (c._sdfLayerBgs) c._sdfLayerBgs.clear();
         c.sdfLayerViews = null;
@@ -2381,7 +5587,7 @@
   var fractalFragment_default = "// \u2500\u2500 camera & sampler (group 0) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct Camera {\r\n  viewProj : mat4x4<f32>,\r\n};\r\n@group(0) @binding(3) var<uniform> camera : Camera;\r\n\r\n@group(0) @binding(1) var mySamp : sampler;\r\n\r\n// \u2500\u2500 render params (group 0 / binding 2) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Must match vertex shader and JS packing.\r\nstruct RenderParams {\r\n  layerIndex      : u32,\r\n  scheme          : u32,\r\n  useHueGradient  : u32,\r\n  dispMode        : u32,\r\n\r\n  bowlOn          : u32,\r\n  lightingOn      : u32,\r\n  dispLimitOn     : u32,\r\n  alphaMode       : u32,\r\n\r\n  hueOffset       : f32,\r\n  dispAmp         : f32,\r\n  dispCurve       : f32,\r\n  bowlDepth       : f32,\r\n\r\n  quadScale       : f32,\r\n  gridSize        : f32,\r\n  slopeLimit      : f32,\r\n  wallJump        : f32,\r\n\r\n  lightPos        : vec3<f32>,\r\n  specPower       : f32,\r\n\r\n  worldOffset     : f32,\r\n  worldStart      : f32,\r\n  _pad0           : vec2<f32>,\r\n};\r\n@group(0) @binding(2) var<uniform> render : RenderParams;\r\n\r\nstruct Threshold {\r\n  lowT   : f32,\r\n  highT  : f32,\r\n  basis  : f32,\r\n  _pad0  : f32,\r\n};\r\n@group(0) @binding(4) var<uniform> thr : Threshold;\r\n\r\n// Optional gradient texture (group 0 / binding 5)\r\n// 1D gradient packed in a 2D texture: width = N, height = 1\r\n@group(0) @binding(5) var gradTex : texture_2d<f32>;\r\n\r\n// group 0 / binding 0 -> color array texture (fractal source)\r\n@group(0) @binding(0) var myTex : texture_2d_array<f32>;\r\n\r\n// group 1: model + sdf + flag + sampler (bindings exist even if fragment doesn't read them)\r\nstruct Model {\r\n  world         : mat4x4<f32>,\r\n  uvOffsetScale : vec4<f32>,\r\n};\r\n@group(1) @binding(0) var<uniform> model : Model;\r\n\r\n@group(1) @binding(1) var sdfTex : texture_2d_array<f32>;\r\n@group(1) @binding(2) var flagTex : texture_2d_array<u32>;\r\n@group(1) @binding(3) var samp : sampler;\r\n\r\n// vertex -> fragment IO (must match your vertex shader)\r\nstruct FSIn {\r\n  @builtin(position)              pos    : vec4<f32>,\r\n  @location(0)                    uv     : vec2<f32>,\r\n  @location(1)                    wPos   : vec3<f32>,\r\n  @location(2)                    s      : vec4<f32>,\r\n  @location(3) @interpolate(flat) flag   : u32,\r\n};\r\n\r\nfn hsl2rgb(hsl : vec3<f32>) -> vec3<f32> {\r\n  let H = fract(hsl.x);\r\n  let S = clamp(hsl.y, 0.0, 1.0);\r\n  let L = clamp(hsl.z, 0.0, 1.0);\r\n\r\n  let C  = (1.0 - abs(2.0 * L - 1.0)) * S;\r\n  let Hp = H * 6.0;\r\n\r\n  let t  = Hp - 2.0 * floor(Hp * 0.5);\r\n  let X  = C * (1.0 - abs(t - 1.0));\r\n\r\n  var rgb = vec3<f32>(0.0);\r\n\r\n  if      (Hp < 1.0) { rgb = vec3<f32>(C, X, 0.0); }\r\n  else if (Hp < 2.0) { rgb = vec3<f32>(X, C, 0.0); }\r\n  else if (Hp < 3.0) { rgb = vec3<f32>(0.0, C, X); }\r\n  else if (Hp < 4.0) { rgb = vec3<f32>(0.0, X, C); }\r\n  else if (Hp < 5.0) { rgb = vec3<f32>(X, 0.0, C); }\r\n  else               { rgb = vec3<f32>(C, 0.0, X); }\r\n\r\n  let m = L - 0.5 * C;\r\n  return rgb + vec3<f32>(m, m, m);\r\n}\r\n\r\nfn sampleGradientRGB(t: f32) -> vec3<f32> {\r\n  let u = clamp(t, 0.0, 1.0);\r\n  let c = textureSampleLevel(gradTex, mySamp, vec2<f32>(u, 0.5), 0.0);\r\n  return clamp(c.rgb, vec3<f32>(0.0), vec3<f32>(1.0));\r\n}\r\n\r\nfn monoTintRGB(l: f32) -> vec3<f32> {\r\n  let ll = clamp(l, 0.0, 1.0);\r\n\r\n  if (abs(render.hueOffset) <= 1e-6) {\r\n    return vec3<f32>(ll);\r\n  }\r\n\r\n  let hue = sampleGradientRGB(fract(render.hueOffset));\r\n  return hue * ll;\r\n}\r\n\r\nfn paletteRGB(r: f32) -> vec3<f32> {\r\n  if (render.useHueGradient != 0u) {\r\n    let u = fract(r + render.hueOffset);\r\n    return sampleGradientRGB(u);\r\n  }\r\n\r\n  var H : f32 = 0.0;\r\n  var S : f32 = 1.0;\r\n  var L : f32 = 0.5;\r\n\r\n  var monoL : f32 = -1.0;\r\n\r\n  switch (render.scheme) {\r\n    case 0u:  { H = (260.0 - 260.0 * pow(r, 0.9)) / 360.0; L = (10.0  + 65.0  * pow(r, 1.2)) / 100.0; }\r\n    case 1u:  { H = (0.0 + 60.0 * r) / 360.0;            L = 0.50 + 0.50 * r; }\r\n    case 2u:  { H = (200.0 - 100.0 * r) / 360.0;         L = 0.30 + 0.70 * r; }\r\n    case 3u:  { H = (30.0 + 270.0 * r) / 360.0;          L = 0.30 + 0.40 * r; }\r\n    case 4u:  { H = (120.0 -  90.0 * r) / 360.0;         L = 0.20 + 0.50 * r; }\r\n    case 5u:  { H = (300.0 - 240.0 * r) / 360.0;         L = 0.55 + 0.20 * sin(r * 3.14159); }\r\n\r\n    case 6u:  { monoL = r; }\r\n\r\n    case 7u:  { H = (10.0 + 60.0 * pow(r, 1.2)) / 360.0; L = 0.15 + 0.75 * pow(r, 1.5); }\r\n    case 8u:  { H = r;                                   L = 0.45 + 0.25 * (1.0 - r); }\r\n    case 9u:  { H = fract(2.0 * r);                       L = 0.50; }\r\n    case 10u: { H = fract(3.0 * r + 0.1);                 L = 0.65; }\r\n    case 11u: { H = 0.75 - 0.55 * r;                      L = 0.25 + 0.55 * r * r; }\r\n    case 12u: { H = (5.0 + 70.0 * r) / 360.0;             L = 0.10 + 0.80 * pow(r, 1.4); }\r\n    case 13u: { H = (260.0 - 260.0 * r) / 360.0;          L = 0.30 + 0.60 * pow(r, 0.8); }\r\n    case 14u: { H = (230.0 - 160.0 * r) / 360.0;          L = 0.25 + 0.60 * r; }\r\n    case 15u: { H = (200.0 + 40.0 * r) / 360.0;           L = 0.20 + 0.50 * r; }\r\n    case 16u: { H = 0.60;                                 L = 0.15 + 0.35 * r; }\r\n    case 17u: {\r\n      if (r < 0.5) { H = 0.55 + (0.75 - 0.55) * (r * 2.0); }\r\n      else        { H = 0.02 + (0.11 - 0.02) * ((r - 0.5) * 2.0); }\r\n      L = 0.25 + 0.55 * abs(r - 0.5);\r\n    }\r\n    case 18u: { H = fract(3.0 * r);                       L = 0.50 + 0.25 * (1.0 - r); }\r\n    case 19u: { H = fract(4.0 * r);                       L = 0.50; }\r\n    case 20u: { H = fract(5.0 * r + 0.2);                 L = 0.65; }\r\n    case 21u: { H = (240.0 - 240.0 * r) / 360.0;          L = 0.30 + 0.40 * r; }\r\n    case 22u: { H = fract(r * 6.0 + sin(r * 10.0));       L = 0.40 + 0.30 * sin(r * 20.0); }\r\n    case 23u: { H = (30.0 + 50.0 * r) / 360.0;            L = 0.45 + 0.30 * r; }\r\n    case 24u: { H = (90.0 - 80.0 * r) / 360.0;            L = 0.50 + 0.40 * r; }\r\n    case 25u: { H = (100.0 - 100.0 * r) / 360.0;          L = 0.40 + 0.50 * r; }\r\n\r\n    case 26u: {\r\n      let loopVal = fract(r * 10.0);\r\n      monoL = loopVal * 0.8;\r\n    }\r\n\r\n    case 27u: {\r\n      if (r < 0.5) { H = 0.80 + (0.40 - 0.80) * (r * 2.0); }\r\n      else        { H = 0.10 + (0.00 - 0.10) * ((r - 0.5) * 2.0); }\r\n      L = 0.20 + 0.60 * abs(r - 0.5);\r\n    }\r\n    case 28u: { H = fract(sin(r * 6.28318) * 0.5 + 0.5);  L = 0.50; }\r\n    case 29u: { H = fract(r * 3.0);                       L = fract(r * 3.0); }\r\n    case 30u: { H = fract(r * 6.0);                       L = 0.45 + 0.40 * abs(sin(r * 6.0 * 3.14159)); }\r\n    case 31u: {\r\n      let t = fract(r * 8.0);\r\n      if (t < 0.5) { H = t * 2.0; } else { H = (1.0 - t) * 2.0; }\r\n      L = 0.60 - 0.30 * abs(t - 0.5);\r\n    }\r\n    case 32u: { H = fract(pow(r, 0.7) * 12.0);            L = 0.50 + 0.30 * pow(r, 1.2); }\r\n    case 33u: { H = fract(r * 10.0 + 0.3);                L = 0.40 + 0.50 * r; }\r\n\r\n    default:  { H = (40.0 + 310.0 * pow(r, 1.3)) / 360.0; L = 0.20 + 0.50 * pow(r, 0.8); }\r\n  }\r\n\r\n  if (monoL >= 0.0) {\r\n    return monoTintRGB(monoL);\r\n  }\r\n\r\n  H = fract(H + render.hueOffset);\r\n  return hsl2rgb(vec3<f32>(H, S, L));\r\n}\r\n\r\nstruct GateResult {\r\n  passed : bool,\r\n  alpha  : f32,\r\n};\r\n\r\nfn shouldPassAndComputeAlpha(r: f32, a_in: f32, s_r: f32, flagVal: u32) -> GateResult {\r\n  var res : GateResult;\r\n  var a = a_in;\r\n\r\n  if (render.alphaMode == 1u) {\r\n    a = r;\r\n  } else if (render.alphaMode == 2u) {\r\n    a = 1.0 - r;\r\n  }\r\n\r\n  if (thr.basis < 2.0) {\r\n    let inside = (r >= thr.lowT) && (r <= thr.highT);\r\n    if (thr.basis == 0.0 && !inside) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    } else if (thr.basis == 1.0 && inside) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    }\r\n  } else {\r\n    let hC = s_r;\r\n    if (hC < thr.lowT || hC > thr.highT) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    }\r\n  }\r\n\r\n  if (render.dispLimitOn != 0u && flagVal != 0u) {\r\n    res.passed = false;\r\n    res.alpha = a;\r\n    return res;\r\n  }\r\n\r\n  if (a < 0.01) {\r\n    res.passed = false;\r\n    res.alpha = a;\r\n    return res;\r\n  }\r\n\r\n  res.passed = true;\r\n  res.alpha = a;\r\n  return res;\r\n}\r\n\r\nfn effectiveArrayLayerIndex() -> i32 {\r\n  let nl = max(1u, textureNumLayers(myTex));\r\n  return i32(render.layerIndex % nl);\r\n}\r\n\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Depth-only prepass\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n@fragment\r\nfn fs_prepass(input : FSIn) -> @location(0) vec4<f32> {\r\n  let li = effectiveArrayLayerIndex();\r\n  let texel = textureSample(myTex, mySamp, input.uv, li);\r\n  let r = texel.r;\r\n  let a = texel.a;\r\n\r\n  let s_r = input.s.r;\r\n  let flagVal = input.flag;\r\n\r\n  let g = shouldPassAndComputeAlpha(r, a, s_r, flagVal);\r\n  if (!g.passed) {\r\n    discard;\r\n  }\r\n\r\n  return vec4<f32>(0.0, 0.0, 0.0, 0.0);\r\n}\r\n\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Full shading pass\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n@fragment\r\nfn fs_main(input : FSIn) -> @location(0) vec4<f32> {\r\n  let li = effectiveArrayLayerIndex();\r\n  let texel = textureSample(myTex, mySamp, input.uv, li);\r\n  let r     = texel.r;\r\n  let a_in  = texel.a;\r\n\r\n  let s_r = input.s.r;\r\n  let flagVal = input.flag;\r\n\r\n  let g = shouldPassAndComputeAlpha(r, a_in, s_r, flagVal);\r\n  if (!g.passed) {\r\n    discard;\r\n  }\r\n  let a = clamp(g.alpha, 0.0, 1.0);\r\n\r\n  var rgb = paletteRGB(r);\r\n\r\n  if (render.lightingOn != 0u) {\r\n    let n       = normalize(input.s.gba);\r\n    let lightWS = render.lightPos * render.quadScale;\r\n    let Ldir    = normalize(lightWS - input.wPos);\r\n    let Vdir    = normalize(-input.wPos);\r\n    let hVec    = normalize(Ldir + Vdir);\r\n\r\n    let diff = max(dot(n, Ldir), 0.0);\r\n    let spec = pow(max(dot(n, hVec), 0.0), render.specPower) * smoothstep(0.0, 0.1, diff);\r\n\r\n    let ambient    = 0.15;\r\n    let diffWeight = 1.0;\r\n    let specWeight = 1.25;\r\n\r\n    rgb = clamp(\r\n      rgb * (ambient + diffWeight * diff) + specWeight * spec,\r\n      vec3<f32>(0.0),\r\n      vec3<f32>(1.0)\r\n    );\r\n  }\r\n\r\n  return vec4<f32>(rgb, a);\r\n}\r\n\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Weighted blended OIT pass\r\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct OITOut {\r\n  @location(0) accum  : vec4<f32>,\r\n  @location(1) reveal : vec4<f32>,\r\n};\r\n\r\nfn oitWeight(depth01: f32, a: f32) -> f32 {\r\n  let z = clamp(depth01, 0.0, 1.0);\r\n  let z2 = z * z;\r\n  let z4 = z2 * z2;\r\n  let wZ = clamp(0.03 / (0.0001 + z4), 0.01, 50.0);\r\n  let wA = max(a, 0.02);\r\n  return wZ * wA;\r\n}\r\n\r\n@fragment\r\nfn fs_oit(input : FSIn) -> OITOut {\r\n  let li = effectiveArrayLayerIndex();\r\n  let texel = textureSample(myTex, mySamp, input.uv, li);\r\n  let r     = texel.r;\r\n  let a_in  = texel.a;\r\n\r\n  let s_r = input.s.r;\r\n  let flagVal = input.flag;\r\n\r\n  let g = shouldPassAndComputeAlpha(r, a_in, s_r, flagVal);\r\n  if (!g.passed) {\r\n    discard;\r\n  }\r\n\r\n  let a = clamp(g.alpha, 0.0, 1.0);\r\n\r\n  var rgb = paletteRGB(r);\r\n\r\n  if (render.lightingOn != 0u) {\r\n    let n       = normalize(input.s.gba);\r\n    let lightWS = render.lightPos * render.quadScale;\r\n    let Ldir    = normalize(lightWS - input.wPos);\r\n    let Vdir    = normalize(-input.wPos);\r\n    let hVec    = normalize(Ldir + Vdir);\r\n\r\n    let diff = max(dot(n, Ldir), 0.0);\r\n    let spec = pow(max(dot(n, hVec), 0.0), render.specPower) * smoothstep(0.0, 0.1, diff);\r\n\r\n    let ambient    = 0.15;\r\n    let diffWeight = 1.0;\r\n    let specWeight = 1.25;\r\n\r\n    rgb = clamp(\r\n      rgb * (ambient + diffWeight * diff) + specWeight * spec,\r\n      vec3<f32>(0.0),\r\n      vec3<f32>(1.0)\r\n    );\r\n  }\r\n\r\n  let w = oitWeight(input.pos.z, a);\r\n\r\n  var out : OITOut;\r\n  out.accum = vec4<f32>(rgb * (a * w), a * w);\r\n  out.reveal = vec4<f32>(0.0, 0.0, 0.0, a);\r\n  return out;\r\n}\r\n";
 
   // shaders/fractalVertex.wgsl
-  var fractalVertex_default = "// \u2500\u2500 camera & sampler (group 0) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct Camera {\r\n  viewProj : mat4x4<f32>,\r\n};\r\n@group(0) @binding(3) var<uniform> camera : Camera;\r\n\r\n@group(0) @binding(1) var mySamp : sampler;\r\n\r\n// \u2500\u2500 render-wide parameters (group 0 / binding 2) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Must match JS packing in RenderPipelineGPU.writeRenderUniform() and the fragment shader.\r\nstruct RenderParams {\r\n  layerIndex      : u32,\r\n  scheme          : u32,\r\n  useHueGradient  : u32,\r\n  dispMode        : u32,\r\n\r\n  bowlOn          : u32,\r\n  lightingOn      : u32,\r\n  dispLimitOn     : u32,\r\n  alphaMode       : u32,\r\n\r\n  hueOffset       : f32,\r\n  dispAmp         : f32,\r\n  dispCurve       : f32,\r\n  bowlDepth       : f32,\r\n\r\n  quadScale       : f32,\r\n  gridSize        : f32,\r\n  slopeLimit      : f32,\r\n  wallJump        : f32,\r\n\r\n  lightPos        : vec3<f32>,\r\n  specPower       : f32,\r\n\r\n  worldOffset     : f32,\r\n  worldStart      : f32,\r\n  _pad0           : vec2<f32>,\r\n};\r\n@group(0) @binding(2) var<uniform> render : RenderParams;\r\n\r\n// \u2500\u2500 group 1: per-tile model + precomputed textures + sampler \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct Model {\r\n  world         : mat4x4<f32>,\r\n  uvOffsetScale : vec4<f32>,\r\n};\r\n@group(1) @binding(0) var<uniform> model : Model;\r\n\r\n@group(1) @binding(1) var sdfTex : texture_2d_array<f32>;\r\n@group(1) @binding(2) var flagTex : texture_2d_array<u32>;\r\n@group(1) @binding(3) var samp : sampler;\r\n\r\n// \u2500\u2500 vertex I/O \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct VertexIn {\r\n  @location(0) position : vec3<f32>,\r\n  @location(1) uv       : vec2<f32>,\r\n};\r\n\r\nstruct VSOut {\r\n  @builtin(position)              pos  : vec4<f32>,\r\n  @location(0)                    uv   : vec2<f32>,\r\n  @location(1)                    wPos : vec3<f32>,\r\n  @location(2)                    s    : vec4<f32>,\r\n  @location(3) @interpolate(flat) flag : u32,\r\n};\r\n\r\nfn texelIJ(tileUV : vec2<f32>) -> vec2<i32> {\r\n  let dims = vec2<i32>(textureDimensions(sdfTex).xy);\r\n  let ix = clamp(i32(tileUV.x * f32(dims.x)), 0, dims.x - 1);\r\n  let iy = clamp(i32(tileUV.y * f32(dims.y)), 0, dims.y - 1);\r\n  return vec2<i32>(ix, iy);\r\n}\r\n\r\n@vertex\r\nfn vs_main(in: VertexIn) -> VSOut {\r\n  var out : VSOut;\r\n\r\n  var worldPos = model.world * vec4<f32>(in.position, 1.0);\r\n\r\n  if (render.bowlOn != 0u && render.bowlDepth > 0.00001) {\r\n    let globalUV = model.uvOffsetScale.xy + in.uv * model.uvOffsetScale.zw;\r\n    let offset = globalUV - vec2<f32>(0.5, 0.5);\r\n    let r2 = dot(offset, offset);\r\n    let maxR2 = 0.5;\r\n    let t = 1.0 - clamp(r2 / maxR2, 0.0, 1.0);\r\n    worldPos.z += -render.bowlDepth * t * render.quadScale;\r\n  }\r\n\r\n  var s : vec4<f32> = vec4<f32>(0.0);\r\n  var maskVal : u32 = 0u;\r\n\r\n  if (render.dispMode != 0u || render.lightingOn != 0u) {\r\n    let ij = texelIJ(in.uv);\r\n\r\n    let sdfL = max(1u, textureNumLayers(sdfTex));\r\n    let li = i32(render.layerIndex % sdfL);\r\n\r\n    s = textureLoad(sdfTex, ij, li, 0);\r\n\r\n    if (render.dispMode != 0u && render.dispAmp != 0.0) {\r\n      let h0 = s.r;\r\n      let curve = max(render.dispCurve, 0.0001);\r\n      let h = sign(h0) * pow(abs(h0), curve) * render.dispAmp;\r\n      worldPos.z += h;\r\n    }\r\n\r\n    let flagL = max(1u, textureNumLayers(flagTex));\r\n    let liF = i32(render.layerIndex % flagL);\r\n\r\n    maskVal = textureLoad(flagTex, ij, liF, 0).r;\r\n  }\r\n\r\n  let layerZ = render.worldStart + render.worldOffset * f32(render.layerIndex);\r\n  worldPos.z += layerZ;\r\n\r\n  out.pos  = camera.viewProj * worldPos;\r\n  out.uv   = in.uv;\r\n  out.wPos = worldPos.xyz;\r\n  out.s    = s;\r\n  out.flag = maskVal;\r\n  return out;\r\n}\r\n";
+  var fractalVertex_default = '// \u2500\u2500 camera & sampler (group 0) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct Camera {\r\n  viewProj : mat4x4<f32>,\r\n};\r\n@group(0) @binding(3) var<uniform> camera : Camera;\r\n\r\n@group(0) @binding(1) var mySamp : sampler;\r\n\r\n// group 0 / binding 0 -> color array texture (fractal source)\r\n@group(0) @binding(0) var myTex : texture_2d_array<f32>;\r\n\r\n// \u2500\u2500 render-wide parameters (group 0 / binding 2) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n// Must match JS packing in RenderPipelineGPU.writeRenderUniform() and the fragment shader.\r\nstruct RenderParams {\r\n  layerIndex      : u32,\r\n  scheme          : u32,\r\n  useHueGradient  : u32,\r\n  dispBits        : u32,\r\n\r\n  bowlOn          : u32,\r\n  lightingOn      : u32,\r\n  dispLimitOn     : u32,\r\n  alphaMode       : u32,\r\n\r\n  hueOffset       : f32,\r\n  dispAmp         : f32,\r\n  dispCurve       : f32,\r\n  bowlDepth       : f32,\r\n\r\n  quadScale       : f32,\r\n  gridSize        : f32,\r\n  slopeLimit      : f32,\r\n  wallJump        : f32,\r\n\r\n  lightPos        : vec3<f32>,\r\n  specPower       : f32,\r\n\r\n  worldOffset     : f32,\r\n  worldStart      : f32,\r\n  _pad0           : vec2<f32>,\r\n};\r\n@group(0) @binding(2) var<uniform> render : RenderParams;\r\n\r\nstruct Threshold {\r\n  lowT   : f32,\r\n  highT  : f32,\r\n  basis  : f32,\r\n  _pad0  : f32,\r\n};\r\n@group(0) @binding(4) var<uniform> thr : Threshold;\r\n\r\n// \u2500\u2500 group 1: per-tile model + precomputed textures + sampler \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct Model {\r\n  world         : mat4x4<f32>,\r\n  uvOffsetScale : vec4<f32>,\r\n};\r\n@group(1) @binding(0) var<uniform> model : Model;\r\n\r\n@group(1) @binding(1) var sdfTex : texture_2d_array<f32>;\r\n@group(1) @binding(2) var flagTex : texture_2d_array<u32>;\r\n@group(1) @binding(3) var samp : sampler;\r\n\r\n// \u2500\u2500 vertex I/O \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\nstruct VertexIn {\r\n  @location(0) position : vec3<f32>,\r\n  @location(1) uv       : vec2<f32>,\r\n};\r\n\r\nstruct VSOut {\r\n  @builtin(position)              pos  : vec4<f32>,\r\n  @location(0)                    uv   : vec2<f32>,\r\n  @location(1)                    wPos : vec3<f32>,\r\n  @location(2)                    s    : vec4<f32>,\r\n  @location(3) @interpolate(flat) flag : u32,\r\n};\r\n\r\nfn texelIJFromDims(tileUV : vec2<f32>, dims : vec2<i32>) -> vec2<i32> {\r\n  let ix = clamp(i32(tileUV.x * f32(dims.x)), 0, dims.x - 1);\r\n  let iy = clamp(i32(tileUV.y * f32(dims.y)), 0, dims.y - 1);\r\n  return vec2<i32>(ix, iy);\r\n}\r\n\r\nfn texelIJ(tileUV : vec2<f32>) -> vec2<i32> {\r\n  let dims = vec2<i32>(textureDimensions(sdfTex).xy);\r\n  return texelIJFromDims(tileUV, dims);\r\n}\r\n\r\nfn smooth01(t : f32) -> f32 {\r\n  let u = clamp(t, 0.0, 1.0);\r\n  return u * u * (3.0 - 2.0 * u);\r\n}\r\n\r\nfn effectiveColorLayerIndex() -> i32 {\r\n  let nl = max(1u, textureNumLayers(myTex));\r\n  return i32(render.layerIndex % nl);\r\n}\r\n\r\nfn hueHeightDisplacement(uv : vec2<f32>) -> f32 {\r\n  let li = effectiveColorLayerIndex();\r\n  let dims = vec2<i32>(textureDimensions(myTex).xy);\r\n  let ij = texelIJFromDims(uv, dims);\r\n  let t = textureLoad(myTex, ij, li, 0);\r\n\r\n  let env01 = smooth01(render._pad0.y);\r\n\r\n  // Treat the stored channel as a 0..1 scalar (no wrap),\r\n  // so 1.0 is the max displacement and 0.0 is the min.\r\n  let base = clamp(t.r, 0.0, 1.0);\r\n\r\n  // Apply offset as a shift, not a wrap (keeps 1.0 as "highest" when offset is 0).\r\n  let shifted = clamp(base + render.hueOffset, 0.0, 1.0);\r\n\r\n  return shifted * (render.dispAmp * env01);\r\n}\r\n\r\n@vertex\r\nfn vs_main(in: VertexIn) -> VSOut {\r\n  var out : VSOut;\r\n\r\n  var worldPos = model.world * vec4<f32>(in.position, 1.0);\r\n\r\n  if (render.bowlOn != 0u && render.bowlDepth > 0.00001) {\r\n    let globalUV = model.uvOffsetScale.xy + in.uv * model.uvOffsetScale.zw;\r\n    let offset = globalUV - vec2<f32>(0.5, 0.5);\r\n    let r2 = dot(offset, offset);\r\n    let maxR2 = 0.5;\r\n    let t = 1.0 - clamp(r2 / maxR2, 0.0, 1.0);\r\n    worldPos.z += -render.bowlDepth * t * render.quadScale;\r\n  }\r\n\r\n  var s : vec4<f32> = vec4<f32>(0.0);\r\n  var maskVal : u32 = 0u;\r\n\r\n  let useSdfDisp = (render.dispBits & 1u) != 0u;\r\n  let useHueDisp = (render.dispBits & 2u) != 0u;\r\n\r\n  let needSdf = useSdfDisp || (render.lightingOn != 0u) || (thr.basis >= 2.0);\r\n  let needFlag = (render.dispLimitOn != 0u);\r\n\r\n  if (needSdf) {\r\n    let dimsSdf = vec2<i32>(textureDimensions(sdfTex).xy);\r\n    let ij = texelIJFromDims(in.uv, dimsSdf);\r\n\r\n    let sdfL = max(1u, textureNumLayers(sdfTex));\r\n    let li = i32(render.layerIndex % sdfL);\r\n\r\n    s = textureLoad(sdfTex, ij, li, 0);\r\n\r\n    if (useSdfDisp && render.dispAmp != 0.0) {\r\n      let h0 = s.r;\r\n      let curve = max(render.dispCurve, 0.0001);\r\n      let h = sign(h0) * pow(abs(h0), curve) * render.dispAmp;\r\n      worldPos.z += h;\r\n    }\r\n  }\r\n\r\n  if (useHueDisp && render.dispAmp != 0.0) {\r\n    worldPos.z += hueHeightDisplacement(in.uv);\r\n  }\r\n\r\n  if (needFlag) {\r\n    let dimsF = vec2<i32>(textureDimensions(flagTex).xy);\r\n    let ijF = texelIJFromDims(in.uv, dimsF);\r\n\r\n    let flagL = max(1u, textureNumLayers(flagTex));\r\n    let liF = i32(render.layerIndex % flagL);\r\n\r\n    maskVal = textureLoad(flagTex, ijF, liF, 0).r;\r\n  }\r\n\r\n  let layerZ = render.worldStart + render.worldOffset * f32(render.layerIndex);\r\n  worldPos.z += layerZ;\r\n\r\n  out.pos  = camera.viewProj * worldPos;\r\n  out.uv   = in.uv;\r\n  out.wPos = worldPos.xyz;\r\n  out.s    = s;\r\n  out.flag = maskVal;\r\n  return out;\r\n}';
 
   // shaders/fBlitFragment.wgsl
   var fBlitFragment_default = "// shaders/fBlitFragment.wgsl\r\n\r\nstruct RenderParams {\r\n  layerIndex      : u32,\r\n  scheme          : u32,\r\n  useHueGradient  : u32,\r\n  dispMode        : u32,\r\n\r\n  bowlOn          : u32,\r\n  lightingOn      : u32,\r\n  dispLimitOn     : u32,\r\n  alphaMode       : u32,\r\n\r\n  hueOffset       : f32,\r\n  dispAmp         : f32,\r\n  dispCurve       : f32,\r\n  bowlDepth       : f32,\r\n\r\n  quadScale       : f32,\r\n  gridSize        : f32,\r\n  slopeLimit      : f32,\r\n  wallJump        : f32,\r\n\r\n  lightPos        : vec3<f32>,\r\n  specPower       : f32,\r\n\r\n  worldOffset     : f32,\r\n  worldStart      : f32,\r\n  _pad0           : vec2<f32>,\r\n};\r\n@group(0) @binding(2) var<uniform> render : RenderParams;\r\n\r\nstruct Threshold {\r\n  lowT   : f32,\r\n  highT  : f32,\r\n  basis  : f32,\r\n  _pad0  : f32,\r\n};\r\n@group(0) @binding(4) var<uniform> thr : Threshold;\r\n\r\n@group(0) @binding(0) var myTex : texture_2d_array<f32>;\r\n@group(0) @binding(1) var mySamp : sampler;\r\n\r\n@group(0) @binding(5) var gradTex : texture_2d<f32>;\r\n\r\nstruct Model {\r\n  world         : mat4x4<f32>,\r\n  uvOffsetScale : vec4<f32>,\r\n};\r\n@group(1) @binding(0) var<uniform> model : Model;\r\n\r\n@group(1) @binding(1) var sdfTex : texture_2d_array<f32>;\r\n@group(1) @binding(2) var flagTex : texture_2d_array<u32>;\r\n@group(1) @binding(3) var samp : sampler;\r\n\r\nstruct VSOut {\r\n  @builtin(position)              pos  : vec4<f32>,\r\n  @location(0)                    uv   : vec2<f32>,\r\n  @location(1)                    wPos : vec3<f32>,\r\n  @location(2)                    s    : vec4<f32>,\r\n  @location(3) @interpolate(flat) flag : u32,\r\n};\r\n\r\nfn hsl2rgb(hsl : vec3<f32>) -> vec3<f32> {\r\n  let H = fract(hsl.x);\r\n  let S = clamp(hsl.y, 0.0, 1.0);\r\n  let L = clamp(hsl.z, 0.0, 1.0);\r\n\r\n  let C  = (1.0 - abs(2.0 * L - 1.0)) * S;\r\n  let Hp = H * 6.0;\r\n\r\n  let t  = Hp - 2.0 * floor(Hp * 0.5);\r\n  let X  = C * (1.0 - abs(t - 1.0));\r\n\r\n  var rgb = vec3<f32>(0.0);\r\n\r\n  if      (Hp < 1.0) { rgb = vec3<f32>(C, X, 0.0); }\r\n  else if (Hp < 2.0) { rgb = vec3<f32>(X, C, 0.0); }\r\n  else if (Hp < 3.0) { rgb = vec3<f32>(0.0, C, X); }\r\n  else if (Hp < 4.0) { rgb = vec3<f32>(0.0, X, C); }\r\n  else if (Hp < 5.0) { rgb = vec3<f32>(X, 0.0, C); }\r\n  else               { rgb = vec3<f32>(C, 0.0, X); }\r\n\r\n  let m = L - 0.5 * C;\r\n  return rgb + vec3<f32>(m, m, m);\r\n}\r\n\r\nfn sampleGradientRGB(t: f32) -> vec3<f32> {\r\n  let u = clamp(t, 0.0, 1.0);\r\n  let c = textureSampleLevel(gradTex, mySamp, vec2<f32>(u, 0.5), 0.0);\r\n  return clamp(c.rgb, vec3<f32>(0.0), vec3<f32>(1.0));\r\n}\r\n\r\nstruct GateResult {\r\n  passed : bool,\r\n  alpha  : f32,\r\n};\r\n\r\nfn shouldPassAndComputeAlpha(r: f32, a_in: f32, s_r: f32, flagVal: u32) -> GateResult {\r\n  var res : GateResult;\r\n  var a = a_in;\r\n\r\n  if (render.alphaMode == 1u) {\r\n    a = r;\r\n  } else if (render.alphaMode == 2u) {\r\n    a = 1.0 - r;\r\n  }\r\n\r\n  if (thr.basis < 2.0) {\r\n    let inside = (r >= thr.lowT) && (r <= thr.highT);\r\n    if (thr.basis == 0.0 && !inside) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    } else if (thr.basis == 1.0 && inside) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    }\r\n  } else {\r\n    let hC = s_r;\r\n    if (hC < thr.lowT || hC > thr.highT) {\r\n      res.passed = false;\r\n      res.alpha = a;\r\n      return res;\r\n    }\r\n  }\r\n\r\n  if (render.dispLimitOn != 0u && flagVal != 0u) {\r\n    res.passed = false;\r\n    res.alpha = a;\r\n    return res;\r\n  }\r\n\r\n  if (a < 0.01) {\r\n    res.passed = false;\r\n    res.alpha = a;\r\n    return res;\r\n  }\r\n\r\n  res.passed = true;\r\n  res.alpha = a;\r\n  return res;\r\n}\r\n\r\nfn effectiveArrayLayerIndex() -> i32 {\r\n  let nl = max(1u, textureNumLayers(myTex));\r\n  return i32(render.layerIndex % nl);\r\n}\r\n\r\n@fragment\r\nfn fs_blit(input : VSOut) -> @location(0) vec4<f32> {\r\n  let li = effectiveArrayLayerIndex();\r\n  let texel = textureSample(myTex, mySamp, input.uv, li);\r\n  let r     = texel.r;\r\n  let a_in  = texel.a;\r\n\r\n  let s_r = input.s.r;\r\n  let flagVal = input.flag;\r\n\r\n  let g = shouldPassAndComputeAlpha(r, a_in, s_r, flagVal);\r\n  if (!g.passed) {\r\n    discard;\r\n  }\r\n  let a = g.alpha;\r\n\r\n  var rgb = vec3<f32>(0.0);\r\n\r\n  if (render.useHueGradient != 0u) {\r\n    let u = fract(r + render.hueOffset);\r\n    rgb = sampleGradientRGB(u);\r\n  } else {\r\n    var H : f32 = 0.0;\r\n    var S : f32 = 1.0;\r\n    var L : f32 = 0.5;\r\n\r\n    switch (render.scheme) {\r\n      case 0u: { H = (260.0 - 260.0 * pow(r, 0.9)) / 360.0; L = (10.0  + 65.0  * pow(r, 1.2)) / 100.0; }\r\n      case 1u: { H = (0.0 + 60.0 * r) / 360.0; L = 0.50 + 0.50 * r; }\r\n      case 2u: { H = (200.0 - 100.0 * r) / 360.0; L = 0.30 + 0.70 * r; }\r\n      case 3u: { H = (30.0 + 270.0 * r) / 360.0; L = 0.30 + 0.40 * r; }\r\n      case 4u: { H = (120.0 -  90.0 * r) / 360.0; L = 0.20 + 0.50 * r; }\r\n      case 5u: { H = (300.0 - 240.0 * r) / 360.0; L = 0.55 + 0.20 * sin(r * 3.14159); }\r\n      case 6u: { return vec4<f32>(vec3<f32>(r), a); }\r\n      case 7u: { H = (10.0 + 60.0 * pow(r, 1.2)) / 360.0; L = 0.15 + 0.75 * pow(r, 1.5); }\r\n      case 8u: { H = r; L = 0.45 + 0.25 * (1.0 - r); }\r\n      case 9u: { H = fract(2.0 * r); L = 0.50; }\r\n      case 10u: { H = fract(3.0 * r + 0.1); L = 0.65; }\r\n      case 11u: { H = 0.75 - 0.55 * r; L = 0.25 + 0.55 * r * r; }\r\n      case 12u: { H = (5.0 + 70.0 * r) / 360.0; L = 0.10 + 0.80 * pow(r, 1.4); }\r\n      case 13u: { H = (260.0 - 260.0 * r) / 360.0; L = 0.30 + 0.60 * pow(r, 0.8); }\r\n      case 14u: { H = (230.0 - 160.0 * r) / 360.0; L = 0.25 + 0.60 * r; }\r\n      case 15u: { H = (200.0 + 40.0 * r) / 360.0; L = 0.20 + 0.50 * r; }\r\n      case 16u: { H = 0.60; L = 0.15 + 0.35 * r; }\r\n      case 17u: {\r\n        if (r < 0.5) { H = 0.55 + (0.75 - 0.55) * (r * 2.0); }\r\n        else { H = 0.02 + (0.11 - 0.02) * ((r - 0.5) * 2.0); }\r\n        L = 0.25 + 0.55 * abs(r - 0.5);\r\n      }\r\n      case 18u: { H = fract(3.0 * r); L = 0.50 + 0.25 * (1.0 - r); }\r\n      case 19u: { H = fract(4.0 * r); L = 0.50; }\r\n      case 20u: { H = fract(5.0 * r + 0.2); L = 0.65; }\r\n      case 21u: { H = (240.0 - 240.0 * r) / 360.0; L = 0.30 + 0.40 * r; }\r\n      case 22u: { H = fract(r * 6.0 + sin(r * 10.0)); L = 0.40 + 0.30 * sin(r * 20.0); }\r\n      case 23u: { H = (30.0 + 50.0 * r) / 360.0; L = 0.45 + 0.30 * r; }\r\n      case 24u: { H = (90.0 - 80.0 * r) / 360.0; L = 0.50 + 0.40 * r; }\r\n      case 25u: { H = (100.0 - 100.0 * r) / 360.0; L = 0.40 + 0.50 * r; }\r\n      case 26u: {\r\n        let loopVal = fract(r * 10.0);\r\n        let Lmono   = loopVal * 0.8;\r\n        return vec4<f32>(vec3<f32>(Lmono), a);\r\n      }\r\n      case 27u: {\r\n        if (r < 0.5) { H = 0.80 + (0.40 - 0.80) * (r * 2.0); }\r\n        else { H = 0.10 + (0.00 - 0.10) * ((r - 0.5) * 2.0); }\r\n        L = 0.20 + 0.60 * abs(r - 0.5);\r\n      }\r\n      case 28u: { H = fract(sin(r * 6.28318) * 0.5 + 0.5); L = 0.50; }\r\n      case 29u: { H = fract(r * 3.0); L = fract(r * 3.0); }\r\n      case 30u: { H = fract(r * 6.0); L = 0.45 + 0.40 * abs(sin(r * 6.0 * 3.14159)); }\r\n      case 31u: {\r\n        let t = fract(r * 8.0);\r\n        if (t < 0.5) { H = t * 2.0; } else { H = (1.0 - t) * 2.0; }\r\n        L = 0.60 - 0.30 * abs(t - 0.5);\r\n      }\r\n      case 32u: { H = fract(pow(r, 0.7) * 12.0); L = 0.50 + 0.30 * pow(r, 1.2); }\r\n      case 33u: { H = fract(r * 10.0 + 0.3); L = 0.40 + 0.50 * r; }\r\n      default: { H = (40.0 + 310.0 * pow(r, 1.3)) / 360.0; L = 0.20 + 0.50 * pow(r, 0.8); }\r\n    }\r\n\r\n    H = fract(H + render.hueOffset);\r\n    rgb = hsl2rgb(vec3<f32>(H, S, L));\r\n  }\r\n\r\n  if (render.lightingOn != 0u) {\r\n    let n       = normalize(input.s.gba);\r\n    let lightWS = render.lightPos * render.quadScale;\r\n    let Ldir    = normalize(lightWS - input.wPos);\r\n    let Vdir    = normalize(-input.wPos);\r\n    let hVec    = normalize(Ldir + Vdir);\r\n\r\n    let diff = max(dot(n, Ldir), 0.0);\r\n    let spec = pow(max(dot(n, hVec), 0.0), render.specPower) * smoothstep(0.0, 0.1, diff);\r\n\r\n    let ambient    = 0.15;\r\n    let diffWeight = 1.0;\r\n    let specWeight = 1.25;\r\n\r\n    rgb = clamp(\r\n      rgb * (ambient + diffWeight * diff) + specWeight * spec,\r\n      vec3<f32>(0.0),\r\n      vec3<f32>(1.0)\r\n    );\r\n  }\r\n\r\n  return vec4<f32>(rgb, a);\r\n}\r\n";
@@ -2600,6 +5806,10 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
           }
         ]
       };
+      this._gradOverrideTex = null;
+      this._gradOverrideView = null;
+      this._gradOverrideSampler = null;
+      this._gradientBindStamp = 1;
       this._createFallbackTextures();
       this._ensureGradientTexture(this._gradientSize);
       this.setHueGradientWheel({ count: this._gradientSize });
@@ -2806,10 +6016,36 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       }
     }
     _getGradientView() {
+      if (this._gradOverrideView) return this._gradOverrideView;
       if (this._gradientView) return this._gradientView;
       if (this._fallbackGradView) return this._fallbackGradView;
       if (this._ensureFallbackGradientTexture()) return this._fallbackGradView;
       return null;
+    }
+    setGradientOverride(tex, view, sampler = null) {
+      const v = view || (tex && typeof tex.createView === "function" ? (() => {
+        try {
+          return tex.createView({ dimension: "2d" });
+        } catch {
+        }
+        try {
+          return tex.createView();
+        } catch {
+        }
+        return null;
+      })() : null);
+      this._gradOverrideTex = tex || null;
+      this._gradOverrideView = v || null;
+      this._gradOverrideSampler = sampler || null;
+      this._gradientBindStamp = (this._gradientBindStamp | 0) + 1 | 0;
+      this._rebuildBg0ForGradientIfNeeded();
+    }
+    clearGradientOverride() {
+      this._gradOverrideTex = null;
+      this._gradOverrideView = null;
+      this._gradOverrideSampler = null;
+      this._gradientBindStamp = (this._gradientBindStamp | 0) + 1 | 0;
+      this._rebuildBg0ForGradientIfNeeded();
     }
     _ensureArrayViewFromTexture(tex, layersCount) {
       if (!tex || typeof tex.createView !== "function") return null;
@@ -2847,6 +6083,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       const bgLayout0 = this._bgLayout0;
       const gradView = this._getGradientView();
       if (!gradView) return;
+      const sharedSampler = this._gradOverrideSampler || this.sampler;
       for (let i = 0; i < this.chunks.length; ++i) {
         const info = this.chunks[i];
         const fractalView = info._fractalArrayView || info.storageView || info.fractalView || null;
@@ -2856,7 +6093,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
             layout: bgLayout0,
             entries: [
               { binding: 0, resource: fractalView },
-              { binding: 1, resource: this.sampler },
+              { binding: 1, resource: sharedSampler },
               {
                 binding: 2,
                 resource: {
@@ -2870,7 +6107,8 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
               { binding: 5, resource: gradView }
             ]
           });
-        } catch {
+        } catch (e) {
+          console.warn("_rebuildBg0ForGradientIfNeeded failed for chunk", i, e);
         }
       }
     }
@@ -2920,7 +6158,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
           },
           {
             binding: 4,
-            visibility: GPUShaderStage.FRAGMENT,
+            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
             buffer: { type: "uniform" }
           },
           {
@@ -3241,6 +6479,8 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
           "RenderPipelineGPU.setChunks: missing gradient view for binding(0,5)."
         );
       }
+      const sharedSampler = this._gradOverrideSampler || this.sampler;
+      const gradStamp = this._gradientBindStamp | 0 || 0;
       const nextChunks = chunks || [];
       const nextCount = nextChunks.length | 0;
       if (this.chunks !== nextChunks) this.chunks = nextChunks;
@@ -3290,7 +6530,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
             `RenderPipelineGPU.setChunks: chunk[${i}] missing SDF or flag view and requireSdf=true.`
           );
         }
-        const key = `${layersCount}|${requireSdf ? 1 : 0}`;
+        const key = `${layersCount}|${requireSdf ? 1 : 0}|g${gradStamp}`;
         const prevKey = info._bindKey || "";
         info._fractalArrayView = fractalArrayView;
         info._sdfArrayView = sdfArrayView;
@@ -3300,7 +6540,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
             layout: bgLayout0,
             entries: [
               { binding: 0, resource: fractalArrayView },
-              { binding: 1, resource: this.sampler },
+              { binding: 1, resource: sharedSampler },
               {
                 binding: 2,
                 resource: {
@@ -3363,8 +6603,29 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       const dv = this._renderUBODV;
       const layerIndex = _u32(paramsState.layerIndex, 0);
       const scheme = _u32(paramsState.scheme, 0);
-      const useHueGradient = paramsState.useHueGradient != null ? !!paramsState.useHueGradient : paramsState.hueGradientOn != null ? !!paramsState.hueGradientOn : paramsState.hueGradient != null ? !!paramsState.hueGradient : false;
-      const dispMode = _u32(paramsState.dispMode, 0);
+      const wantGradMode = _u32(paramsState.gradTexMode, 0) === 1;
+      let useHueGradient;
+      if (paramsState.useHueGradient != null) {
+        useHueGradient = !!paramsState.useHueGradient;
+      } else if (paramsState.hueGradientOn != null) {
+        useHueGradient = !!paramsState.hueGradientOn;
+      } else if (paramsState.hueGradient != null) {
+        useHueGradient = !!paramsState.hueGradient;
+      } else {
+        useHueGradient = wantGradMode;
+      }
+      const sdfDispMode = _u32(paramsState.dispMode, 0);
+      let dispSource;
+      if (paramsState.dispSource != null) {
+        dispSource = _u32(paramsState.dispSource, 0);
+      } else if (paramsState.dispSourceMode != null) {
+        dispSource = _u32(paramsState.dispSourceMode, 0);
+      } else {
+        dispSource = sdfDispMode !== 0 ? 1 : 0;
+      }
+      let dispBits = 0;
+      if ((dispSource & 1) !== 0 && sdfDispMode !== 0) dispBits |= 1;
+      if ((dispSource & 2) !== 0) dispBits |= 2;
       const bowlOn = !!paramsState.bowlOn;
       const lightingOn = !!paramsState.lightingOn;
       const dispLimitOn = !!paramsState.dispLimitOn;
@@ -3387,7 +6648,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       dv.setUint32(0, layerIndex >>> 0, true);
       dv.setUint32(4, scheme >>> 0, true);
       dv.setUint32(8, useHueGradient ? 1 : 0, true);
-      dv.setUint32(12, dispMode >>> 0, true);
+      dv.setUint32(12, dispBits >>> 0, true);
       dv.setUint32(16, bowlOn ? 1 : 0, true);
       dv.setUint32(20, lightingOn ? 1 : 0, true);
       dv.setUint32(24, dispLimitOn ? 1 : 0, true);
@@ -3406,8 +6667,12 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       dv.setFloat32(76, specPower, true);
       dv.setFloat32(80, worldOffset, true);
       dv.setFloat32(84, worldStart, true);
-      dv.setFloat32(88, 0, true);
-      dv.setFloat32(92, 0, true);
+      const timeSec = paramsState.timeSec != null ? _f32(paramsState.timeSec, 0) : paramsState.iTime != null ? _f32(paramsState.iTime, 0) : paramsState.time != null ? _f32(paramsState.time, 0) : 0;
+      const wantHueDisp = (dispBits & 2) !== 0;
+      const kickRaw = paramsState.dispHueKick01 != null ? _f32(paramsState.dispHueKick01, 0) : paramsState.dispHueKick != null ? _f32(paramsState.dispHueKick, 0) : wantHueDisp ? 1 : 0;
+      const kick01 = kickRaw <= 0 ? 0 : kickRaw >= 1 ? 1 : kickRaw;
+      dv.setFloat32(88, timeSec, true);
+      dv.setFloat32(92, kick01, true);
       this.device.queue.writeBuffer(
         this.renderUniformBuffer,
         dstByteOffset >>> 0,
@@ -4660,36 +7925,6 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       o += 4;
       this.device.queue.writeBuffer(this._slabComputeUBO, offsetBytes >>> 0, buf);
     }
-    _prepareWallsForLayer(layerIndex, slabParams) {
-      const N = this._chunks.length;
-      if (!N || !this._slabComputeUBO) return 1;
-      const step = Math.max(1, (slabParams.meshStep ?? 1) | 0);
-      for (let i = 0; i < N; ++i) {
-        const c = this._chunks[i];
-        if (!c || !c._bgCompute) continue;
-        const offX = (c.offsetX ?? 0) | 0;
-        const offY = (c.offsetY ?? 0) | 0;
-        const chunkW = (c.width ?? 0) | 0;
-        const chunkH = (c.height ?? 0) | 0;
-        this._writeSlabComputeUniformAt(
-          i * this.uniformStride,
-          slabParams,
-          layerIndex >>> 0,
-          c._slabMaxWalls >>> 0,
-          offX >>> 0,
-          offY >>> 0,
-          chunkW >>> 0,
-          chunkH >>> 0
-        );
-        this.device.queue.writeBuffer(c._wallCount, 0, new Uint32Array([0]));
-        this.device.queue.writeBuffer(
-          c._wallDrawArgs,
-          0,
-          new Uint32Array([6, 0, 0, 0])
-        );
-      }
-      return step;
-    }
     /* -------------------------------------------------------------- */
     /*  Model buffers                                                 */
     /* -------------------------------------------------------------- */
@@ -4790,47 +8025,6 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         );
       }
       return step;
-    }
-    _encodeComputeWallsPass(encoder, step) {
-      const N = this._chunks.length;
-      if (!N) return;
-      const pass = encoder.beginComputePass();
-      pass.setPipeline(this._computeBuild);
-      for (let i = 0; i < N; ++i) {
-        const c = this._chunks[i];
-        if (!c || !c._bgCompute) continue;
-        const w = (c.width ?? 0) | 0;
-        const h = (c.height ?? 0) | 0;
-        const cellsX = Math.max(0, Math.floor((w - 1) / step));
-        const cellsY = Math.max(0, Math.floor((h - 1) / step));
-        if (cellsX <= 0 || cellsY <= 0) continue;
-        pass.setBindGroup(0, c._bgCompute, [i * this.uniformStride]);
-        pass.dispatchWorkgroups(Math.ceil(cellsX / 8), Math.ceil(cellsY / 8), 1);
-      }
-      pass.setPipeline(this._computeFinalize);
-      for (let i = 0; i < N; ++i) {
-        const c = this._chunks[i];
-        if (!c || !c._bgCompute) continue;
-        pass.setBindGroup(0, c._bgCompute, [i * this.uniformStride]);
-        pass.dispatchWorkgroups(1, 1, 1);
-      }
-      pass.end();
-    }
-    /**
-     * @param {number} layerIndex
-     * @param {object} slabParams
-     */
-    async computeWallsForLayer(layerIndex, slabParams = {}) {
-      const N = this._chunks.length;
-      if (!N) return;
-      const step = this._prepareWallsForLayer(layerIndex, slabParams);
-      const encoder = this.device.createCommandEncoder();
-      this._encodeComputeWallsPass(encoder, step);
-      this.device.queue.submit([encoder.finish()]);
-      await this.device.queue.onSubmittedWorkDone();
-    }
-    async compute(layerIndex, slabParams = {}) {
-      await this.computeWallsForLayer(layerIndex, slabParams);
     }
     _encodeComputeWallsPass(encoder, step) {
       const N = this._chunks.length;
@@ -5010,333 +8204,379 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
   };
   var fSlabCompute_default = SlabMeshPipelineGPU;
 
-  // render.js
+  // render/alphaMode.js
+  function parseAlphaModeToNumeric(mode, fallback = 0) {
+    if (mode === void 0 || mode === null) return Number(fallback || 0);
+    if (typeof mode === "number" && Number.isFinite(mode)) {
+      const n = Math.floor(mode);
+      if (n === 0) return 0;
+      if (n === 2) return 2;
+      return 1;
+    }
+    if (typeof mode === "string") {
+      const t = mode.trim().toLowerCase();
+      if (t === "0" || t === "opaque") return 0;
+      if (t === "2") return 2;
+      if (t === "1" || t === "fade" || t === "premultiplied") return 1;
+      const maybe = parseInt(t, 10);
+      if (!Number.isNaN(maybe)) {
+        if (maybe === 0) return 0;
+        if (maybe === 2) return 2;
+        return 1;
+      }
+      return 1;
+    }
+    return Number(fallback || 0);
+  }
+  function canvasAlphaStringForNumeric(numericMode) {
+    return numericMode === 0 ? "opaque" : "premultiplied";
+  }
+  function slabAlphaBitsFromParams(params) {
+    let bits = 0;
+    if (params && params.contourOn) bits |= 1;
+    if (params && params.contourOnly) bits |= 2;
+    if (params && params.contourFront) bits |= 4;
+    return bits >>> 0;
+  }
+
+  // render/cameraController.js
+  var _BLOCK_CODES = /* @__PURE__ */ new Set([
+    "Space",
+    "ShiftLeft",
+    "ShiftRight",
+    "ControlLeft",
+    "ControlRight",
+    "AltLeft",
+    "AltRight",
+    "MetaLeft",
+    "MetaRight",
+    "Tab",
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "KeyW",
+    "KeyA",
+    "KeyS",
+    "KeyD",
+    "KeyC"
+  ]);
+  function _shouldBlockKey(e) {
+    return _BLOCK_CODES.has(e.code) || e.key === " " || e.key === "Spacebar";
+  }
+  function createCameraController({
+    canvas,
+    onDirty = null,
+    initialPos = [0, 0, 2.4],
+    initialYaw = 0,
+    initialPitch = 0,
+    initialFov = 45 * Math.PI / 180,
+    invertMouseY = true,
+    mouseSens = 2e-3,
+    moveSpeed = 2,
+    shiftMult = 3,
+    ctrlMult = 0.35
+  } = {}) {
+    if (!canvas) throw new Error("createCameraController: canvas is required");
+    const keys = /* @__PURE__ */ Object.create(null);
+    let yaw = +initialYaw || 0;
+    let pitch = +initialPitch || 0;
+    let fov = Number.isFinite(+initialFov) ? +initialFov : 45 * Math.PI / 180;
+    const cameraPos = [
+      Number(initialPos?.[0] || 0),
+      Number(initialPos?.[1] || 0),
+      Number(initialPos?.[2] || 2.4)
+    ];
+    const lookTarget = [0, 0, 0];
+    const upDir = [0, 1, 0];
+    let _invertMouseY = !!invertMouseY;
+    let _attached = false;
+    function _markDirty() {
+      if (onDirty) onDirty();
+    }
+    function updateLookTarget() {
+      const dx = Math.cos(pitch) * Math.sin(yaw);
+      const dy = Math.sin(pitch);
+      const dz = -Math.cos(pitch) * Math.cos(yaw);
+      lookTarget[0] = cameraPos[0] + dx;
+      lookTarget[1] = cameraPos[1] + dy;
+      lookTarget[2] = cameraPos[2] + dz;
+      _markDirty();
+    }
+    function onKeyDown(e) {
+      if (_shouldBlockKey(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      keys[e.code] = true;
+      if (e.code === "Escape") {
+        try {
+          document.exitPointerLock();
+        } catch {
+        }
+      }
+    }
+    function onKeyUp(e) {
+      if (_shouldBlockKey(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      keys[e.code] = false;
+    }
+    function onMouseMove(e) {
+      yaw += e.movementX * mouseSens;
+      const ySign = _invertMouseY ? 1 : -1;
+      pitch = Math.max(
+        -Math.PI / 2,
+        Math.min(Math.PI / 2, pitch + ySign * e.movementY * mouseSens)
+      );
+      updateLookTarget();
+    }
+    function onPointerLockChange() {
+      const locked = document.pointerLockElement === canvas;
+      if (locked) {
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("keydown", onKeyDown, { capture: true });
+        document.addEventListener("keyup", onKeyUp, { capture: true });
+      } else {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("keydown", onKeyDown, { capture: true });
+        document.removeEventListener("keyup", onKeyUp, { capture: true });
+        for (const k in keys) keys[k] = false;
+      }
+    }
+    function onCanvasClick() {
+      try {
+        canvas.requestPointerLock();
+      } catch {
+      }
+    }
+    function attach() {
+      if (_attached) return;
+      _attached = true;
+      canvas.addEventListener("click", onCanvasClick);
+      document.addEventListener("pointerlockchange", onPointerLockChange);
+      updateLookTarget();
+    }
+    function dispose() {
+      if (!_attached) return;
+      _attached = false;
+      canvas.removeEventListener("click", onCanvasClick);
+      document.removeEventListener("pointerlockchange", onPointerLockChange);
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("keydown", onKeyDown, { capture: true });
+      document.removeEventListener("keyup", onKeyUp, { capture: true });
+    }
+    function setInvertMouseY(v) {
+      _invertMouseY = !!v;
+    }
+    function reset() {
+      cameraPos[0] = 0;
+      cameraPos[1] = 0;
+      cameraPos[2] = 2.4;
+      lookTarget[0] = 0;
+      lookTarget[1] = 0;
+      lookTarget[2] = 0;
+      pitch = 0;
+      yaw = 0;
+      fov = 45 * Math.PI / 180;
+      updateLookTarget();
+    }
+    function setFovRadians(v) {
+      if (!Number.isFinite(+v)) return;
+      fov = +v;
+      _markDirty();
+    }
+    function updateMovement(dt, quadScale = 1) {
+      const dtt = Number.isFinite(+dt) ? +dt : 0;
+      if (dtt <= 0) return false;
+      let baseSpeed = moveSpeed * dtt * (Number.isFinite(+quadScale) ? +quadScale : 1);
+      if (keys["ShiftLeft"] || keys["ShiftRight"]) baseSpeed *= shiftMult;
+      if (keys["ControlLeft"] || keys["ControlRight"]) baseSpeed *= ctrlMult;
+      const sy = Math.sin(yaw);
+      const cy = Math.cos(yaw);
+      const forward = [sy, 0, -cy];
+      const right = [cy, 0, sy];
+      let dx = 0;
+      let dy = 0;
+      let dz = 0;
+      let moved = false;
+      if (keys["KeyW"]) {
+        dx += forward[0] * baseSpeed;
+        dz += forward[2] * baseSpeed;
+        moved = true;
+      }
+      if (keys["KeyS"]) {
+        dx -= forward[0] * baseSpeed;
+        dz -= forward[2] * baseSpeed;
+        moved = true;
+      }
+      if (keys["KeyA"]) {
+        dx -= right[0] * baseSpeed;
+        dz -= right[2] * baseSpeed;
+        moved = true;
+      }
+      if (keys["KeyD"]) {
+        dx += right[0] * baseSpeed;
+        dz += right[2] * baseSpeed;
+        moved = true;
+      }
+      if (keys["Space"]) {
+        dy += baseSpeed;
+        moved = true;
+      }
+      if (keys["KeyC"]) {
+        dy -= baseSpeed;
+        moved = true;
+      }
+      if (!moved) return false;
+      cameraPos[0] += dx;
+      cameraPos[1] += dy;
+      cameraPos[2] += dz;
+      updateLookTarget();
+      return true;
+    }
+    const camState = {
+      cameraPos,
+      lookTarget,
+      upDir,
+      get fov() {
+        return fov;
+      },
+      set fov(v) {
+        setFovRadians(v);
+      }
+    };
+    return {
+      camState,
+      attach,
+      dispose,
+      reset,
+      setInvertMouseY,
+      updateMovement
+    };
+  }
+
+  // render/chunkViews.js
+  function _cloneWithoutSdf(c) {
+    const clone = Object.assign({}, c);
+    delete clone.sdfView;
+    delete clone.sdfLayerViews;
+    delete clone.sdfViews;
+    delete clone.sdfTex;
+    delete clone.sdfTexture;
+    delete clone.flagView;
+    delete clone.flagLayerViews;
+    delete clone.flagViews;
+    delete clone.flagTex;
+    delete clone.flagTexture;
+    delete clone._tmpSdfTex;
+    delete clone._tmpFlagTex;
+    delete clone._usingTmpSdfFallback;
+    return clone;
+  }
+  function createChunkViewCache() {
+    let _noSdfCacheSrc = null;
+    let _noSdfCache = null;
+    let _withSdfCacheSrc = null;
+    let _withSdfCache = null;
+    function invalidate() {
+      _noSdfCacheSrc = null;
+      _noSdfCache = null;
+      _withSdfCacheSrc = null;
+      _withSdfCache = null;
+    }
+    function withoutSdf(chunks = []) {
+      if (_noSdfCacheSrc === chunks && _noSdfCache) return _noSdfCache;
+      const out = (chunks || []).map(_cloneWithoutSdf);
+      _noSdfCacheSrc = chunks;
+      _noSdfCache = out;
+      return out;
+    }
+    function withSdf(chunks = []) {
+      if (_withSdfCacheSrc === chunks && _withSdfCache) return _withSdfCache;
+      const out = (chunks || []).map((c) => Object.assign({}, c));
+      _withSdfCacheSrc = chunks;
+      _withSdfCache = out;
+      return out;
+    }
+    return { invalidate, withoutSdf, withSdf };
+  }
+  function cleanupTempFallbacks(chunks = []) {
+    for (const c of chunks) {
+      if (c._tmpSdfTex) {
+        try {
+          c._tmpSdfTex.destroy();
+        } catch {
+        }
+        delete c._tmpSdfTex;
+      }
+      if (c._tmpFlagTex) {
+        try {
+          c._tmpFlagTex.destroy();
+        } catch {
+        }
+        delete c._tmpFlagTex;
+      }
+      if (c._usingTmpSdfFallback) delete c._usingTmpSdfFallback;
+    }
+  }
+  function destroySdfAttachments(chunks = []) {
+    for (const c of chunks) {
+      try {
+        if (c.sdfTex) {
+          try {
+            c.sdfTex.destroy();
+          } catch {
+          }
+        }
+      } catch {
+      }
+      try {
+        if (c.flagTex) {
+          try {
+            c.flagTex.destroy();
+          } catch {
+          }
+        }
+      } catch {
+      }
+      try {
+        if (c._tmpSdfTex) {
+          try {
+            c._tmpSdfTex.destroy();
+          } catch {
+          }
+        }
+      } catch {
+      }
+      try {
+        if (c._tmpFlagTex) {
+          try {
+            c._tmpFlagTex.destroy();
+          } catch {
+          }
+        }
+      } catch {
+      }
+      delete c.sdfView;
+      delete c.sdfLayerViews;
+      delete c.sdfViews;
+      delete c.sdfTex;
+      delete c.sdfTexture;
+      delete c.flagView;
+      delete c.flagLayerViews;
+      delete c.flagViews;
+      delete c.flagTex;
+      delete c.flagTexture;
+      delete c._tmpSdfTex;
+      delete c._tmpFlagTex;
+      delete c._usingTmpSdfFallback;
+    }
+  }
+
+  // render/runtime.js
   var RenderPipelineGPU2 = RenderPipelineGPU || fractalRender_default;
-  var renderGlobals = {
-    computeDirty: true,
-    cameraDirty: true,
-    displacementDirty: true,
-    gridDirty: true,
-    paramsState: {
-      gridSize: 1542,
-      splitCount: 8e6,
-      layerIndex: 0,
-      layers: 100,
-      nLayers: 1,
-      renderMode: "fractal",
-      layerMode: false,
-      maxIter: 150,
-      fractalType: 0,
-      // scaleOps is the ordered ops list (duplicates allowed). scaleMode is the legacy bitmask union.
-      // Default keeps old behavior: Multiply only.
-      scaleOps: [1],
-      scaleMode: 1,
-      zoom: 4,
-      dx: 0,
-      dy: 0,
-      escapeR: 4,
-      zMin: 0,
-      dz: 0.01,
-      gamma: 1,
-      // stepped gamma across layers
-      // - if layerGammaStep != 0: gamma(li) steps across layers; base gamma is treated as the floor
-      // - else if layerGammaRange != 0: gamma ramps by range; base gamma is treated as the floor
-      // - else: optional ramp toward layerGammaStart but clamped so base gamma remains the floor
-      layerGammaStart: 1,
-      layerGammaStep: 1e-3,
-      layerGammaRange: 0,
-      epsilon: 1e-6,
-      convergenceTest: false,
-      escapeMode: 0,
-      scheme: 0,
-      hueOffset: 0,
-      gridDivs: 256,
-      dispMode: 0,
-      dispAmp: 0.15,
-      dispCurve: 3,
-      dispLimitOn: false,
-      slopeLimit: 0.5,
-      wallJump: 0.05,
-      bowlOn: false,
-      bowlDepth: 0.25,
-      quadScale: 1,
-      worldOffset: 0,
-      worldStart: 0,
-      lightingOn: false,
-      lightPos: [0, 0, 5],
-      specPower: 32,
-      lowT: 0,
-      highT: 1,
-      alphaMode: 0,
-      basis: 0,
-      normalMode: 2,
-      // slab renderer knobs (optional, safe defaults)
-      fieldMode: 0,
-      meshStep: 1,
-      capBias: 0,
-      gradScale: 1,
-      thickness: 0.25,
-      feather: 0,
-      // slab contour debug toggles (packed into slab alphaMode bits)
-      contourOn: true,
-      contourOnly: true,
-      contourFront: true
-    }
-  };
-  var F = { C: 1, D: 2, R: 4, G: 8 };
-  var DIRTY_MAP = {
-    gridSize: F.C | F.D,
-    splitCount: F.C | F.D,
-    layers: F.C,
-    nLayers: F.C,
-    layerIndex: F.C,
-    maxIter: F.C,
-    fractalType: F.C,
-    // new ordered list (duplicates allowed)
-    scaleOps: F.C,
-    // legacy union bitmask (still supported for backward compat)
-    scaleMode: F.C,
-    zoom: F.C,
-    dx: F.C,
-    dy: F.C,
-    escapeR: F.C,
-    zMin: F.C,
-    dz: F.C,
-    gamma: F.C,
-    layerGammaStart: F.C,
-    layerGammaStep: F.C,
-    layerGammaRange: F.C,
-    epsilon: F.C,
-    convergenceTest: F.C,
-    escapeMode: F.C,
-    renderMode: F.R | F.D,
-    // toggling layerMode must force: recompute (layer count changes), SDF teardown, and render rebind
-    layerMode: F.C | F.D | F.R,
-    dispAmp: F.D,
-    dispMode: F.D,
-    dispCurve: F.D,
-    wallJump: F.D,
-    quadScale: F.D | F.R,
-    bowlOn: F.D | F.R,
-    bowlDepth: F.D | F.R,
-    connectivityMode: F.D,
-    normalMode: F.D,
-    slopeLimit: F.D,
-    // these affect the layer-space sampling and must trigger fractal compute as well
-    worldOffset: F.C | F.D | F.R,
-    worldStart: F.C | F.D | F.R,
-    hueOffset: F.R,
-    scheme: F.R,
-    colorScheme: F.R,
-    lightingOn: F.R | F.D,
-    lightPos: F.R,
-    specPower: F.R,
-    dispLimitOn: F.R,
-    gridDivs: F.R | F.G,
-    lowT: F.R | F.D,
-    highT: F.R | F.D,
-    basis: F.R | F.D,
-    alphaMode: F.R | F.G,
-    // slab renderer knobs
-    fieldMode: F.D,
-    meshStep: F.D,
-    capBias: F.D,
-    gradScale: F.D,
-    thickness: F.R,
-    feather: F.R,
-    // slab contour debug toggles
-    contourOn: F.R,
-    contourOnly: F.R,
-    contourFront: F.R
-  };
-  var pending = { paramsState: {} };
-  var dirtyBits = 0;
-  var hasPending = false;
-  function setState(partial) {
-    if (!partial || typeof partial !== "object") return;
-    Object.assign(pending.paramsState, partial);
-    hasPending = true;
-    for (const k in partial) {
-      const bits = DIRTY_MAP[k];
-      dirtyBits |= bits != null ? bits : F.R;
-    }
-  }
-  var MAX_SCALE_OPS = 16;
-  var _SCALE_OP_BITS = [
-    1,
-    // 1 Multiply
-    2,
-    // 2 Divide
-    4,
-    // 3 Sine
-    8,
-    // 4 Tangent
-    16,
-    // 5 Cosine
-    32,
-    // 6 Exp-Zoom
-    64,
-    // 7 Log-Shrink
-    128,
-    // 8 Aniso Warp
-    256,
-    // 9 Rotate
-    512,
-    // 10 Radial Twist
-    1024,
-    // 11 HyperWarp
-    2048,
-    // 12 RadialHyper
-    4096,
-    // 13 Swirl
-    8192,
-    // 14 Modular
-    16384,
-    // 15 AxisSwap
-    32768,
-    // 16 MixedWarp
-    65536,
-    // 17 Jitter
-    131072,
-    // 18 PowerWarp
-    262144
-    // 19 SmoothFade
-  ];
-  function _isValidScaleOpCode(n) {
-    n = n | 0;
-    return n >= 1 && n <= _SCALE_OP_BITS.length;
-  }
-  function _normScaleOps(raw) {
-    if (!raw) return [];
-    let a = raw;
-    if (typeof raw === "string") {
-      const s = raw.trim();
-      if (!s) return [];
-      a = s.split(",").map((x) => x.trim());
-    }
-    if (!Array.isArray(a)) return [];
-    const out = [];
-    for (let i = 0; i < a.length && out.length < MAX_SCALE_OPS; ++i) {
-      const v = a[i];
-      const n = typeof v === "number" ? v : Number(String(v).trim());
-      if (!Number.isFinite(n)) continue;
-      const c = n | 0;
-      if (_isValidScaleOpCode(c)) out.push(c);
-    }
-    return out;
-  }
-  function _scaleModeMaskFromOps(ops) {
-    let m = 0;
-    for (let i = 0; i < ops.length; ++i) {
-      const c = ops[i] | 0;
-      if (_isValidScaleOpCode(c)) m |= _SCALE_OP_BITS[c - 1] | 0;
-    }
-    return m >>> 0;
-  }
-  function _opsFromScaleModeMask(mask) {
-    const m = Number(mask) >>> 0 | 0;
-    if (!m) return [];
-    const out = [];
-    for (let code = 1; code <= _SCALE_OP_BITS.length && out.length < MAX_SCALE_OPS; ++code) {
-      const bit = _SCALE_OP_BITS[code - 1] | 0;
-      if (m & bit) out.push(code);
-    }
-    return out;
-  }
-  function normalizeScaleArgsInParams(ps) {
-    if (!ps || typeof ps !== "object") return;
-    const hasOps = Array.isArray(ps.scaleOps) || typeof ps.scaleOps === "string";
-    const hasMask = ps.scaleMode !== void 0 && ps.scaleMode !== null;
-    if (hasOps) {
-      const ops = _normScaleOps(ps.scaleOps);
-      ps.scaleOps = ops;
-      ps.scaleMode = _scaleModeMaskFromOps(ops);
-      return;
-    }
-    if (hasMask) {
-      const ops = _opsFromScaleModeMask(ps.scaleMode);
-      ps.scaleOps = ops;
-      ps.scaleMode = _scaleModeMaskFromOps(ops);
-      return;
-    }
-    ps.scaleOps = [];
-    ps.scaleMode = 0;
-  }
-  function cloneParamsForCompute(baseParams, overrides) {
-    const p = Object.assign({}, baseParams || null, overrides || null);
-    if (Array.isArray(p.lightPos))
-      p.lightPos = [p.lightPos[0] || 0, p.lightPos[1] || 0, p.lightPos[2] || 0];
-    normalizeScaleArgsInParams(p);
-    if (Array.isArray(p.scaleOps)) p.scaleOps = p.scaleOps.slice(0);
-    return p;
-  }
-  function flushPending() {
-    if (!hasPending) return;
-    const ps = renderGlobals.paramsState;
-    const prevLayerMode = !!ps.layerMode;
-    Object.assign(ps, pending.paramsState);
-    pending.paramsState = {};
-    hasPending = false;
-    normalizeScaleArgsInParams(ps);
-    const nextLayerMode = !!ps.layerMode;
-    if (nextLayerMode && !prevLayerMode) {
-      ps.dispMode = 0;
-      ps.lightingOn = false;
-      const rm = (ps.renderMode == null ? "" : String(ps.renderMode)).trim().toLowerCase();
-      if (rm === "slab" || rm === "1") ps.renderMode = "fractal";
-      renderGlobals.computeDirty = true;
-      renderGlobals.displacementDirty = true;
-      renderGlobals.cameraDirty = true;
-    }
-    renderGlobals.computeDirty ||= !!(dirtyBits & F.C);
-    renderGlobals.displacementDirty ||= !!(dirtyBits & F.D);
-    renderGlobals.cameraDirty ||= !!(dirtyBits & F.R);
-    renderGlobals.gridDirty ||= !!(dirtyBits & F.G);
-    dirtyBits = 0;
-  }
-  function _safeGamma(g) {
-    const x = Number.isFinite(+g) ? +g : 1;
-    return x;
-  }
-  function requestedLayersFromParams(params) {
-    const p = params || renderGlobals.paramsState;
-    if (!p || !p.layerMode) return 1;
-    const raw = p.nLayers ?? p.layers ?? 1;
-    const n = Math.floor(Number(raw) || 0);
-    return Math.max(1, n);
-  }
-  function resolveGammaSeries(params, count) {
-    const p = params || {};
-    const baseGamma = _safeGamma(Number.isFinite(+p.gamma) ? +p.gamma : 1);
-    if (count <= 1) return { gammaStart: baseGamma, gammaRange: 0 };
-    const step = Number.isFinite(+p.layerGammaStep) ? +p.layerGammaStep : 0;
-    const rangeExplicit = Number.isFinite(+p.layerGammaRange) ? +p.layerGammaRange : 0;
-    const gStartRaw = Number.isFinite(+p.layerGammaStart) ? +p.layerGammaStart : baseGamma;
-    if (step !== 0) {
-      const total2 = step * (count - 1);
-      const gammaStart = total2 >= 0 ? baseGamma : baseGamma - total2;
-      return { gammaStart, gammaRange: total2 };
-    }
-    if (rangeExplicit !== 0) {
-      const total2 = rangeExplicit;
-      const gammaStart = total2 >= 0 ? baseGamma : baseGamma - total2;
-      return { gammaStart, gammaRange: total2 };
-    }
-    const target = _safeGamma(gStartRaw);
-    const clampedTarget = target >= baseGamma ? target : baseGamma;
-    const total = clampedTarget - baseGamma;
-    return { gammaStart: baseGamma, gammaRange: total };
-  }
-  function gammaForLayerIndex(gammaStart, gammaRange, li, count) {
-    if (count <= 1) return _safeGamma(gammaStart);
-    const denom = count - 1;
-    const t = denom > 0 ? li / denom : 0;
-    return _safeGamma(gammaStart + t * gammaRange);
-  }
-  function needsSdf(params) {
-    const p = params || renderGlobals.paramsState;
-    return !!(p.dispMode && p.dispMode !== 0) || !!p.lightingOn;
-  }
   async function initWebGPU() {
     if (!navigator.gpu) {
       alert("WebGPU not supported");
@@ -5350,7 +8590,18 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     const device = await adapter.requestDevice();
     return device;
   }
+  function randomTag() {
+    return Math.random().toString(36).slice(2, 8);
+  }
   function _pickFn(obj, names) {
+    for (let i = 0; i < names.length; i++) {
+      const k = names[i];
+      const fn = obj && obj[k];
+      if (typeof fn === "function") return fn.bind(obj);
+    }
+    return null;
+  }
+  function _pickMethod(obj, names) {
     for (let i = 0; i < names.length; i++) {
       const k = names[i];
       const fn = obj && obj[k];
@@ -5361,8 +8612,9 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
   function _assertPipelineApi(renderPipeline) {
     if (!renderPipeline) throw new Error("Render pipeline missing");
     const hasSetChunks = typeof renderPipeline.setChunks === "function";
-    if (!hasSetChunks)
+    if (!hasSetChunks) {
       throw new TypeError("renderPipeline.setChunks is not a function");
+    }
     const hasRender = typeof renderPipeline.render === "function" || typeof renderPipeline.renderFrame === "function" || typeof renderPipeline.draw === "function";
     if (!hasRender && typeof renderPipeline.renderBlitToView !== "function") {
       throw new TypeError(
@@ -5370,70 +8622,957 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       );
     }
   }
+  function _clampGradTexMode(v) {
+    const n = Number.isFinite(+v) ? +v | 0 : 0;
+    return n === 1 ? 1 : 0;
+  }
+  function _ensure2DViewFromTexture(tex) {
+    if (!tex || typeof tex.createView !== "function") return null;
+    try {
+      return tex.createView({ dimension: "2d" });
+    } catch {
+    }
+    try {
+      return tex.createView();
+    } catch {
+    }
+    return null;
+  }
+  function _clearGradientOverride(renderPipeline) {
+    const clear = _pickMethod(renderPipeline, ["clearGradientOverride"]);
+    if (clear) {
+      try {
+        clear();
+        return true;
+      } catch {
+      }
+    }
+    try {
+      renderPipeline._gradOverrideTex = null;
+      renderPipeline._gradOverrideView = null;
+      renderPipeline._gradOverrideSampler = null;
+    } catch {
+    }
+    const rebuild = renderPipeline._rebuildBg0ForGradientIfNeeded || renderPipeline.rebuildBg0ForGradientIfNeeded;
+    if (typeof rebuild === "function") {
+      try {
+        rebuild.call(renderPipeline);
+        return true;
+      } catch {
+      }
+    }
+    return true;
+  }
+  function _setGradientOverride(renderPipeline, tex, view, sampler = null) {
+    const set = _pickMethod(renderPipeline, ["setGradientOverride"]);
+    if (set) {
+      try {
+        set(tex, view, sampler);
+        return true;
+      } catch {
+      }
+      try {
+        set(tex, view);
+        return true;
+      } catch {
+      }
+    }
+    try {
+      renderPipeline._gradOverrideTex = tex;
+      renderPipeline._gradOverrideView = view;
+      if (sampler) renderPipeline._gradOverrideSampler = sampler;
+    } catch {
+    }
+    const rebuild = renderPipeline._rebuildBg0ForGradientIfNeeded || renderPipeline.rebuildBg0ForGradientIfNeeded;
+    if (typeof rebuild === "function") {
+      try {
+        rebuild.call(renderPipeline);
+        return true;
+      } catch {
+      }
+    }
+    return !!(tex && view);
+  }
+  function _clamp012(x) {
+    x = +x;
+    return x <= 0 ? 0 : x >= 1 ? 1 : x;
+  }
+  function _fract(x) {
+    return x - Math.floor(x);
+  }
+  function _hsl2rgb01(outRGB, h, s, l) {
+    h = _fract(h);
+    s = _clamp012(s);
+    l = _clamp012(l);
+    const C = (1 - Math.abs(2 * l - 1)) * s;
+    const Hp = h * 6;
+    const t = Hp - 2 * Math.floor(Hp * 0.5);
+    const X = C * (1 - Math.abs(t - 1));
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    if (Hp < 1) {
+      r = C;
+      g = X;
+      b = 0;
+    } else if (Hp < 2) {
+      r = X;
+      g = C;
+      b = 0;
+    } else if (Hp < 3) {
+      r = 0;
+      g = C;
+      b = X;
+    } else if (Hp < 4) {
+      r = 0;
+      g = X;
+      b = C;
+    } else if (Hp < 5) {
+      r = X;
+      g = 0;
+      b = C;
+    } else {
+      r = C;
+      g = 0;
+      b = X;
+    }
+    const m = l - 0.5 * C;
+    outRGB[0] = _clamp012(r + m);
+    outRGB[1] = _clamp012(g + m);
+    outRGB[2] = _clamp012(b + m);
+  }
+  function _buildDefaultPaletteRGBA(N, hueShift = 0) {
+    const n = Math.max(1, N | 0);
+    const out = new Uint8Array(n * 4);
+    const rgb = new Float32Array(3);
+    const n1 = Math.max(1, n - 1);
+    for (let i = 0; i < n; i++) {
+      const t = i / n1;
+      const h = _fract(t + hueShift);
+      _hsl2rgb01(rgb, h, 1, 0.5);
+      const o = i * 4 | 0;
+      out[o + 0] = rgb[0] * 255 | 0;
+      out[o + 1] = rgb[1] * 255 | 0;
+      out[o + 2] = rgb[2] * 255 | 0;
+      out[o + 3] = 255;
+    }
+    return out;
+  }
+  function _num(v, d) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : d;
+  }
+  function _isGpuTextureLike(v) {
+    return !!(v && typeof v.createView === "function");
+  }
+  function _extractHueDriver(metrics) {
+    const m = metrics && typeof metrics === "object" ? metrics : null;
+    if (!m) return null;
+    const keys = [
+      "hueDriver",
+      "hue",
+      "hueOffset",
+      "hueShift",
+      "driverHue",
+      "hueValue",
+      "driveHue"
+    ];
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      if (m[k] == null) continue;
+      const n = Number(m[k]);
+      if (!Number.isFinite(n)) continue;
+      if (n >= 0 && n <= 1) return n * 2 - 1;
+      return n;
+    }
+    const bass = Number(m.bass);
+    const treble = Number(m.treble);
+    if (Number.isFinite(bass) && Number.isFinite(treble)) {
+      const v = bass - treble;
+      if (Number.isFinite(v)) return v;
+    }
+    const level = Number(m.level ?? m.energy ?? m.rms ?? m.amp);
+    if (Number.isFinite(level)) {
+      const v = level >= 0 && level <= 1 ? level * 2 - 1 : level;
+      if (Number.isFinite(v)) return v;
+    }
+    return null;
+  }
+  function createUiSoundGradientAdapter({
+    device,
+    renderPipeline,
+    renderGlobals: renderGlobals2,
+    onDirty
+  }) {
+    let _applied = 0;
+    let _appliedKind = "none";
+    let _appliedKey = "";
+    let _localTex = null;
+    let _localView = null;
+    let _localN = 0;
+    let _lastLocalSeq = -1;
+    let _pendingSeq = -1;
+    let _pendingRGBA = null;
+    let _metrics = null;
+    let _hadAnyEvent = false;
+    let _uiAudioEnabled = null;
+    let _extTex = null;
+    let _extView = null;
+    let _extSampler = null;
+    let _extWidth = 0;
+    let _extSeq = -1;
+    let _sidebarAttachTried = false;
+    let _sidebarAttachOk = false;
+    let _gammaActive = false;
+    let _gammaBase = 1;
+    let _gammaLastApplied = 1;
+    let _gammaNextAllowedT = 0;
+    let _gammaTarget = 1;
+    let _gammaSmoothed = 1;
+    let _gammaWanderNextPickT = 0;
+    let _gammaWanderPickT = 0;
+    let _gammaWanderPrevCenter = 1;
+    let _gammaWanderPrevAmp = 0;
+    let _gammaWanderPrevSpeed = 1;
+    let _gammaWanderCenter = 1;
+    let _gammaWanderAmp = 0;
+    let _gammaWanderSpeed = 1;
+    let _gammaWanderPhase = 0;
+    let _gammaAutoPhase01 = 0;
+    let _gammaBeatPhase01 = 0;
+    let _gammaBeatPrev = 0;
+    let _gammaBeatCount = 0;
+    let _gammaBeatWithin01 = 0;
+    let _gammaBeatLastBeatT = 0;
+    let _gammaBeatPeriodSec = 0.5;
+    function _notifyDirty() {
+      if (typeof onDirty === "function") {
+        try {
+          onDirty();
+        } catch {
+        }
+      }
+    }
+    function _lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+    function _smooth01(t) {
+      t = t <= 0 ? 0 : t >= 1 ? 1 : t;
+      return t * t * (3 - 2 * t);
+    }
+    function _expSmooth(current, target, dt, tau) {
+      if (!(dt > 0) || !(tau > 0)) return target;
+      const a = 1 - Math.exp(-dt / tau);
+      return current + (target - current) * a;
+    }
+    function _slew(current, target, dt, ratePerSec) {
+      if (!(dt > 0) || !(ratePerSec > 0)) return target;
+      const maxDelta = ratePerSec * dt;
+      const d = target - current;
+      if (d > maxDelta) return current + maxDelta;
+      if (d < -maxDelta) return current - maxDelta;
+      return target;
+    }
+    function _clampPos(x, minV) {
+      x = +x;
+      if (!Number.isFinite(x)) return minV;
+      return x < minV ? minV : x;
+    }
+    function _readGammaDriver01(metrics) {
+      const v = metrics ? Number(metrics.hueDriver) : NaN;
+      if (!Number.isFinite(v)) return NaN;
+      if (v >= 0 && v <= 1) return v;
+      const u = (v + 1) * 0.5;
+      return u >= 0 && u <= 1 ? u : NaN;
+    }
+    function _readDriftPhase(metrics) {
+      const v = metrics ? Number(metrics.driftPhase) : NaN;
+      return Number.isFinite(v) ? v : 0;
+    }
+    function _fract01(x) {
+      return x - Math.floor(x);
+    }
+    function _updateGammaBeatClock(metrics, tNow, dt) {
+      const beat = _readBeatValue01(metrics);
+      const bpm = _readBpm(metrics);
+      const thresh = 0.5;
+      if (beat > thresh && _gammaBeatPrev <= thresh) {
+        _gammaBeatCount = _gammaBeatCount + 1 | 0;
+        _gammaBeatLastBeatT = tNow;
+      }
+      _gammaBeatPrev = beat;
+      if (bpm > 0 && dt > 0) {
+        const targetPeriod = 60 / bpm;
+        _gammaBeatPeriodSec = _expSmooth(
+          _gammaBeatPeriodSec,
+          targetPeriod,
+          dt,
+          0.25
+        );
+        if (!(_gammaBeatPeriodSec > 1e-5)) _gammaBeatPeriodSec = targetPeriod;
+      }
+      const p = _gammaBeatPeriodSec;
+      if (p > 1e-5) {
+        let u = (tNow - _gammaBeatLastBeatT) / p;
+        _gammaBeatWithin01 = u <= 0 ? 0 : u >= 1 ? 1 : u;
+      } else {
+        _gammaBeatWithin01 = 0;
+      }
+    }
+    function _readBeatPhaseFromMetrics01(metrics) {
+      if (!metrics || typeof metrics !== "object") return NaN;
+      const keys = ["gammaPhase", "beatPhase", "beatPhase01", "phase", "phase01"];
+      for (let i = 0; i < keys.length; i++) {
+        const v = Number(metrics[keys[i]]);
+        if (!Number.isFinite(v)) continue;
+        if (v >= 0 && v <= 1) return v;
+      }
+      return NaN;
+    }
+    function _readBeatValue01(metrics) {
+      const v = metrics ? Number(metrics.beat) : NaN;
+      if (!Number.isFinite(v)) return 0;
+      return v <= 0 ? 0 : v >= 1 ? 1 : v;
+    }
+    function _readBpm(metrics) {
+      const v = metrics ? Number(metrics.bpm) : NaN;
+      if (!Number.isFinite(v) || !(v > 0)) return 0;
+      return v > 480 ? 480 : v;
+    }
+    function _readGammaPhase01(metrics, dt, speed) {
+      const explicit = _readBeatPhaseFromMetrics01(metrics);
+      if (Number.isFinite(explicit)) {
+        _gammaBeatPhase01 = explicit;
+        _gammaBeatPrev = _readBeatValue01(metrics);
+        return _gammaBeatPhase01;
+      }
+      const beat = _readBeatValue01(metrics);
+      const bpm = _readBpm(metrics);
+      const thresh = 0.5;
+      if (beat > thresh && _gammaBeatPrev <= thresh) {
+        _gammaBeatPhase01 = 0;
+      }
+      _gammaBeatPrev = beat;
+      if (bpm > 0 && dt > 0) {
+        const adv = dt * (bpm / 60) * (speed > 0 ? speed : 1);
+        _gammaBeatPhase01 = _gammaBeatPhase01 + adv;
+        _gammaBeatPhase01 = _gammaBeatPhase01 - Math.floor(_gammaBeatPhase01);
+      }
+      return _gammaBeatPhase01;
+    }
+    function _ensureLocalTexForN(N) {
+      N = Math.max(1, N | 0);
+      if (_localTex && _localView && _localN === N) return true;
+      try {
+        if (_localTex) _localTex.destroy();
+      } catch {
+      }
+      _localTex = null;
+      _localView = null;
+      try {
+        _localTex = device.createTexture({
+          size: [N, 1, 1],
+          format: "rgba8unorm",
+          usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+        });
+        _localView = _ensure2DViewFromTexture(_localTex);
+        _localN = N | 0;
+        _lastLocalSeq = -1;
+        return !!_localView;
+      } catch {
+        _localTex = null;
+        _localView = null;
+        _localN = 0;
+        return false;
+      }
+    }
+    function _uploadLocalRGBA(rgba) {
+      if (!rgba) return false;
+      let src = rgba;
+      if (!(src instanceof Uint8Array)) {
+        try {
+          src = new Uint8Array(src);
+        } catch {
+          return false;
+        }
+      }
+      const wantN = src.length / 4 | 0;
+      if (wantN <= 0 || wantN * 4 !== src.length) return false;
+      if (!_ensureLocalTexForN(wantN)) return false;
+      try {
+        device.queue.writeTexture(
+          { texture: _localTex },
+          src,
+          { bytesPerRow: wantN * 4, rowsPerImage: 1 },
+          { width: wantN, height: 1, depthOrArrayLayers: 1 }
+        );
+        return true;
+      } catch (e) {
+        console.warn("_uploadLocalRGBA failed:", e);
+        return false;
+      }
+    }
+    function _readLegacySoundPaletteState() {
+      if (typeof window === "undefined") return null;
+      const getState = window.soundPaletteGetState;
+      if (typeof getState !== "function") return null;
+      try {
+        return getState();
+      } catch {
+        return null;
+      }
+    }
+    function _readSidebarApiState() {
+      if (typeof window === "undefined") return null;
+      const api = window.FractalSoundPaletteSidebar;
+      if (!api || typeof api.getState !== "function") return null;
+      try {
+        return api.getState();
+      } catch {
+        return null;
+      }
+    }
+    function _readEnableCheckboxFallback() {
+      if (typeof document === "undefined") return null;
+      const el = document.getElementById("sndEnable");
+      if (!el) return null;
+      if (typeof el.checked !== "boolean") return null;
+      return !!el.checked;
+    }
+    function _readUiState() {
+      const st = _readSidebarApiState() || _readLegacySoundPaletteState();
+      if (st) return st;
+      const enabled = _readEnableCheckboxFallback();
+      if (enabled == null) return null;
+      return {
+        enabled,
+        cfg: { enabled }
+      };
+    }
+    function _readUiCfgSnapshot() {
+      const st = _readUiState();
+      if (!st || typeof st !== "object") return null;
+      if (st.cfg && typeof st.cfg === "object") {
+        return Object.assign({}, st.cfg);
+      }
+      if (st.mix && typeof st.mix === "object") {
+        return {
+          enabled: !!st.mix.enabled,
+          mixMode: st.mix.mixMode ?? "blend",
+          blend: st.mix.blend ?? 1,
+          soundStrength: st.soundStrength,
+          baseHueShift: st.baseHueShift
+        };
+      }
+      if ("enabled" in st) {
+        return { enabled: !!st.enabled };
+      }
+      return null;
+    }
+    function _refreshUiAudioEnabledFromState() {
+      const st = _readUiState();
+      if (st && typeof st === "object") {
+        if (st.mix && typeof st.mix === "object" && "enabled" in st.mix) {
+          _uiAudioEnabled = !!st.mix.enabled;
+          return;
+        }
+        if (st.cfg && typeof st.cfg === "object" && "enabled" in st.cfg) {
+          _uiAudioEnabled = !!st.cfg.enabled;
+          return;
+        }
+        if ("enabled" in st) {
+          _uiAudioEnabled = !!st.enabled;
+          return;
+        }
+      }
+      const fallback = _readEnableCheckboxFallback();
+      if (fallback != null) {
+        _uiAudioEnabled = !!fallback;
+      }
+    }
+    function _audioPaletteEnabled() {
+      _refreshUiAudioEnabledFromState();
+      return _uiAudioEnabled === true;
+    }
+    function _clearExternalRefs() {
+      _extTex = null;
+      _extView = null;
+      _extSampler = null;
+      _extWidth = 0;
+      _extSeq = -1;
+    }
+    function _cacheExternalRefsFromDetail(d) {
+      const tex = d && d.texture ? d.texture : null;
+      const view = d && d.view ? d.view : null;
+      const sampler = d && d.sampler ? d.sampler : null;
+      const width = Number.isFinite(+d?.width) ? +d.width | 0 : 0;
+      const seq = Number.isFinite(+d?.seq) ? +d.seq | 0 : -1;
+      if (tex && view && _isGpuTextureLike(tex)) {
+        _extTex = tex;
+        _extView = view;
+        _extSampler = sampler || null;
+        _extWidth = width > 0 ? width : 0;
+        _extSeq = seq;
+        return true;
+      }
+      return false;
+    }
+    function _maybeAttachSidebarDevice() {
+      if (typeof window === "undefined") return false;
+      const api = window.FractalSoundPaletteSidebar;
+      if (!api || typeof api.attachGpuDevice !== "function") return false;
+      if (_sidebarAttachOk) return true;
+      try {
+        const ok = !!api.attachGpuDevice(device);
+        _sidebarAttachTried = true;
+        _sidebarAttachOk = ok;
+        return ok;
+      } catch {
+        _sidebarAttachTried = true;
+        return false;
+      }
+    }
+    function _onPaletteUpdate(ev) {
+      const d = ev && ev.detail ? ev.detail : null;
+      if (!d) return;
+      const seq = Number.isFinite(+d.seq) ? +d.seq | 0 : -1;
+      const rgba = d.rgba || null;
+      const metrics = d.metrics || null;
+      _hadAnyEvent = true;
+      _metrics = metrics || _metrics;
+      if (typeof d.enabled === "boolean") {
+        _uiAudioEnabled = !!d.enabled;
+        if (!_uiAudioEnabled) {
+          _clearExternalRefs();
+        }
+      }
+      _cacheExternalRefsFromDetail(d);
+      if (rgba) {
+        _pendingRGBA = rgba;
+        _pendingSeq = seq;
+      }
+      if ((renderGlobals2.paramsState.gradTexMode | 0) === 1) {
+        _notifyDirty();
+      }
+    }
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+      window.addEventListener("palette-gradient:update", _onPaletteUpdate);
+      window.addEventListener("fractal-sound-palette:update", _onPaletteUpdate);
+    }
+    function _applyNoneOverride() {
+      if (_applied !== 0 || _appliedKind !== "none") {
+        _clearGradientOverride(renderPipeline);
+        _applied = 0;
+        _appliedKind = "none";
+        _appliedKey = "";
+        _notifyDirty();
+      }
+    }
+    function _applyExternalOverride() {
+      if (!_extTex || !_extView) return false;
+      const key = "ext|" + String(_extSeq) + "|" + String(_extWidth || 0) + "|" + String(!!_extSampler);
+      if (_appliedKind === "external" && _appliedKey === key && _applied === 1) {
+        return true;
+      }
+      const ok = _setGradientOverride(
+        renderPipeline,
+        _extTex,
+        _extView,
+        _extSampler
+      );
+      if (!ok) return false;
+      _applied = 1;
+      _appliedKind = "external";
+      _appliedKey = key;
+      _notifyDirty();
+      return true;
+    }
+    function _applyLocalOverride() {
+      if (!_localTex || !_localView) return false;
+      const key = "local|" + String(_localN) + "|" + String(_lastLocalSeq);
+      if (_appliedKind === "local" && _appliedKey === key && _applied === 1) {
+        return true;
+      }
+      const ok = _setGradientOverride(
+        renderPipeline,
+        _localTex,
+        _localView,
+        null
+      );
+      if (!ok) return false;
+      _applied = 1;
+      _appliedKind = "local";
+      _appliedKey = key;
+      _notifyDirty();
+      return true;
+    }
+    function _ensureDefaultLocalPalette() {
+      if (_localTex && _localView) return;
+      const defN = 512;
+      if (_ensureLocalTexForN(defN)) {
+        const def = _buildDefaultPaletteRGBA(defN, 0);
+        _uploadLocalRGBA(def);
+        _lastLocalSeq = -1;
+      }
+    }
+    function _flushPendingLocalUploadIfNeeded() {
+      if (!_pendingRGBA) return false;
+      if (_pendingSeq === _lastLocalSeq) return false;
+      const ok = _uploadLocalRGBA(_pendingRGBA);
+      if (ok) {
+        _lastLocalSeq = _pendingSeq;
+        return true;
+      }
+      return false;
+    }
+    function applyGradTexModeMaybeRefresh() {
+      const ps = renderGlobals2.paramsState;
+      const wantGradTexMode = (Number(ps.gradTexMode) | 0) === 1;
+      if (!wantGradTexMode) {
+        _applyNoneOverride();
+        return;
+      }
+      _maybeAttachSidebarDevice();
+      const wantAudioPalette = _audioPaletteEnabled();
+      if (!wantAudioPalette) {
+        _applyNoneOverride();
+        return;
+      }
+      _ensureDefaultLocalPalette();
+      const uploadedNewLocal = _flushPendingLocalUploadIfNeeded();
+      if (_extTex && _extView) {
+        const ok = _applyExternalOverride();
+        if (ok) return;
+        _clearExternalRefs();
+      }
+      const okLocal = _applyLocalOverride();
+      if (okLocal && uploadedNewLocal) {
+        _notifyDirty();
+      }
+    }
+    function applySoundHueToLocalParams(localParams) {
+      const ps = renderGlobals2.paramsState;
+      if (!ps || (ps.gradTexMode | 0) !== 1) return;
+      if (!_audioPaletteEnabled()) return;
+      const cfg = _readUiCfgSnapshot() || null;
+      const mix = cfg && cfg.mixMode != null ? String(cfg.mixMode) : "hue";
+      if (mix === "off") return;
+      const driver = _extractHueDriver(_metrics);
+      if (driver == null) return;
+      const strength = cfg ? _num(cfg.soundStrength, 1) : 1;
+      const baseShift = cfg ? _num(cfg.baseHueShift, 0) : 0;
+      const blend = mix === "blend" ? Math.max(0, Math.min(1, cfg ? _num(cfg.blend, 1) : 1)) : 1;
+      const base = _num(localParams.hueOffset, 0);
+      localParams.hueOffset = base + baseShift + driver * strength * blend;
+    }
+    function applySoundGammaToGlobalParams(ps, nowSec, dt) {
+      if (!ps || typeof ps !== "object") return false;
+      const mode = Number(ps.gammaAudioMode) | 0 || 0;
+      const wantEnabled = mode !== 0 && _audioPaletteEnabled();
+      const tNow = Number.isFinite(+nowSec) ? +nowSec : 0;
+      const stepDt = Number.isFinite(+dt) ? Math.max(0, +dt) : 0;
+      const maxHzRaw = Number(ps.gammaAudioMaxHz);
+      const maxHz = Number.isFinite(maxHzRaw) ? Math.max(0.1, Math.min(240, maxHzRaw)) : 2;
+      const smoothSecRaw = Number(ps.gammaAudioSmoothSec);
+      const smoothSec = Number.isFinite(smoothSecRaw) ? Math.max(0, Math.min(4, smoothSecRaw)) : Math.max(0.02, 0.5 / maxHz);
+      const slewRaw = Number(ps.gammaAudioSlewPerSec);
+      const slewPerSec = Number.isFinite(slewRaw) ? Math.max(0, Math.min(50, slewRaw)) : 0;
+      const epsRaw = Number(ps.gammaAudioEps);
+      const eps = Number.isFinite(epsRaw) ? Math.max(1e-6, epsRaw) : 5e-4;
+      const baseDetectEps = 2e-4;
+      const observedGamma = Number(ps.gamma);
+      const observedFinite = Number.isFinite(observedGamma);
+      if (!_gammaActive) {
+        if (!wantEnabled) return false;
+        const baseNow = observedFinite ? observedGamma : 1;
+        _gammaActive = true;
+        _gammaBase = baseNow;
+        _gammaTarget = baseNow;
+        _gammaSmoothed = baseNow;
+        _gammaLastApplied = baseNow;
+        _gammaNextAllowedT = 0;
+        _gammaWanderPrevCenter = baseNow;
+        _gammaWanderPrevAmp = 0;
+        _gammaWanderPrevSpeed = 1;
+        _gammaWanderCenter = baseNow;
+        _gammaWanderAmp = 0;
+        _gammaWanderSpeed = 1;
+        _gammaWanderPhase = 0;
+        _gammaWanderPickT = tNow;
+        _gammaWanderNextPickT = 0;
+        _gammaAutoPhase01 = 0;
+        _gammaBeatPrev = 0;
+        _gammaBeatCount = 0;
+        _gammaBeatWithin01 = 0;
+        _gammaBeatLastBeatT = tNow;
+        _gammaBeatPeriodSec = 0.5;
+      } else {
+        if (observedFinite && Math.abs(observedGamma - _gammaLastApplied) > baseDetectEps) {
+          _gammaBase = observedGamma;
+          _gammaTarget = observedGamma;
+          _gammaSmoothed = observedGamma;
+          _gammaLastApplied = observedGamma;
+          _gammaWanderPrevCenter = observedGamma;
+          _gammaWanderCenter = observedGamma;
+          _gammaNextAllowedT = 0;
+          _gammaAutoPhase01 = 0;
+          _gammaBeatPrev = 0;
+          _gammaBeatCount = 0;
+          _gammaBeatWithin01 = 0;
+          _gammaBeatLastBeatT = tNow;
+          if (!wantEnabled) {
+            _gammaActive = false;
+            return false;
+          }
+        }
+      }
+      if (!wantEnabled) {
+        _gammaTarget = _gammaBase;
+        let g0 = _gammaSmoothed;
+        g0 = _slew(g0, _gammaTarget, stepDt, slewPerSec);
+        g0 = _expSmooth(g0, _gammaTarget, stepDt, smoothSec);
+        g0 = Math.round(g0 * 1e6) / 1e6;
+        if (Math.abs(g0 - _gammaLastApplied) < eps) {
+          _gammaSmoothed = g0;
+          return false;
+        }
+        ps.gamma = g0;
+        _gammaSmoothed = g0;
+        _gammaLastApplied = g0;
+        if (Math.abs(g0 - _gammaBase) <= 5e-4) {
+          ps.gamma = _gammaBase;
+          _gammaSmoothed = _gammaBase;
+          _gammaLastApplied = _gammaBase;
+          _gammaActive = false;
+          _gammaNextAllowedT = 0;
+        }
+        return true;
+      }
+      const speedRaw = Number(ps.gammaAudioSpeed);
+      const speed = Number.isFinite(speedRaw) ? Math.max(0, Math.min(16, speedRaw)) : 1;
+      const amtRaw = Number(ps.gammaAudioAmount);
+      const amount = Number.isFinite(amtRaw) ? Math.max(0, amtRaw) : 0.15;
+      const minRaw = Number(ps.gammaAudioMin);
+      const maxRaw = Number(ps.gammaAudioMax);
+      const minMul = Number.isFinite(minRaw) ? minRaw : -0.5;
+      const maxMul = Number.isFinite(maxRaw) ? maxRaw : 0.5;
+      let gMin = _gammaBase + minMul * amount;
+      let gMax = _gammaBase + maxMul * amount;
+      if (gMax < gMin) {
+        const tmp = gMin;
+        gMin = gMax;
+        gMax = tmp;
+      }
+      gMin = _clampPos(gMin, 0.05);
+      gMax = _clampPos(gMax, gMin + 1e-6);
+      const driftStepRaw = Number(ps.gammaAudioAutoDrift);
+      const driftStep = Number.isFinite(driftStepRaw) ? driftStepRaw : 0;
+      _updateGammaBeatClock(_metrics, tNow, stepDt);
+      if (tNow < _gammaNextAllowedT) return false;
+      _gammaNextAllowedT = tNow + 1 / maxHz;
+      _gammaAutoPhase01 = _fract(_gammaAutoPhase01 + driftStep);
+      const beatsPerCycle = 4;
+      let target = _gammaTarget;
+      if (mode === 1) {
+        const baseDrive01 = _fract(_gammaBeatCount * speed / beatsPerCycle);
+        const drive01 = _fract(baseDrive01 + _gammaAutoPhase01);
+        const u = _smooth01(drive01);
+        target = gMin + (gMax - gMin) * u;
+        _gammaTarget = target;
+      } else if (mode === 2) {
+        const basePh01 = _fract(
+          (_gammaBeatCount + _gammaBeatWithin01) * speed / beatsPerCycle
+        );
+        const ph01 = _fract(basePh01 + _gammaAutoPhase01);
+        let u = 0.5 + 0.5 * Math.sin(ph01 * (Math.PI * 2));
+        u = _smooth01(u);
+        target = gMin + (gMax - gMin) * u;
+        _gammaTarget = target;
+      } else if (mode === 3) {
+        const durRaw = Number(ps.gammaAudioWanderSec);
+        const dur = Number.isFinite(durRaw) ? Math.max(0.5, Math.min(30, durRaw)) : 4;
+        const blendRaw = Number(ps.gammaAudioWanderBlendSec);
+        let blendSec = Number.isFinite(blendRaw) ? Math.max(0.05, Math.min(10, blendRaw)) : 0.6;
+        if (blendSec > dur) blendSec = dur;
+        if (!(tNow < _gammaWanderNextPickT)) {
+          _gammaWanderPrevCenter = _gammaWanderCenter;
+          _gammaWanderPrevAmp = _gammaWanderAmp;
+          _gammaWanderPrevSpeed = _gammaWanderSpeed;
+          const span = Math.max(1e-6, gMax - gMin);
+          const ampMax = span * 0.45;
+          let a = Math.random() * ampMax;
+          let cMin = gMin + a;
+          let cMax = gMax - a;
+          let c = 0.5 * (gMin + gMax);
+          if (cMax >= cMin) {
+            c = cMin + Math.random() * (cMax - cMin);
+          } else {
+            a = span * 0.25;
+            cMin = gMin + a;
+            cMax = gMax - a;
+            c = cMax >= cMin ? cMin + Math.random() * (cMax - cMin) : 0.5 * (gMin + gMax);
+          }
+          _gammaWanderCenter = c;
+          _gammaWanderAmp = a;
+          _gammaWanderSpeed = speed * (0.35 + Math.random() * 1.35);
+          _gammaWanderPickT = tNow;
+          _gammaWanderNextPickT = tNow + dur;
+        }
+        const uu = _smooth01(
+          (tNow - _gammaWanderPickT) / Math.max(1e-6, blendSec)
+        );
+        const center = _lerp(_gammaWanderPrevCenter, _gammaWanderCenter, uu);
+        const amp = _lerp(_gammaWanderPrevAmp, _gammaWanderAmp, uu);
+        const wSpeed = _lerp(_gammaWanderPrevSpeed, _gammaWanderSpeed, uu);
+        _gammaWanderPhase += stepDt * wSpeed * (Math.PI * 2);
+        if (_gammaWanderPhase > 1e9)
+          _gammaWanderPhase = _gammaWanderPhase % (Math.PI * 2);
+        target = center + amp * Math.sin(_gammaWanderPhase);
+        _gammaTarget = target;
+      }
+      if (target < gMin) target = gMin;
+      if (target > gMax) target = gMax;
+      let g = _gammaSmoothed;
+      g = _slew(g, target, stepDt, slewPerSec);
+      g = _expSmooth(g, target, stepDt, smoothSec);
+      if (g < gMin) g = gMin;
+      if (g > gMax) g = gMax;
+      g = Math.round(g * 1e6) / 1e6;
+      if (Math.abs(g - _gammaLastApplied) < eps) {
+        _gammaSmoothed = g;
+        return false;
+      }
+      ps.gamma = g;
+      _gammaSmoothed = g;
+      _gammaLastApplied = g;
+      return true;
+    }
+    function isAudioPaletteEnabled() {
+      return _audioPaletteEnabled();
+    }
+    function tick() {
+      _maybeAttachSidebarDevice();
+      if ((renderGlobals2.paramsState.gradTexMode | 0) !== 1) return;
+      applyGradTexModeMaybeRefresh();
+    }
+    function getSystem() {
+      return _readUiState();
+    }
+    function getDebugState() {
+      return {
+        applied: _applied,
+        appliedKind: _appliedKind,
+        uiAudioEnabled: _uiAudioEnabled,
+        effectiveEnabled: isAudioPaletteEnabled(),
+        hasExternal: !!(_extTex && _extView),
+        externalWidth: _extWidth | 0,
+        localWidth: _localN | 0,
+        lastLocalSeq: _lastLocalSeq | 0,
+        pendingSeq: _pendingSeq | 0,
+        sidebarAttachTried: !!_sidebarAttachTried,
+        sidebarAttachOk: !!_sidebarAttachOk,
+        gammaActive: !!_gammaActive,
+        gammaBase: +_gammaBase || 0,
+        gammaTarget: +_gammaTarget || 0,
+        gammaSmoothed: +_gammaSmoothed || 0,
+        gammaLastApplied: +_gammaLastApplied || 0
+      };
+    }
+    function destroy() {
+      if (typeof window !== "undefined" && typeof window.removeEventListener === "function") {
+        try {
+          window.removeEventListener("palette-gradient:update", _onPaletteUpdate);
+        } catch {
+        }
+        try {
+          window.removeEventListener(
+            "fractal-sound-palette:update",
+            _onPaletteUpdate
+          );
+        } catch {
+        }
+      }
+      _applyNoneOverride();
+      try {
+        if (_localTex) _localTex.destroy();
+      } catch {
+      }
+      _localTex = null;
+      _localView = null;
+      _localN = 0;
+      _pendingRGBA = null;
+      _pendingSeq = -1;
+      _lastLocalSeq = -1;
+      _metrics = null;
+      _uiAudioEnabled = null;
+      _clearExternalRefs();
+      _applied = 0;
+      _appliedKind = "none";
+      _appliedKey = "";
+      _gammaActive = false;
+      _gammaBase = 1;
+      _gammaTarget = 1;
+      _gammaSmoothed = 1;
+      _gammaLastApplied = 1;
+      _gammaNextAllowedT = 0;
+    }
+    _maybeAttachSidebarDevice();
+    return {
+      tick,
+      applyGradTexModeMaybeRefresh,
+      applySoundHueToLocalParams,
+      applySoundGammaToGlobalParams,
+      isAudioPaletteEnabled,
+      getSystem,
+      getDebugState,
+      destroy
+    };
+  }
   async function initRender() {
     const canvas = document.getElementById("gpu-canvas");
     const device = await initWebGPU();
     const context = canvas.getContext("webgpu");
     const format = navigator.gpu.getPreferredCanvasFormat();
-    function parseAlphaModeToNumeric(mode) {
-      if (mode === void 0 || mode === null)
-        return Number(renderGlobals.paramsState.alphaMode || 0);
-      if (typeof mode === "number" && Number.isFinite(mode)) {
-        const n = Math.floor(mode);
-        if (n === 0) return 0;
-        if (n === 2) return 2;
-        return 1;
+    function useHueGradientFlag() {
+      if ((renderGlobals.paramsState.gradTexMode | 0) !== 1) return 0;
+      if (soundGrad && typeof soundGrad.isAudioPaletteEnabled === "function") {
+        return soundGrad.isAudioPaletteEnabled() ? 1 : 0;
       }
-      if (typeof mode === "string") {
-        const t = mode.trim().toLowerCase();
-        if (t === "0" || t === "opaque") return 0;
-        if (t === "2") return 2;
-        if (t === "1" || t === "fade" || t === "premultiplied") return 1;
-        const maybe = parseInt(t, 10);
-        if (!Number.isNaN(maybe)) {
-          if (maybe === 0) return 0;
-          if (maybe === 2) return 2;
-          return 1;
-        }
-        return 1;
-      }
-      return Number(renderGlobals.paramsState.alphaMode || 0);
+      return 1;
     }
-    function canvasAlphaStringForNumeric(numericMode) {
-      return numericMode === 0 ? "opaque" : "premultiplied";
-    }
-    function slabAlphaBitsFromParams(params) {
-      let bits = 0;
-      if (params && params.contourOn) bits |= 1;
-      if (params && params.contourOnly) bits |= 2;
-      if (params && params.contourFront) bits |= 4;
-      return bits >>> 0;
-    }
-    const initialNumeric = typeof window !== "undefined" && window.__pendingAlphaMode !== void 0 ? parseAlphaModeToNumeric(window.__pendingAlphaMode) : parseAlphaModeToNumeric(renderGlobals.paramsState.alphaMode);
+    const initialNumeric = typeof window !== "undefined" && window.__pendingAlphaMode !== void 0 ? parseAlphaModeToNumeric(
+      window.__pendingAlphaMode,
+      renderGlobals.paramsState.alphaMode || 0
+    ) : parseAlphaModeToNumeric(
+      renderGlobals.paramsState.alphaMode,
+      renderGlobals.paramsState.alphaMode || 0
+    );
     renderGlobals.paramsState.alphaMode = initialNumeric;
+    renderGlobals.paramsState.gradTexMode = _clampGradTexMode(
+      renderGlobals.paramsState.gradTexMode
+    );
     let currentAlphaMode = canvasAlphaStringForNumeric(initialNumeric);
-    if (typeof window !== "undefined")
+    if (typeof window !== "undefined") {
       window.__currentCanvasAlphaMode = currentAlphaMode;
+    }
     const uniformStride = 256;
     const MAX_PIXELS_PER_CHUNK = 8e6;
     const MIN_SPLIT = 1024;
-    let yaw = 0;
-    let pitch = 0;
-    const cameraPos = [0, 0, 2.4];
-    const lookTarget = [0, 0, 0];
-    const upDir = [0, 1, 0];
-    let fov = 45 * Math.PI / 180;
-    let invertMouseY = true;
-    const mouseSens = 2e-3;
-    function updateLookTarget() {
-      const dx = Math.cos(pitch) * Math.sin(yaw);
-      const dy = Math.sin(pitch);
-      const dz = -Math.cos(pitch) * Math.cos(yaw);
-      lookTarget[0] = cameraPos[0] + dx;
-      lookTarget[1] = cameraPos[1] + dy;
-      lookTarget[2] = cameraPos[2] + dz;
-      renderGlobals.cameraDirty = true;
-    }
+    const camera = createCameraController({
+      canvas,
+      invertMouseY: true,
+      mouseSens: 2e-3,
+      onDirty: () => {
+        renderGlobals.cameraDirty = true;
+      }
+    });
+    camera.attach();
+    window.setInvertMouseY = function setInvertMouseY(v) {
+      camera.setInvertMouseY(v);
+    };
+    window.resetViewCamera = () => {
+      camera.reset();
+    };
     const fractalCompute = new FractalTileComputeGPU(
       device,
       void 0,
@@ -5480,6 +9619,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     const rpRenderFn = _pickFn(renderPipeline, ["render", "renderFrame", "draw"]);
     const rpBlitFn = _pickFn(renderPipeline, ["renderBlitToView"]);
     const rpRenderToView = _pickFn(renderPipeline, ["renderToView"]);
+    const chunkViewCache = createChunkViewCache();
     let chunkInfos = [];
     let sdfReady = false;
     let slabWallsDirty = true;
@@ -5488,190 +9628,96 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     let resizeTimer = 0;
     let frameHandle = 0;
     let exporting = false;
-    let _noSdfCacheSrc = null;
-    let _noSdfCache = null;
-    let _withSdfCacheSrc = null;
-    let _withSdfCache = null;
     let _sdfAllocEpoch = 0;
-    function invalidateChunkCaches() {
-      _noSdfCacheSrc = null;
-      _noSdfCache = null;
-      _withSdfCacheSrc = null;
-      _withSdfCache = null;
+    const soundGrad = createUiSoundGradientAdapter({
+      device,
+      renderPipeline,
+      renderGlobals,
+      onDirty: () => {
+        renderGlobals.cameraDirty = true;
+      }
+    });
+    let _lastGradTexFractalLogKey = "";
+    function logGradTexFractalRoute(tag, extra = null) {
+      const ps = renderGlobals.paramsState || {};
+      const gradTexMode = (ps.gradTexMode | 0) === 1 ? 1 : 0;
+      if (!gradTexMode) return;
+      const adapterState = soundGrad && typeof soundGrad.getDebugState === "function" ? soundGrad.getDebugState() : null;
+      const rpHasOverride = !!(renderPipeline && renderPipeline._gradOverrideTex && renderPipeline._gradOverrideView);
+      const useHueGradient = useHueGradientFlag() | 0;
+      const key = [
+        tag,
+        gradTexMode,
+        useHueGradient,
+        adapterState?.applied || 0,
+        adapterState?.appliedKind || "none",
+        adapterState?.effectiveEnabled ? 1 : 0,
+        rpHasOverride ? 1 : 0,
+        adapterState?.externalWidth || 0,
+        adapterState?.localWidth || 0,
+        String(ps.renderMode || ""),
+        String(ps.layerIndex || 0)
+      ].join("|");
+      if (key === _lastGradTexFractalLogKey) return;
+      _lastGradTexFractalLogKey = key;
+      console.debug("[gradTex -> fractalRenderer]", {
+        tag,
+        gradTexMode,
+        useHueGradient,
+        renderMode: ps.renderMode,
+        layerIndex: ps.layerIndex,
+        rpHasOverride,
+        adapterState,
+        extra: extra || void 0
+      });
+    }
+    function wantSdfForMode(mode, ps) {
+      const m = normRenderMode(mode);
+      if (m === "slab" || m === "raw") return false;
+      if (ps && ps.layerMode) return false;
+      if (ps && ps.lightingOn) return true;
+      if (ps && ps.dispLimitOn) return true;
+      if (((ps && ps.basis) | 0) === 2) return true;
+      const sdfDispMode = (ps && ps.dispMode) | 0;
+      const dispAmp = Number(ps && ps.dispAmp);
+      let dispSource;
+      if (ps && ps.dispSource != null) {
+        dispSource = (Number(ps.dispSource) | 0) >>> 0;
+      } else {
+        dispSource = sdfDispMode !== 0 ? 1 : 0;
+      }
+      if ((dispSource & 1) !== 0 && sdfDispMode !== 0 && dispAmp !== 0)
+        return true;
+      return false;
     }
     function requestedLayers() {
       return requestedLayersFromParams(renderGlobals.paramsState);
     }
-    function availableFractalLayers(chunks = []) {
-      if (!Array.isArray(chunks) || chunks.length === 0) return 1;
-      let maxLayers = 1;
-      for (const c of chunks) {
-        const a = Array.isArray(c.fractalLayerViews) && c.fractalLayerViews || Array.isArray(c.layerViews) && c.layerViews || Array.isArray(c.fractalViews) && c.fractalViews || null;
-        if (a && a.length) maxLayers = Math.max(maxLayers, a.length);
-        else if (c.fractalView) maxLayers = Math.max(maxLayers, 1);
-      }
-      return Math.max(1, maxLayers);
-    }
-    function clampLayerIndex(li, n) {
-      const nn = Math.max(1, n | 0);
-      const x = Number.isFinite(+li) ? +li | 0 : 0;
-      if (x < 0) return 0;
-      if (x >= nn) return nn - 1;
-      return x;
-    }
-    function normalizeFractalChunkLayers(chunks, count) {
-      if (!Array.isArray(chunks) || chunks.length === 0) return;
-      const n = Math.max(1, count | 0);
-      for (const c of chunks) {
-        let views = Array.isArray(c.fractalLayerViews) && c.fractalLayerViews || Array.isArray(c.layerViews) && c.layerViews || Array.isArray(c.fractalViews) && c.fractalViews || null;
-        if (!views && c.fractalView) views = [c.fractalView];
-        if (!Array.isArray(views)) views = views ? [views] : [];
-        if (n > 1) {
-          const base = views[0] || c.fractalView || null;
-          const arr = new Array(n);
-          for (let i = 0; i < n; i++) arr[i] = views[i] || base;
-          c.fractalLayerViews = arr;
-          c.layerViews = arr;
-          c.fractalView = c.fractalView || arr[0] || null;
-        } else {
-          const one = views[0] || c.fractalView || null;
-          c.fractalLayerViews = [one].filter((v) => v != null);
-          c.layerViews = c.fractalLayerViews;
-          c.fractalView = one;
-        }
-      }
-    }
     function effectiveSplitCount(requestedSplit) {
       const req = Math.max(1, Math.floor(requestedSplit || 0));
       const eff = Math.min(req, MAX_PIXELS_PER_CHUNK);
-      if (eff !== req)
+      if (eff !== req) {
         console.debug(
           "splitCount clamped: requested=" + req + ", effective=" + eff
         );
+      }
       return eff;
-    }
-    function normRenderMode(v) {
-      const s = (v == null ? "" : String(v)).trim().toLowerCase();
-      if (s === "slab" || s === "1") return "slab";
-      if (s === "raw" || s === "blit" || s === "debug" || s === "2") return "raw";
-      return "fractal";
-    }
-    function modeNeedsSdf(mode, params = renderGlobals.paramsState) {
-      return mode === "fractal" && needsSdf(params);
     }
     async function ensureSlabChunks(layersToUse) {
       if (!Array.isArray(chunkInfos) || chunkInfos.length === 0) return;
       layersToUse = Math.max(1, layersToUse | 0);
-      if (_slabSetChunksSrc === chunkInfos && _slabSetChunksLayers === layersToUse)
+      if (_slabSetChunksSrc === chunkInfos && _slabSetChunksLayers === layersToUse) {
         return;
+      }
       await slabPipeline.setChunks(chunkInfos, layersToUse);
       _slabSetChunksSrc = chunkInfos;
       _slabSetChunksLayers = layersToUse;
     }
-    function cleanupTempFallbacks(chunks = []) {
-      for (const c of chunks) {
-        if (c._tmpSdfTex) {
-          try {
-            c._tmpSdfTex.destroy();
-          } catch {
-          }
-          delete c._tmpSdfTex;
-        }
-        if (c._tmpFlagTex) {
-          try {
-            c._tmpFlagTex.destroy();
-          } catch {
-          }
-          delete c._tmpFlagTex;
-        }
-        if (c._usingTmpSdfFallback) delete c._usingTmpSdfFallback;
-      }
-    }
-    function chunksWithoutSdf(chunks = []) {
-      if (_noSdfCacheSrc === chunks && _noSdfCache) return _noSdfCache;
-      const out = (chunks || []).map((c) => {
-        const clone = Object.assign({}, c);
-        delete clone.sdfView;
-        delete clone.sdfLayerViews;
-        delete clone.sdfViews;
-        delete clone.sdfTex;
-        delete clone.sdfTexture;
-        delete clone.flagView;
-        delete clone.flagLayerViews;
-        delete clone.flagViews;
-        delete clone.flagTex;
-        delete clone.flagTexture;
-        delete clone._tmpSdfTex;
-        delete clone._tmpFlagTex;
-        delete clone._usingTmpSdfFallback;
-        return clone;
-      });
-      _noSdfCacheSrc = chunks;
-      _noSdfCache = out;
-      return out;
-    }
-    function chunksWithSdf(chunks = []) {
-      if (_withSdfCacheSrc === chunks && _withSdfCache) return _withSdfCache;
-      const out = (chunks || []).map((c) => Object.assign({}, c));
-      _withSdfCacheSrc = chunks;
-      _withSdfCache = out;
-      return out;
-    }
     function freeSdfData(chunks = []) {
-      for (const c of chunks) {
-        try {
-          if (c.sdfTex) {
-            try {
-              c.sdfTex.destroy();
-            } catch {
-            }
-          }
-        } catch {
-        }
-        try {
-          if (c.flagTex) {
-            try {
-              c.flagTex.destroy();
-            } catch {
-            }
-          }
-        } catch {
-        }
-        try {
-          if (c._tmpSdfTex) {
-            try {
-              c._tmpSdfTex.destroy();
-            } catch {
-            }
-          }
-        } catch {
-        }
-        try {
-          if (c._tmpFlagTex) {
-            try {
-              c._tmpFlagTex.destroy();
-            } catch {
-            }
-          }
-        } catch {
-        }
-        delete c.sdfView;
-        delete c.sdfLayerViews;
-        delete c.sdfViews;
-        delete c.sdfTex;
-        delete c.sdfTexture;
-        delete c.flagView;
-        delete c.flagLayerViews;
-        delete c.flagViews;
-        delete c.flagTex;
-        delete c.flagTexture;
-        delete c._tmpSdfTex;
-        delete c._tmpFlagTex;
-        delete c._usingTmpSdfFallback;
-      }
+      destroySdfAttachments(chunks);
       sdfReady = false;
       _sdfAllocEpoch = 0;
-      invalidateChunkCaches();
+      chunkViewCache.invalidate();
     }
     async function computeFractalLayer(layerIndex, aspect = 1) {
       let requested = Math.max(
@@ -5698,13 +9744,16 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
           );
           chunkInfos = chunks || [];
           for (const c of chunkInfos) {
-            if (!c.fractalView && c.layerViews && c.layerViews[0])
+            if (!c.fractalView && c.layerViews && c.layerViews[0]) {
               c.fractalView = c.layerViews[0];
-            if (!c.layerViews && c.fractalView) c.layerViews = [c.fractalView];
+            }
+            if (!c.layerViews && c.fractalView) {
+              c.layerViews = [c.fractalView];
+            }
           }
           sdfReady = false;
           slabWallsDirty = true;
-          invalidateChunkCaches();
+          chunkViewCache.invalidate();
           if (queryCompute._bgCache) queryCompute._bgCache.clear();
           let bad = false;
           for (const c of chunkInfos) {
@@ -5744,7 +9793,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
             }
             sdfReady = false;
             slabWallsDirty = true;
-            invalidateChunkCaches();
+            chunkViewCache.invalidate();
             _slabSetChunksSrc = null;
             _slabSetChunksLayers = 0;
             return chunkInfos;
@@ -5805,7 +9854,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       normalizeFractalChunkLayers(chunkInfos, count);
       sdfReady = false;
       slabWallsDirty = true;
-      invalidateChunkCaches();
+      chunkViewCache.invalidate();
       _slabSetChunksSrc = null;
       _slabSetChunksLayers = 0;
       if (queryCompute._bgCache) queryCompute._bgCache.clear();
@@ -5837,17 +9886,18 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         const epochNow = (sdfCompute && sdfCompute._allocEpoch) | 0;
         const realloc = epochNow !== (_sdfAllocEpoch | 0);
         _sdfAllocEpoch = epochNow;
-        if (!wasReady || realloc) invalidateChunkCaches();
+        if (!wasReady || realloc) chunkViewCache.invalidate();
         if (queryCompute._bgCache) queryCompute._bgCache.clear();
         renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-        await renderPipeline.setChunks(chunksWithSdf(chunkInfos), 1, {
+        soundGrad.applyGradTexModeMaybeRefresh();
+        await renderPipeline.setChunks(chunkViewCache.withSdf(chunkInfos), 1, {
           layerIndex: layerIndex >>> 0,
           requireSdf: true
         });
         return chunkInfos;
       } catch (err) {
         sdfReady = false;
-        invalidateChunkCaches();
+        chunkViewCache.invalidate();
         console.warn("computeSdfLayer: SDF compute failed:", err);
         for (const c of chunkInfos) {
           try {
@@ -5893,10 +9943,15 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         }
         try {
           renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
-          await renderPipeline.setChunks(chunksWithoutSdf(chunkInfos), 1, {
-            layerIndex: layerIndex >>> 0,
-            requireSdf: false
-          });
+          soundGrad.applyGradTexModeMaybeRefresh();
+          await renderPipeline.setChunks(
+            chunkViewCache.withoutSdf(chunkInfos),
+            1,
+            {
+              layerIndex: layerIndex >>> 0,
+              requireSdf: false
+            }
+          );
         } catch (ebg) {
           console.warn(
             "computeSdfLayer: renderPipeline.setChunks failed even with fallbacks:",
@@ -5920,7 +9975,10 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       }
     }
     window.setAlphaMode = function setAlphaMode(mode) {
-      const numeric = parseAlphaModeToNumeric(mode);
+      const numeric = parseAlphaModeToNumeric(
+        mode,
+        renderGlobals.paramsState.alphaMode || 0
+      );
       renderGlobals.paramsState.alphaMode = numeric;
       const newCanvasMode = canvasAlphaStringForNumeric(numeric);
       if (newCanvasMode !== currentAlphaMode) {
@@ -5940,16 +9998,14 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       renderGlobals.cameraDirty = true;
       renderGlobals.gridDirty = true;
     };
-    window.setInvertMouseY = function setInvertMouseY(v) {
-      invertMouseY = !!v;
-    };
     async function rebuildForCurrentState(aspect, forceFractalRecompute) {
       const ps = renderGlobals.paramsState;
       const mode = normRenderMode(ps.renderMode);
       const req = requestedLayers();
       ps.layerIndex = clampLayerIndex(ps.layerIndex, req);
-      const wantSdf = modeNeedsSdf(mode, ps);
+      const wantSdf = wantSdfForMode(mode, ps);
       const sdfSrcLayer = req > 1 ? 0 : ps.layerIndex;
+      soundGrad.applyGradTexModeMaybeRefresh();
       if (forceFractalRecompute) {
         if (req > 1) {
           await computeFractalLayerSeries(req, aspect);
@@ -5972,7 +10028,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
           renderPipeline.gridDivs = ps.gridDivs;
           const requireSdf3 = wantSdf && sdfReady;
           await renderPipeline.setChunks(
-            requireSdf3 ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos),
+            requireSdf3 ? chunkViewCache.withSdf(chunkInfos) : chunkViewCache.withoutSdf(chunkInfos),
             layersToUse,
             {
               layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
@@ -5998,7 +10054,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         renderPipeline.gridDivs = ps.gridDivs;
         const requireSdf2 = wantSdf && sdfReady;
         await renderPipeline.setChunks(
-          requireSdf2 ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos),
+          requireSdf2 ? chunkViewCache.withSdf(chunkInfos) : chunkViewCache.withoutSdf(chunkInfos),
           1,
           {
             layerIndex: clampLayerIndex(ps.layerIndex, 1),
@@ -6025,7 +10081,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         renderPipeline.gridDivs = ps.gridDivs;
         const requireSdf2 = wantSdf && sdfReady;
         await renderPipeline.setChunks(
-          requireSdf2 ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos),
+          requireSdf2 ? chunkViewCache.withSdf(chunkInfos) : chunkViewCache.withoutSdf(chunkInfos),
           layersToUse,
           {
             layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
@@ -6050,7 +10106,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       renderPipeline.gridDivs = ps.gridDivs;
       const requireSdf = wantSdf && sdfReady;
       await renderPipeline.setChunks(
-        requireSdf ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos),
+        requireSdf ? chunkViewCache.withSdf(chunkInfos) : chunkViewCache.withoutSdf(chunkInfos),
         1,
         {
           layerIndex: clampLayerIndex(ps.layerIndex, 1),
@@ -6064,15 +10120,19 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       ps.layerIndex = clampLayerIndex(ps.layerIndex, req);
       const layersToUse = Math.min(req, availableFractalLayers(chunkInfos));
       const mode = normRenderMode(ps.renderMode);
-      const camState = { cameraPos, lookTarget, upDir, fov };
+      const camState = camera.camState;
+      soundGrad.applyGradTexModeMaybeRefresh();
       if (mode === "slab") {
         const slabBits = slabAlphaBitsFromParams(ps);
         const localParams2 = Object.assign({}, ps, {
           nLayers: layersToUse,
           layers: layersToUse,
           layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
-          alphaMode: slabBits
+          waitGPU: true,
+          useHueGradient: useHueGradientFlag(),
+          timeSec: performance.now() * 1e-3
         });
+        soundGrad.applySoundHueToLocalParams(localParams2);
         await ensureSlabChunks(layersToUse);
         await slabPipeline.render(localParams2, camState, {
           runCompute: slabWallsDirty,
@@ -6082,10 +10142,12 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         return;
       }
       const localParams = Object.assign({}, ps, {
+        useHueGradient: useHueGradientFlag(),
         nLayers: layersToUse,
         layers: layersToUse,
         layerIndex: clampLayerIndex(ps.layerIndex, layersToUse)
       });
+      soundGrad.applySoundHueToLocalParams(localParams);
       if (rpWriteRenderUniform) rpWriteRenderUniform(localParams);
       if (rpWriteThreshUniform) rpWriteThreshUniform(localParams);
       if (renderGlobals.gridDirty) {
@@ -6093,11 +10155,16 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         renderPipeline.gridStripes = null;
         renderGlobals.gridDirty = false;
       }
-      const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
-      const chunksToUse = requireSdf ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos);
+      const requireSdf = wantSdfForMode(mode, ps) && sdfReady;
+      const chunksToUse = requireSdf ? chunkViewCache.withSdf(chunkInfos) : chunkViewCache.withoutSdf(chunkInfos);
       await renderPipeline.setChunks(chunksToUse, layersToUse, {
         layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
         requireSdf
+      });
+      logGradTexFractalRoute("renderFrame:setChunks", {
+        layersToUse,
+        requireSdf,
+        drawPath: mode === "raw" && rpBlitFn ? "raw-blit" : rpRenderFn ? "render" : rpBlitFn ? "blit" : "none"
       });
       if (mode === "raw" && rpBlitFn) {
         const viewTex = context.getCurrentTexture().createView();
@@ -6139,6 +10206,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       _slabSetChunksLayers = 0;
       const aspect = pw / ph || 1;
       try {
+        soundGrad.applyGradTexModeMaybeRefresh();
         await rebuildForCurrentState(aspect, true);
         cleanupTempFallbacks(chunkInfos);
         await renderFrame();
@@ -6161,140 +10229,6 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       }, 150);
     }
     window.addEventListener("resize", scheduleResizeDebounced);
-    const keys = /* @__PURE__ */ Object.create(null);
-    const _BLOCK_CODES = /* @__PURE__ */ new Set([
-      "Space",
-      "ShiftLeft",
-      "ShiftRight",
-      "ControlLeft",
-      "ControlRight",
-      "AltLeft",
-      "AltRight",
-      "MetaLeft",
-      "MetaRight",
-      "Tab",
-      "ArrowUp",
-      "ArrowDown",
-      "ArrowLeft",
-      "ArrowRight",
-      "KeyW",
-      "KeyA",
-      "KeyS",
-      "KeyD",
-      "KeyC"
-    ]);
-    function _shouldBlockKey(e) {
-      return _BLOCK_CODES.has(e.code) || e.key === " " || e.key === "Spacebar";
-    }
-    function onKeyDown(e) {
-      if (_shouldBlockKey(e)) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      keys[e.code] = true;
-      if (e.code === "Escape") {
-        try {
-          document.exitPointerLock();
-        } catch {
-        }
-      }
-    }
-    function onKeyUp(e) {
-      if (_shouldBlockKey(e)) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      keys[e.code] = false;
-    }
-    function onMouseMove(e) {
-      yaw += e.movementX * mouseSens;
-      const ySign = invertMouseY ? 1 : -1;
-      pitch = Math.max(
-        -Math.PI / 2,
-        Math.min(Math.PI / 2, pitch + ySign * e.movementY * mouseSens)
-      );
-      updateLookTarget();
-    }
-    canvas.addEventListener("click", () => {
-      try {
-        canvas.requestPointerLock();
-      } catch (e) {
-        console.warn("requestPointerLock failed:", e);
-      }
-    });
-    document.addEventListener("pointerlockchange", () => {
-      const locked = document.pointerLockElement === canvas;
-      if (locked) {
-        document.addEventListener("mousemove", onMouseMove);
-        document.addEventListener("keydown", onKeyDown, { capture: true });
-        document.addEventListener("keyup", onKeyUp, { capture: true });
-      } else {
-        document.removeEventListener("mousemove", onMouseMove);
-        document.removeEventListener("keydown", onKeyDown, { capture: true });
-        document.removeEventListener("keyup", onKeyUp, { capture: true });
-        for (const k in keys) keys[k] = false;
-      }
-    });
-    async function updateMovement(dt) {
-      const ps = renderGlobals.paramsState;
-      let baseSpeed = 2 * dt * ps.quadScale;
-      if (keys["ShiftLeft"] || keys["ShiftRight"]) baseSpeed *= 3;
-      if (keys["ControlLeft"] || keys["ControlRight"]) baseSpeed *= 0.35;
-      const sy = Math.sin(yaw);
-      const cy = Math.cos(yaw);
-      const forward = [sy, 0, -cy];
-      const right = [cy, 0, sy];
-      let dx = 0;
-      let dy = 0;
-      let dz = 0;
-      let moved = false;
-      if (keys["KeyW"]) {
-        dx += forward[0] * baseSpeed;
-        dz += forward[2] * baseSpeed;
-        moved = true;
-      }
-      if (keys["KeyS"]) {
-        dx -= forward[0] * baseSpeed;
-        dz -= forward[2] * baseSpeed;
-        moved = true;
-      }
-      if (keys["KeyA"]) {
-        dx -= right[0] * baseSpeed;
-        dz -= right[2] * baseSpeed;
-        moved = true;
-      }
-      if (keys["KeyD"]) {
-        dx += right[0] * baseSpeed;
-        dz += right[2] * baseSpeed;
-        moved = true;
-      }
-      if (keys["Space"]) {
-        dy += baseSpeed;
-        moved = true;
-      }
-      if (keys["KeyC"]) {
-        dy -= baseSpeed;
-        moved = true;
-      }
-      if (!moved) return false;
-      cameraPos[0] += dx;
-      cameraPos[1] += dy;
-      cameraPos[2] += dz;
-      updateLookTarget();
-      return true;
-    }
-    window.resetViewCamera = () => {
-      cameraPos[0] = 0;
-      cameraPos[1] = 0;
-      cameraPos[2] = 2.4;
-      lookTarget[0] = 0;
-      lookTarget[1] = 0;
-      lookTarget[2] = 0;
-      pitch = 0;
-      yaw = 0;
-      fov = 45 * Math.PI / 180;
-      updateLookTarget();
-    };
     async function updateComputeAndDisplacement(aspect) {
       if (renderGlobals.computeDirty) {
         await rebuildForCurrentState(aspect, true);
@@ -6311,10 +10245,10 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     }
     function downloadBlob(blob, filename) {
       if (!blob) return;
-      const url2 = URL.createObjectURL(blob);
+      const url3 = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.style.display = "none";
-      a.href = url2;
+      a.href = url3;
       a.download = filename || "download";
       a.rel = "noopener";
       document.body.appendChild(a);
@@ -6322,7 +10256,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       a.remove();
       setTimeout(() => {
         try {
-          URL.revokeObjectURL(url2);
+          URL.revokeObjectURL(url3);
         } catch {
         }
       }, 1e3);
@@ -6413,21 +10347,24 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         renderPipeline.gridStripes = null;
         renderGlobals.gridDirty = false;
       }
-      const requireSdf = modeNeedsSdf(mode, ps) && sdfReady;
-      const chunksToUse = requireSdf ? chunksWithSdf(chunkInfos) : chunksWithoutSdf(chunkInfos);
+      soundGrad.applyGradTexModeMaybeRefresh();
+      const requireSdf = wantSdfForMode(mode, ps) && sdfReady;
+      const chunksToUse = requireSdf ? chunkViewCache.withSdf(chunkInfos) : chunkViewCache.withoutSdf(chunkInfos);
       await renderPipeline.setChunks(chunksToUse, layersToUse, {
         layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
         requireSdf
       });
       const { texture } = _ensureExportGpuTargets(w, h);
       const view = texture.createView();
-      const camState = { cameraPos, lookTarget, upDir, fov };
+      const camState = camera.camState;
       const localParams = Object.assign({}, ps, {
         nLayers: layersToUse,
         layers: layersToUse,
         layerIndex: clampLayerIndex(ps.layerIndex, layersToUse),
-        waitGPU: true
+        waitGPU: true,
+        useHueGradient: useHueGradientFlag()
       });
+      soundGrad.applySoundHueToLocalParams(localParams);
       if (rpRenderToView) {
         await rpRenderToView(localParams, camState, view, w, h);
         return;
@@ -6484,9 +10421,6 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       ctx2d.putImageData(img, 0, 0);
       return canvasToPngBlob(_export2dCanvas);
     }
-    function randomTag() {
-      return Math.random().toString(36).slice(2, 8);
-    }
     async function exportFractalCanvas() {
       if (exporting) return;
       exporting = true;
@@ -6534,7 +10468,6 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         renderGlobals.cameraDirty = true;
       }
     }
-    updateLookTarget();
     {
       const cw = canvas.clientWidth;
       const ch = canvas.clientHeight;
@@ -6550,6 +10483,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       renderPipeline.gridDivs = renderGlobals.paramsState.gridDivs;
       renderPipeline.gridStripes = null;
       const aspect = pw / ph || 1;
+      soundGrad.applyGradTexModeMaybeRefresh();
       await rebuildForCurrentState(aspect, true);
       cleanupTempFallbacks(chunkInfos);
       await renderFrame();
@@ -6568,8 +10502,20 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         return;
       }
       const aspect = canvas.width > 0 && canvas.height > 0 ? canvas.width / canvas.height : 1;
+      const nowSec = now * 1e-3;
+      renderGlobals.paramsState.timeSec = nowSec;
+      soundGrad.tick(nowSec, dt);
+      if (soundGrad && typeof soundGrad.applySoundGammaToGlobalParams === "function" && soundGrad.applySoundGammaToGlobalParams(
+        renderGlobals.paramsState,
+        nowSec,
+        dt
+      )) {
+        renderGlobals.computeDirty = true;
+      }
       await updateComputeAndDisplacement(aspect);
-      if (await updateMovement(dt)) renderGlobals.cameraDirty = true;
+      if (camera.updateMovement(dt, renderGlobals.paramsState.quadScale)) {
+        renderGlobals.cameraDirty = true;
+      }
       if (renderGlobals.cameraDirty) {
         await renderFrame();
         renderGlobals.cameraDirty = false;
@@ -6587,7 +10533,10 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         fractalCompute,
         sdfCompute,
         queryCompute,
-        renderGlobals
+        renderGlobals,
+        camera,
+        soundPaletteSystem: soundGrad.getSystem(),
+        soundPaletteAdapter: soundGrad.getDebugState()
       };
     }
     frameHandle = requestAnimationFrame(frame);
@@ -6604,6 +10553,19 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         } catch {
         }
         try {
+          window.removeEventListener("resize", scheduleResizeDebounced);
+        } catch {
+        }
+        try {
+          if (resizeTimer) clearTimeout(resizeTimer);
+        } catch {
+        }
+        resizeTimer = 0;
+        try {
+          camera.dispose();
+        } catch {
+        }
+        try {
           fractalCompute.destroy();
         } catch {
         }
@@ -6617,6 +10579,10 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         }
         try {
           renderPipeline.destroy();
+        } catch {
+        }
+        try {
+          soundGrad.destroy();
         } catch {
         }
         try {
@@ -6660,59 +10626,18 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     };
   }
 
-  // ui.js
-  var initUI = () => {
-    document.body.insertAdjacentHTML("afterbegin", fractalComponent_default);
-    const ui = document.getElementById("ui");
-    const button = document.getElementById("toggle-ui");
-    if (button && ui) {
-      const setToggleVisual = (collapsed) => {
-        button.textContent = collapsed ? "\u25B6" : "\u25C0";
-        button.setAttribute("aria-expanded", collapsed ? "false" : "true");
-        button.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
-      };
-      setToggleVisual(ui.classList.contains("collapsed"));
-      button.addEventListener("click", () => {
-        const isCollapsed = ui.classList.toggle("collapsed");
-        setToggleVisual(isCollapsed);
-      });
-      const hdr = ui.querySelector(".ui-header");
-      if (hdr) {
-        hdr.addEventListener("click", (e) => {
-          if (e.target !== button) button.click();
-        });
-      }
+  // ui/controlsUI.js
+  function _callWin(name, ...args) {
+    const fn = typeof window !== "undefined" ? window[name] : null;
+    if (typeof fn !== "function") return void 0;
+    try {
+      return fn(...args);
+    } catch {
     }
-    const resetCameraBtn = document.getElementById("resetCameraBtn");
-    if (resetCameraBtn) {
-      resetCameraBtn.addEventListener("click", () => {
-        if (typeof window.resetViewCamera === "function") {
-          window.resetViewCamera();
-        }
-      });
-    }
-    const exportFullBtn = document.getElementById("exportFullBtn");
-    if (exportFullBtn) {
-      exportFullBtn.addEventListener("click", () => {
-        if (typeof window.exportFractalFullRes === "function") {
-          window.exportFractalFullRes();
-        }
-      });
-    }
-    const exportCanvasBtn = document.getElementById("exportCanvasBtn");
-    if (exportCanvasBtn) {
-      exportCanvasBtn.addEventListener("click", () => {
-        if (typeof window.exportFractalCanvas === "function") {
-          window.exportFractalCanvas();
-        }
-      });
-    }
-    const presetJson = document.getElementById("presetJson");
-    const presetExportBtn = document.getElementById("presetExportBtn");
-    const presetCopyBtn = document.getElementById("presetCopyBtn");
-    const presetPasteBtn = document.getElementById("presetPasteBtn");
-    const presetApplyBtn = document.getElementById("presetApplyBtn");
-    const presetStatus = document.getElementById("presetStatus");
+    return void 0;
+  }
+  function initControlsUI({ renderGlobals: renderGlobals2, setState: setState2 }) {
+    const S = setState2;
     const LIVE_IDS = /* @__PURE__ */ new Set([
       "epsilon",
       "dispAmp",
@@ -6779,6 +10704,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       gridSize: "gridSize",
       maxIter: "maxIter",
       specPower: "specPower",
+      dispSource: "dispSource",
       dispAmp: "dispAmp",
       dispCurve: "dispCurve",
       bowlDepth: "bowlDepth",
@@ -6799,9 +10725,8 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       colorScheme: "scheme",
       layerMode: "layerMode"
     };
-    const S = setState;
     function getParamValueForControl(id) {
-      const params = renderGlobals.paramsState;
+      const params = renderGlobals2.paramsState;
       const p = ID_TO_PARAM[id] || id;
       if (p === "lightPos") {
         if (id === "lightX") return params.lightPos?.[0] ?? 0;
@@ -6815,6 +10740,25 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         return rad * 180 / Math.PI;
       }
       return params[p];
+    }
+    function setControlValue(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (el.type === "checkbox") {
+        el.checked = !!value;
+        return;
+      }
+      try {
+        el.value = String(value);
+      } catch {
+      }
+      const out = document.getElementById(id + "Out");
+      if (out) {
+        try {
+          out.value = String(value);
+        } catch {
+        }
+      }
     }
     function setControlOutput(id, value) {
       const out = document.getElementById(id + "Out");
@@ -6838,24 +10782,24 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       }
       const evtName = LIVE_IDS.has(id) ? "input" : "change";
       const handle = () => {
-        const num = parseFloat(slider.value);
-        if (Number.isNaN(num)) return;
-        setControlOutput(id, num);
-        onChange(num);
+        const num2 = parseFloat(slider.value);
+        if (Number.isNaN(num2)) return;
+        setControlOutput(id, num2);
+        onChange(num2);
       };
       slider.addEventListener(evtName, handle);
       const out = document.getElementById(id + "Out");
       if (out) {
         const outEvt = LIVE_IDS.has(id) ? "input" : "change";
         const handleOut = () => {
-          const num = parseFloat(out.value);
-          if (Number.isNaN(num)) return;
+          const num2 = parseFloat(out.value);
+          if (Number.isNaN(num2)) return;
           try {
-            slider.value = String(num);
+            slider.value = String(num2);
           } catch {
           }
-          setControlOutput(id, num);
-          onChange(num);
+          setControlOutput(id, num2);
+          onChange(num2);
         };
         out.addEventListener(outEvt, handleOut);
       }
@@ -6883,9 +10827,9 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       if (out) {
         const handleOut = () => {
           const raw = out.value;
-          const num = Number(raw);
-          if (!Number.isFinite(num)) return;
-          const newVal = String(num);
+          const num2 = Number(raw);
+          if (!Number.isFinite(num2)) return;
+          const newVal = String(num2);
           sel.value = newVal;
           updateOutput();
           onChange(sel.value);
@@ -6900,7 +10844,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       const cb = document.getElementById(id);
       if (!cb) return null;
       const paramName = ID_TO_PARAM[id] || id;
-      const initVal = renderGlobals.paramsState[paramName];
+      const initVal = renderGlobals2.paramsState[paramName];
       if (typeof initVal === "boolean") cb.checked = !!initVal;
       cb.addEventListener("change", () => onChange(cb.checked));
       onChange(cb.checked);
@@ -6914,33 +10858,14 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         if (out) out.disabled = !!disabled;
       }
     }
-    function normRenderMode(v) {
+    function normRenderMode2(v) {
       const s = (v == null ? "" : String(v)).trim().toLowerCase();
       if (s === "slab" || s === "1") return "slab";
       if (s === "raw" || s === "blit" || s === "debug" || s === "2") return "raw";
       return "fractal";
     }
-    function setControlValue(id, value) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      if (el.type === "checkbox") {
-        el.checked = !!value;
-        return;
-      }
-      try {
-        el.value = String(value);
-      } catch {
-      }
-      const out = document.getElementById(id + "Out");
-      if (out) {
-        try {
-          out.value = String(value);
-        } catch {
-        }
-      }
-    }
     function ensureLayerModeVisibilityDefaults() {
-      const ps = renderGlobals.paramsState;
+      const ps = renderGlobals2.paramsState;
       const patch = {};
       const sep = Number(ps.worldOffset || 0);
       if (!(Math.abs(sep) > 1e-9)) {
@@ -6963,11 +10888,12 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       }
       if (Object.keys(patch).length) S(patch);
     }
-    let uiLayerMode = !!renderGlobals.paramsState.layerMode;
+    let uiLayerMode = !!renderGlobals2.paramsState.layerMode;
     function autoDisableForLayerMode(forceRenderMode) {
       setControlValue("dispMode", 0);
+      setControlValue("dispSource", 0);
       setControlValue("lightingOn", false);
-      const patch = { dispMode: 0, lightingOn: false };
+      const patch = { dispSource: 0, dispMode: 0, lightingOn: false };
       if (forceRenderMode) {
         setControlValue("renderMode", "fractal");
         patch.renderMode = "fractal";
@@ -6989,7 +10915,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       setDisabled(SLAB_IDS, !enabled);
     }
     function applyRenderModeUI(mode) {
-      const m = normRenderMode(mode);
+      const m = normRenderMode2(mode);
       if (uiLayerMode && m === "slab") {
         setControlValue("renderMode", "fractal");
         setSlabControlsEnabled(false);
@@ -7121,15 +11047,15 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         opt.textContent = `${d.code} - ${d.name}`;
         picker.appendChild(opt);
       }
-      let ops = _deriveInitialOpsFromState(renderGlobals.paramsState);
+      let ops = _deriveInitialOpsFromState(renderGlobals2.paramsState);
       const MAX_OPS = 16;
       function _clampOps(a) {
-        const out2 = [];
-        for (let i = 0; i < a.length && out2.length < MAX_OPS; ++i) {
+        const outOps = [];
+        for (let i = 0; i < a.length && outOps.length < MAX_OPS; ++i) {
           const c = _normOpCode(a[i]);
-          if (c != null) out2.push(c);
+          if (c != null) outOps.push(c);
         }
-        return out2;
+        return outOps;
       }
       function _syncOut() {
         if (out) {
@@ -7138,9 +11064,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
           } catch {
           }
         }
-        if (count) {
-          count.textContent = `${ops.length}/${MAX_OPS}`;
-        }
+        if (count) count.textContent = `${ops.length}/${MAX_OPS}`;
         addBtn.disabled = ops.length >= MAX_OPS;
       }
       function _commit() {
@@ -7186,9 +11110,8 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       function _render() {
         list.innerHTML = "";
         const frag = document.createDocumentFragment();
-        for (let i = 0; i < ops.length; ++i) {
+        for (let i = 0; i < ops.length; ++i)
           frag.appendChild(_makeItem(i, ops[i]));
-        }
         list.appendChild(frag);
       }
       function _setOps(nextOps, doCommit = true) {
@@ -7241,6 +11164,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       _setOps(ops, true);
       return { getOps: () => ops.slice(), setOps: (a) => _setOps(a) };
     }
+    const scaleOpsApi = setupScaleOpsBuilder();
     setupSlider("gridSize", (v) => S({ gridSize: Math.floor(v) }));
     setupSlider("splitCount", (v) => {
       const n = Math.floor(v);
@@ -7256,7 +11180,11 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     setupSlider("layerGammaStep", (v) => S({ layerGammaStep: v }));
     setupSlider("layerSeparation", (v) => S({ worldOffset: v }));
     setupSlider("hueOffset", (v) => S({ hueOffset: v }));
-    let _lastUiNLayers = Math.max(1, Math.floor(renderGlobals.paramsState.nLayers || 1));
+    setupSlider("quadScale", (v) => S({ quadScale: v }));
+    let _lastUiNLayers = Math.max(
+      1,
+      Math.floor(renderGlobals2.paramsState.nLayers || 1)
+    );
     setupSlider("nLayers", (v) => {
       const n = Math.max(1, Math.floor(v));
       S({ nLayers: n });
@@ -7274,8 +11202,12 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     setupSelect("fractalType", (v) => S({ fractalType: +v }));
     setupSelect("escapeMode", (v) => S({ escapeMode: +v }));
     setupCheckbox("convergenceTest", (v) => S({ convergenceTest: v }));
-    setupSelect("colorScheme", (v) => S({ scheme: +v }));
-    const scaleOpsApi = setupScaleOpsBuilder();
+    setupSelect("colorScheme", (v) => {
+      const n = +v;
+      S({ scheme: n });
+      _callWin("soundPaletteConfig", { baseStyle: (n | 0) >>> 0, react: true });
+    });
+    setupSelect("dispSource", (v) => S({ dispSource: +v }));
     setupSelect("dispMode", (v) => S({ dispMode: +v }));
     setupSlider("dispAmp", (v) => S({ dispAmp: v }));
     setupSlider("dispCurve", (v) => S({ dispCurve: v }));
@@ -7289,7 +11221,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     });
     setupSlider("wallJump", (v) => S({ wallJump: v }));
     const setLight = (idx, val) => {
-      const lp = [...renderGlobals.paramsState.lightPos || [0, 0, 0]];
+      const lp = [...renderGlobals2.paramsState.lightPos || [0, 0, 0]];
       lp[idx] = val;
       S({ lightPos: lp });
     };
@@ -7317,15 +11249,40 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
     setupCheckbox("contourOn", (v) => S({ contourOn: v }));
     setupCheckbox("contourOnly", (v) => S({ contourOnly: v }));
     setupCheckbox("contourFront", (v) => S({ contourFront: v }));
-    function setPresetStatus(msg) {
-      if (!presetStatus) return;
-      try {
-        presetStatus.textContent = msg || "";
-      } catch {
-      }
-    }
+    applyLayerModeUI(!!renderGlobals2.paramsState.layerMode);
+    setSlabControlsEnabled(
+      normRenderMode2(renderGlobals2.paramsState.renderMode) === "slab"
+    );
+    applyRenderModeUI(renderGlobals2.paramsState.renderMode);
+    return {
+      normRenderMode: normRenderMode2,
+      setDisabled,
+      setSlabControlsEnabled,
+      applyRenderModeUI,
+      applyLayerModeUI,
+      applyAlphaModeUI,
+      setControlValue,
+      setControlOutput,
+      getParamValueForControl,
+      scaleOpsApi
+    };
+  }
+
+  // ui/presetsUI.js
+  function _toNum(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  function initPresetsUI({ renderGlobals: renderGlobals2, setState: setState2, controlsApi, soundApi }) {
+    const presetJson = document.getElementById("presetJson");
+    const presetExportBtn = document.getElementById("presetExportBtn");
+    const presetCopyBtn = document.getElementById("presetCopyBtn");
+    const presetPasteBtn = document.getElementById("presetPasteBtn");
+    const presetApplyBtn = document.getElementById("presetApplyBtn");
+    const presetStatus = document.getElementById("presetStatus");
     const PRESET_CONTROL_IDS = [
       "gridSize",
+      "splitCount",
       "renderMode",
       "alphaMode",
       "fractalType",
@@ -7370,10 +11327,12 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       "feather",
       "contourOn",
       "contourOnly",
-      "contourFront"
+      "contourFront",
+      "gradTexMode"
     ];
     const PRESET_TYPES = {
       gridSize: "int",
+      splitCount: "int",
       maxIter: "int",
       nLayers: "int",
       gridDivs: "int",
@@ -7383,6 +11342,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       dispMode: "int",
       thresholdBasis: "int",
       alphaMode: "int",
+      gradTexMode: "int",
       renderMode: "string",
       convergenceTest: "bool",
       layerMode: "bool",
@@ -7418,6 +11378,13 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       feather: "num",
       fieldMode: "int"
     };
+    function setPresetStatus(msg) {
+      if (!presetStatus) return;
+      try {
+        presetStatus.textContent = msg || "";
+      } catch {
+      }
+    }
     function readPresetValueFromControl(id) {
       const el = document.getElementById(id);
       if (!el) return void 0;
@@ -7438,58 +11405,77 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         const v = readPresetValueFromControl(id);
         if (v !== void 0) controls[id] = v;
       }
-      if (scaleOpsApi && typeof scaleOpsApi.getOps === "function") {
-        const ops = scaleOpsApi.getOps();
+      const opsApi = controlsApi?.scaleOpsApi;
+      if (opsApi && typeof opsApi.getOps === "function") {
+        const ops = opsApi.getOps();
         if (Array.isArray(ops)) controls.scaleOps = ops.slice();
       } else {
-        const rawOps = renderGlobals.paramsState?.scaleOps;
+        const rawOps = renderGlobals2.paramsState?.scaleOps;
         if (Array.isArray(rawOps)) controls.scaleOps = rawOps.slice();
       }
-      return { version: 1, controls };
-    }
-    function _toNum(v) {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
+      const sound = soundApi && typeof soundApi.getPresetState === "function" ? soundApi.getPresetState() : null;
+      return { version: 2, controls, sound };
     }
     function _applyNumericControl(id, v) {
       const n = _toNum(v);
       if (n == null) return false;
-      setControlValue(id, n);
-      setControlOutput(id, n);
+      controlsApi.setControlValue(id, n);
+      controlsApi.setControlOutput(id, n);
       return true;
     }
     function _applyIntControl(id, v) {
       const n = _toNum(v);
       if (n == null) return false;
       const i = Math.round(n) | 0;
-      setControlValue(id, i);
-      setControlOutput(id, i);
+      controlsApi.setControlValue(id, i);
+      controlsApi.setControlOutput(id, i);
       return true;
     }
     function _applyBoolControl(id, v) {
       const b = !!v;
-      setControlValue(id, b);
+      controlsApi.setControlValue(id, b);
       return true;
     }
     function applyPresetObject(obj) {
       const root = obj && typeof obj === "object" ? obj : null;
       if (!root) return { ok: false, err: "Preset is not an object" };
       const controls = root.controls && typeof root.controls === "object" ? root.controls : root;
-      if (!controls || typeof controls !== "object") return { ok: false, err: "Missing controls" };
+      if (!controls || typeof controls !== "object")
+        return { ok: false, err: "Missing controls" };
       if ("layerMode" in controls) {
         _applyBoolControl("layerMode", controls.layerMode);
-        applyLayerModeUI(!!controls.layerMode);
+        controlsApi.applyLayerModeUI(!!controls.layerMode);
       }
       if ("alphaMode" in controls) {
-        applyAlphaModeUI(controls.alphaMode);
+        controlsApi.applyAlphaModeUI(controls.alphaMode);
       }
       if ("renderMode" in controls) {
-        setControlValue("renderMode", controls.renderMode);
-        applyRenderModeUI(controls.renderMode);
+        controlsApi.setControlValue("renderMode", controls.renderMode);
+        controlsApi.applyRenderModeUI(controls.renderMode);
       }
       const patch = {};
+      if ("gradTexMode" in controls) {
+        const n = _toNum(controls.gradTexMode);
+        if (n != null) {
+          const v = (Math.round(n) | 0) === 1 ? 1 : 0;
+          const el = document.getElementById("gradTexMode");
+          if (el) {
+            try {
+              el.value = String(v);
+            } catch {
+            }
+          }
+          patch.gradTexMode = v;
+          if (soundApi && typeof soundApi.setGradTexEnabled === "function") {
+            soundApi.setGradTexEnabled(v === 1);
+          }
+        }
+      }
       if ("gridSize" in controls && _applyIntControl("gridSize", controls.gridSize)) {
         patch.gridSize = Math.max(1, Math.floor(_toNum(controls.gridSize) || 1));
+      }
+      if ("splitCount" in controls && _applyIntControl("splitCount", controls.splitCount)) {
+        patch.splitCount = Math.max(1, Math.floor(_toNum(controls.splitCount) || 1));
       }
       if ("maxIter" in controls && _applyIntControl("maxIter", controls.maxIter)) {
         patch.maxIter = Math.max(1, Math.floor(_toNum(controls.maxIter) || 1));
@@ -7497,19 +11483,26 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       if ("fractalType" in controls && _applyIntControl("fractalType", controls.fractalType)) {
         patch.fractalType = Math.max(0, Math.floor(_toNum(controls.fractalType) || 0));
       }
-      if ("zoom" in controls && _applyNumericControl("zoom", controls.zoom)) patch.zoom = _toNum(controls.zoom);
-      if ("dx" in controls && _applyNumericControl("dx", controls.dx)) patch.dx = _toNum(controls.dx);
-      if ("dy" in controls && _applyNumericControl("dy", controls.dy)) patch.dy = _toNum(controls.dy);
-      if ("escapeR" in controls && _applyNumericControl("escapeR", controls.escapeR)) patch.escapeR = _toNum(controls.escapeR);
-      if ("epsilon" in controls && _applyNumericControl("epsilon", controls.epsilon)) patch.epsilon = _toNum(controls.epsilon);
-      if ("gamma" in controls && _applyNumericControl("gamma", controls.gamma)) patch.gamma = _toNum(controls.gamma);
+      if ("zoom" in controls && _applyNumericControl("zoom", controls.zoom))
+        patch.zoom = _toNum(controls.zoom);
+      if ("dx" in controls && _applyNumericControl("dx", controls.dx))
+        patch.dx = _toNum(controls.dx);
+      if ("dy" in controls && _applyNumericControl("dy", controls.dy))
+        patch.dy = _toNum(controls.dy);
+      if ("escapeR" in controls && _applyNumericControl("escapeR", controls.escapeR))
+        patch.escapeR = _toNum(controls.escapeR);
+      if ("epsilon" in controls && _applyNumericControl("epsilon", controls.epsilon))
+        patch.epsilon = _toNum(controls.epsilon);
+      if ("gamma" in controls && _applyNumericControl("gamma", controls.gamma))
+        patch.gamma = _toNum(controls.gamma);
       if ("layerGammaStep" in controls && _applyNumericControl("layerGammaStep", controls.layerGammaStep)) {
         patch.layerGammaStep = _toNum(controls.layerGammaStep);
       }
       if ("layerSeparation" in controls && _applyNumericControl("layerSeparation", controls.layerSeparation)) {
         patch.worldOffset = _toNum(controls.layerSeparation);
       }
-      if ("hueOffset" in controls && _applyNumericControl("hueOffset", controls.hueOffset)) patch.hueOffset = _toNum(controls.hueOffset);
+      if ("hueOffset" in controls && _applyNumericControl("hueOffset", controls.hueOffset))
+        patch.hueOffset = _toNum(controls.hueOffset);
       if ("nLayers" in controls && _applyIntControl("nLayers", controls.nLayers)) {
         patch.nLayers = Math.max(1, Math.floor(_toNum(controls.nLayers) || 1));
       }
@@ -7519,7 +11512,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       if ("escapeMode" in controls) {
         const n = _toNum(controls.escapeMode);
         if (n != null) {
-          setControlValue("escapeMode", Math.round(n) | 0);
+          controlsApi.setControlValue("escapeMode", Math.round(n) | 0);
           patch.escapeMode = Math.round(n) | 0;
         }
       }
@@ -7530,28 +11523,39 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       if ("colorScheme" in controls) {
         const n = _toNum(controls.colorScheme);
         if (n != null) {
-          setControlValue("colorScheme", Math.round(n) | 0);
-          patch.scheme = Math.round(n) | 0;
+          const v = Math.round(n) | 0;
+          controlsApi.setControlValue("colorScheme", v);
+          patch.scheme = v;
+          if (typeof window.soundPaletteConfig === "function") {
+            try {
+              window.soundPaletteConfig({ baseStyle: v, react: true });
+            } catch {
+            }
+          }
         }
       }
-      if ("lowThresh" in controls && _applyNumericControl("lowThresh", controls.lowThresh)) patch.lowT = _toNum(controls.lowThresh);
-      if ("highThresh" in controls && _applyNumericControl("highThresh", controls.highThresh)) patch.highT = _toNum(controls.highThresh);
+      if ("lowThresh" in controls && _applyNumericControl("lowThresh", controls.lowThresh))
+        patch.lowT = _toNum(controls.lowThresh);
+      if ("highThresh" in controls && _applyNumericControl("highThresh", controls.highThresh))
+        patch.highT = _toNum(controls.highThresh);
       if ("thresholdBasis" in controls) {
         const n = _toNum(controls.thresholdBasis);
         if (n != null) {
-          setControlValue("thresholdBasis", Math.round(n) | 0);
+          controlsApi.setControlValue("thresholdBasis", Math.round(n) | 0);
           patch.basis = Math.round(n) | 0;
         }
       }
       if ("dispMode" in controls) {
         const n = _toNum(controls.dispMode);
         if (n != null) {
-          setControlValue("dispMode", Math.round(n) | 0);
+          controlsApi.setControlValue("dispMode", Math.round(n) | 0);
           patch.dispMode = Math.round(n) | 0;
         }
       }
-      if ("dispAmp" in controls && _applyNumericControl("dispAmp", controls.dispAmp)) patch.dispAmp = _toNum(controls.dispAmp);
-      if ("dispCurve" in controls && _applyNumericControl("dispCurve", controls.dispCurve)) patch.dispCurve = _toNum(controls.dispCurve);
+      if ("dispAmp" in controls && _applyNumericControl("dispAmp", controls.dispAmp))
+        patch.dispAmp = _toNum(controls.dispAmp);
+      if ("dispCurve" in controls && _applyNumericControl("dispCurve", controls.dispCurve))
+        patch.dispCurve = _toNum(controls.dispCurve);
       if ("dispLimitOn" in controls) {
         _applyBoolControl("dispLimitOn", controls.dispLimitOn);
         patch.dispLimitOn = !!controls.dispLimitOn;
@@ -7560,9 +11564,12 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         _applyBoolControl("bowlOn", controls.bowlOn);
         patch.bowlOn = !!controls.bowlOn;
       }
-      if ("bowlDepth" in controls && _applyNumericControl("bowlDepth", controls.bowlDepth)) patch.bowlDepth = _toNum(controls.bowlDepth);
-      if ("quadScale" in controls && _applyNumericControl("quadScale", controls.quadScale)) patch.quadScale = _toNum(controls.quadScale);
-      if ("wallJump" in controls && _applyNumericControl("wallJump", controls.wallJump)) patch.wallJump = _toNum(controls.wallJump);
+      if ("bowlDepth" in controls && _applyNumericControl("bowlDepth", controls.bowlDepth))
+        patch.bowlDepth = _toNum(controls.bowlDepth);
+      if ("quadScale" in controls && _applyNumericControl("quadScale", controls.quadScale))
+        patch.quadScale = _toNum(controls.quadScale);
+      if ("wallJump" in controls && _applyNumericControl("wallJump", controls.wallJump))
+        patch.wallJump = _toNum(controls.wallJump);
       if ("slopeLimit" in controls && _applyNumericControl("slopeLimit", controls.slopeLimit)) {
         const deg = _toNum(controls.slopeLimit);
         if (deg != null) {
@@ -7577,7 +11584,7 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       }
       const anyLight = "lightX" in controls || "lightY" in controls || "lightZ" in controls;
       if (anyLight) {
-        const lp = [...renderGlobals.paramsState.lightPos || [0, 0, 0]];
+        const lp = [...renderGlobals2.paramsState.lightPos || [0, 0, 0]];
         if ("lightX" in controls) {
           const n = _toNum(controls.lightX);
           if (n != null) {
@@ -7607,17 +11614,21 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
       if ("fieldMode" in controls) {
         const n = _toNum(controls.fieldMode);
         if (n != null) {
-          setControlValue("fieldMode", Math.round(n) | 0);
+          controlsApi.setControlValue("fieldMode", Math.round(n) | 0);
           patch.fieldMode = Math.round(n) | 0;
         }
       }
       if ("meshStep" in controls && _applyIntControl("meshStep", controls.meshStep)) {
         patch.meshStep = Math.max(1, Math.floor(_toNum(controls.meshStep) || 1));
       }
-      if ("capBias" in controls && _applyNumericControl("capBias", controls.capBias)) patch.capBias = _toNum(controls.capBias);
-      if ("gradScale" in controls && _applyNumericControl("gradScale", controls.gradScale)) patch.gradScale = _toNum(controls.gradScale);
-      if ("thickness" in controls && _applyNumericControl("thickness", controls.thickness)) patch.thickness = _toNum(controls.thickness);
-      if ("feather" in controls && _applyNumericControl("feather", controls.feather)) patch.feather = _toNum(controls.feather);
+      if ("capBias" in controls && _applyNumericControl("capBias", controls.capBias))
+        patch.capBias = _toNum(controls.capBias);
+      if ("gradScale" in controls && _applyNumericControl("gradScale", controls.gradScale))
+        patch.gradScale = _toNum(controls.gradScale);
+      if ("thickness" in controls && _applyNumericControl("thickness", controls.thickness))
+        patch.thickness = _toNum(controls.thickness);
+      if ("feather" in controls && _applyNumericControl("feather", controls.feather))
+        patch.feather = _toNum(controls.feather);
       if ("contourOn" in controls) {
         _applyBoolControl("contourOn", controls.contourOn);
         patch.contourOn = !!controls.contourOn;
@@ -7630,21 +11641,28 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         _applyBoolControl("contourFront", controls.contourFront);
         patch.contourFront = !!controls.contourFront;
       }
-      if (Object.keys(patch).length) S(patch);
+      if (Object.keys(patch).length) setState2(patch);
       if ("scaleOps" in controls) {
         const ops = Array.isArray(controls.scaleOps) ? controls.scaleOps : null;
         if (ops) {
-          if (scaleOpsApi && typeof scaleOpsApi.setOps === "function") {
-            scaleOpsApi.setOps(ops);
+          const opsApi = controlsApi?.scaleOpsApi;
+          if (opsApi && typeof opsApi.setOps === "function") {
+            opsApi.setOps(ops);
           } else {
             const norm = [];
             for (let i = 0; i < ops.length && norm.length < 16; ++i) {
-              const c = _normOpCode(ops[i]);
-              if (c != null) norm.push(c);
+              const n = _toNum(ops[i]);
+              if (n == null) continue;
+              norm.push((n | 0) >>> 0);
             }
-            S({ scaleOps: norm.slice(), scaleMode: _opsToMask(norm) });
+            setState2({ scaleOps: norm.slice() });
           }
         }
+      }
+      if (root.sound && soundApi && typeof soundApi.applyPresetState === "function") {
+        soundApi.applyPresetState(root.sound);
+      } else if (soundApi && typeof soundApi.pushConfig === "function") {
+        soundApi.pushConfig();
       }
       return { ok: true };
     }
@@ -7730,12 +11748,2087 @@ fn fs_composite_opaque(i: VSOut) -> @location(0) vec4<f32> {
         setPresetStatus(res.ok ? "Applied" : `Apply failed: ${res.err || "unknown"}`);
       });
     }
-    applyLayerModeUI(!!renderGlobals.paramsState.layerMode);
-    setSlabControlsEnabled(normRenderMode(renderGlobals.paramsState.renderMode) === "slab");
-    applyRenderModeUI(renderGlobals.paramsState.renderMode);
+  }
+
+  // ui/soundPaletteSidebarBridge.js
+  var import_howler = __toESM(require_howler(), 1);
+
+  // audio/howler-worklet-wrapper.js
+  var _CTX_STATE = /* @__PURE__ */ new WeakMap();
+  var _WORKLET_SOURCE = `
+const SHARED = {
+  WRITE_INDEX: 0, // absolute sample counter
+  SEQ: 1,         // increments per render quantum
+  READ_INDEX: 2,  // optional: consumer-maintained absolute read counter
+  DROPPED: 3,     // optional: writer-maintained dropped sample count (requires READ_INDEX)
+};
+
+class HowlerFxProcessor extends AudioWorkletProcessor {
+  static get parameterDescriptors() {
+    return [
+      { name: "fxGain", defaultValue: 1, minValue: 0, maxValue: 8, automationRate: "a-rate" },
+      { name: "clipEnabled", defaultValue: 0, minValue: 0, maxValue: 1, automationRate: "k-rate" },
+      { name: "clipDrive", defaultValue: 1, minValue: 0, maxValue: 32, automationRate: "k-rate" },
+    ];
+  }
+
+  constructor(options) {
+    super();
+
+    const o = (options && options.processorOptions) || {};
+
+    this._meterEnabled = o.meterEnabled !== false;
+    this._meterHz = Number.isFinite(o.meterHz) ? o.meterHz : 30;
+    this._framesPerMeter = this._calcFramesPerMeter(this._meterHz);
+    this._resetMeter();
+
+    const shared = o.sharedTap || null;
+    this._sharedOn = false;
+    this._sharedSamples = null;
+    this._sharedState = null;
+    this._sharedRingSize = 0;
+    this._sharedMask = 0;
+    this._sharedIsPow2 = false;
+    this._sharedMonoMode = 0; // 0 avg, 1 L, 2 R
+
+    if (shared && shared.samplesSAB && shared.stateSAB && (shared.ringSize | 0) > 0) {
+      const ringSize = shared.ringSize | 0;
+      const isPow2 = ringSize > 0 && (ringSize & (ringSize - 1)) === 0;
+
+      this._sharedOn = true;
+      this._sharedSamples = new Float32Array(shared.samplesSAB);
+      this._sharedState = new Int32Array(shared.stateSAB);
+      this._sharedRingSize = ringSize | 0;
+      this._sharedIsPow2 = !!isPow2;
+      this._sharedMask = isPow2 ? ((ringSize - 1) | 0) : 0;
+
+      const mm = shared.monoMode;
+      if (mm === "L") this._sharedMonoMode = 1;
+      else if (mm === "R") this._sharedMonoMode = 2;
+      else this._sharedMonoMode = 0;
+    }
+
+    this.port.onmessage = (e) => {
+      const m = e && e.data;
+      if (!m || typeof m !== "object") return;
+
+      if (m.type === "meter") {
+        if (typeof m.enabled === "boolean") this._meterEnabled = m.enabled;
+        if (Number.isFinite(m.hz) && m.hz > 0) {
+          this._meterHz = m.hz;
+          this._framesPerMeter = this._calcFramesPerMeter(this._meterHz);
+          this._resetMeter();
+        }
+        return;
+      }
+
+      if (m.type === "sharedTap") {
+        if (typeof m.enabled === "boolean") this._sharedOn = m.enabled && !!this._sharedSamples && !!this._sharedState;
+        if (m.monoMode === "L") this._sharedMonoMode = 1;
+        else if (m.monoMode === "R") this._sharedMonoMode = 2;
+        else if (m.monoMode === "avg") this._sharedMonoMode = 0;
+        return;
+      }
+
+      if (m.type === "ping") {
+        this.port.postMessage({
+          type: "pong",
+          id: m.id | 0,
+          t: currentTime,
+          sr: sampleRate,
+        });
+        return;
+      }
+    };
+  }
+
+  _calcFramesPerMeter(hz) {
+    const h = hz > 0 ? hz : 30;
+    const frames = (sampleRate / h) | 0;
+    return frames > 128 ? frames : 128;
+  }
+
+  _resetMeter() {
+    this._frameCounter = 0;
+    this._sumSqL = 0;
+    this._sumSqR = 0;
+    this._peakL = 0;
+    this._peakR = 0;
+  }
+
+  _softClip(x) {
+    const ax = x < 0 ? -x : x;
+    return x / (1 + ax);
+  }
+
+  process(inputs, outputs, params) {
+    const input = inputs[0];
+    const output = outputs[0];
+    if (!input || input.length === 0 || !output || output.length === 0) return true;
+
+    const inL = input[0];
+    const inR = input[1] || inL;
+    const outL = output[0];
+    const outR = output[1] || outL;
+
+    const n = outL.length | 0;
+
+    const fxGainArr = params.fxGain;
+    const gainIsA = fxGainArr && fxGainArr.length > 1;
+
+    const clipEnabled = (params.clipEnabled && params.clipEnabled[0]) ? 1 : 0;
+    const clipDrive = (params.clipDrive && params.clipDrive[0]) || 1;
+
+    let sumSqL = this._sumSqL;
+    let sumSqR = this._sumSqR;
+    let peakL = this._peakL;
+    let peakR = this._peakR;
+
+    const meterOn = this._meterEnabled;
+
+    const sharedOn = this._sharedOn;
+    const sharedSamples = this._sharedSamples;
+    const sharedState = this._sharedState;
+
+    const ringSize = this._sharedRingSize | 0;
+    const isPow2 = this._sharedIsPow2;
+    const mask = this._sharedMask | 0;
+    const monoMode = this._sharedMonoMode | 0;
+
+    let wAbs = 0;
+    let rAbs = 0;
+    let dropped = 0;
+
+    if (sharedOn && sharedState && ringSize > 0) {
+      wAbs = Atomics.load(sharedState, SHARED.WRITE_INDEX) | 0;
+      rAbs = Atomics.load(sharedState, SHARED.READ_INDEX) | 0;
+
+      const lag = (wAbs - rAbs) | 0;
+      if (lag > ringSize) {
+        dropped = (lag - ringSize) | 0;
+      }
+    }
+
+    for (let i = 0; i < n; i++) {
+      const g = gainIsA ? fxGainArr[i] : fxGainArr[0];
+
+      let l = (inL[i] || 0) * g;
+      let r = (inR[i] || 0) * g;
+
+      if (clipEnabled) {
+        l = this._softClip(l * clipDrive);
+        r = this._softClip(r * clipDrive);
+      }
+
+      outL[i] = l;
+      outR[i] = r;
+
+      if (sharedOn && sharedSamples && sharedState && ringSize > 0) {
+        let mono = 0;
+        if (monoMode === 1) mono = l;
+        else if (monoMode === 2) mono = r;
+        else mono = 0.5 * (l + r);
+
+        const idx = (wAbs + i) | 0;
+        sharedSamples[isPow2 ? (idx & mask) : ((idx % ringSize) | 0)] = mono;
+      }
+
+      if (meterOn) {
+        const al = l < 0 ? -l : l;
+        const ar = r < 0 ? -r : r;
+        if (al > peakL) peakL = al;
+        if (ar > peakR) peakR = ar;
+        sumSqL += l * l;
+        sumSqR += r * r;
+      }
+    }
+
+    if (sharedOn && sharedState && ringSize > 0) {
+      const nextW = (wAbs + n) | 0;
+      Atomics.store(sharedState, SHARED.WRITE_INDEX, nextW);
+      Atomics.add(sharedState, SHARED.SEQ, 1);
+
+      if (dropped > 0) {
+        Atomics.add(sharedState, SHARED.DROPPED, dropped);
+      }
+    }
+
+    if (meterOn) {
+      this._sumSqL = sumSqL;
+      this._sumSqR = sumSqR;
+      this._peakL = peakL;
+      this._peakR = peakR;
+
+      this._frameCounter += n;
+      if (this._frameCounter >= this._framesPerMeter) {
+        const denom = this._frameCounter || 1;
+
+        this.port.postMessage({
+          type: "meter",
+          peakL: this._peakL,
+          peakR: this._peakR,
+          rmsL: Math.sqrt(this._sumSqL / denom),
+          rmsR: Math.sqrt(this._sumSqR / denom),
+        });
+
+        this._resetMeter();
+      }
+    }
+
+    return true;
+  }
+}
+
+registerProcessor("howler-fx", HowlerFxProcessor);
+`;
+  function _resolveHowler(howlOrHowler, howlerMaybe) {
+    if (howlerMaybe && howlerMaybe.ctx && howlerMaybe.masterGain != null) return howlerMaybe;
+    if (howlOrHowler && howlOrHowler.ctx && howlOrHowler.masterGain != null) return howlOrHowler;
+    const h = howlOrHowler && howlOrHowler._howler;
+    if (h && h.ctx && h.masterGain != null) return h;
+    return howlerMaybe || null;
+  }
+  function _ensureCtxAndMasterGain(Howler3) {
+    if (Howler3 && Howler3.ctx && Howler3.masterGain) return;
+    const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
+    if (!AC) throw new Error("No AudioContext available.");
+    if (!Howler3.ctx) Howler3.ctx = new AC();
+    if (!Howler3.masterGain) {
+      const ctx = Howler3.ctx;
+      const g = typeof ctx.createGain === "function" ? ctx.createGain() : ctx.createGainNode();
+      let muted = false;
+      let vol = 1;
+      if (typeof Howler3._muted === "boolean") muted = Howler3._muted;
+      if (typeof Howler3._volume === "number") vol = Howler3._volume;
+      if (typeof Howler3.volume === "function") {
+        try {
+          const v = Howler3.volume();
+          if (typeof v === "number" && Number.isFinite(v)) vol = v;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      g.gain.setValueAtTime(muted ? 0 : vol, ctx.currentTime);
+      g.connect(ctx.destination);
+      Howler3.masterGain = g;
+    }
+  }
+  function _getOrCreateCtxState(ctx) {
+    let st = _CTX_STATE.get(ctx);
+    if (!st) {
+      st = {
+        moduleURL: null,
+        workletLoaded: false,
+        graph: null,
+        hadDestinationConnection: null
+      };
+      _CTX_STATE.set(ctx, st);
+    }
+    return st;
+  }
+  function _getOrCreateModuleURL(ctx) {
+    const st = _getOrCreateCtxState(ctx);
+    if (st.moduleURL) return st.moduleURL;
+    const blob = new Blob([_WORKLET_SOURCE], { type: "application/javascript" });
+    const url3 = URL.createObjectURL(blob);
+    st.moduleURL = url3;
+    return url3;
+  }
+  function _safeDisconnect(node, dest) {
+    if (!node) return;
+    try {
+      if (dest) node.disconnect(dest);
+      else node.disconnect();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  function _safeConnect(a, b) {
+    if (!a || !b) return;
+    try {
+      a.connect(b);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  function _isPow2(v) {
+    v = v | 0;
+    return v > 0 && (v & v - 1) === 0;
+  }
+  function _nextPow2(v) {
+    v = Math.max(1, v | 0);
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v++;
+    return v | 0;
+  }
+  async function ensureHowlerWorklet(howlInstance, opts = {}) {
+    const Howler3 = _resolveHowler(howlInstance, opts.Howler);
+    if (!Howler3) throw new Error("Howler not provided. Pass { Howler } in opts.");
+    _ensureCtxAndMasterGain(Howler3);
+    const ctx = Howler3.ctx;
+    if (!ctx || ctx.state === "closed") throw new Error("AudioContext is closed.");
+    if (!ctx.audioWorklet) throw new Error("AudioWorklet not available in this browser/context.");
+    const st = _getOrCreateCtxState(ctx);
+    if (st.graph && st.graph.installed && !opts.forceReinstall) return st.graph.api;
+    const moduleURL = opts.workletModuleURL || _getOrCreateModuleURL(ctx);
+    if (!st.workletLoaded || opts.forceReloadWorklet) {
+      await ctx.audioWorklet.addModule(moduleURL);
+      st.workletLoaded = true;
+    }
+    const preMix = ctx.createGain();
+    preMix.gain.value = 1;
+    let sharedTapOpts = null;
+    const wantShared = !!opts.sharedTap;
+    const sabOk = typeof SharedArrayBuffer !== "undefined" && !!globalThis.crossOriginIsolated;
+    if (wantShared && sabOk) {
+      const ringReq = opts.sharedTap && opts.sharedTap.ringSize ? opts.sharedTap.ringSize | 0 : 32768;
+      const ringSize = _isPow2(ringReq) ? ringReq : _nextPow2(ringReq);
+      const samplesSAB = new SharedArrayBuffer(Float32Array.BYTES_PER_ELEMENT * ringSize);
+      const stateSAB = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 4);
+      const state = new Int32Array(stateSAB);
+      state[0] = 0;
+      state[1] = 0;
+      state[2] = 0;
+      state[3] = 0;
+      sharedTapOpts = {
+        ringSize,
+        samplesSAB,
+        stateSAB,
+        monoMode: opts.sharedTap && opts.sharedTap.monoMode === "L" ? "L" : opts.sharedTap && opts.sharedTap.monoMode === "R" ? "R" : "avg"
+      };
+    }
+    const fx = new AudioWorkletNode(ctx, "howler-fx", {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+      processorOptions: {
+        meterEnabled: opts.meterEnabled !== false,
+        meterHz: Number.isFinite(opts.meterHz) ? opts.meterHz : 30,
+        sharedTap: sharedTapOpts
+      }
+    });
+    const postGain = ctx.createGain();
+    postGain.gain.value = 1;
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = opts.analyser && opts.analyser.fftSize || 2048;
+    if (opts.analyser && typeof opts.analyser.smoothingTimeConstant === "number") {
+      analyser.smoothingTimeConstant = opts.analyser.smoothingTimeConstant;
+    }
+    const useAnalyser = opts.useAnalyser !== false;
+    let hadDestConnection = null;
+    try {
+      Howler3.masterGain.disconnect(ctx.destination);
+      hadDestConnection = true;
+    } catch (e) {
+      console.error(e);
+      try {
+        Howler3.masterGain.disconnect();
+        hadDestConnection = true;
+      } catch (e2) {
+        console.error(e2);
+        hadDestConnection = false;
+      }
+    }
+    _safeDisconnect(preMix);
+    _safeDisconnect(fx);
+    _safeDisconnect(analyser);
+    _safeDisconnect(postGain);
+    _safeConnect(Howler3.masterGain, preMix);
+    _safeConnect(preMix, fx);
+    if (useAnalyser) {
+      _safeConnect(fx, analyser);
+      _safeConnect(analyser, postGain);
+    } else {
+      _safeConnect(fx, postGain);
+    }
+    _safeConnect(postGain, ctx.destination);
+    st.hadDestinationConnection = hadDestConnection;
+    const meterState = { peakL: 0, peakR: 0, rmsL: 0, rmsR: 0 };
+    const pingState = { lastPongAt: 0, lastPongId: 0, lastPongSr: 0 };
+    fx.port.onmessage = (e) => {
+      const m = e && e.data;
+      if (!m || typeof m !== "object") return;
+      if (m.type === "meter") {
+        meterState.peakL = +m.peakL || 0;
+        meterState.peakR = +m.peakR || 0;
+        meterState.rmsL = +m.rmsL || 0;
+        meterState.rmsR = +m.rmsR || 0;
+        return;
+      }
+      if (m.type === "pong") {
+        pingState.lastPongAt = +m.t || 0;
+        pingState.lastPongId = m.id | 0;
+        pingState.lastPongSr = +m.sr || 0;
+      }
+    };
+    function attachAnalyser() {
+      _safeDisconnect(fx);
+      _safeDisconnect(analyser);
+      _safeConnect(preMix, fx);
+      _safeConnect(fx, analyser);
+      _safeConnect(analyser, postGain);
+    }
+    function detachAnalyser() {
+      _safeDisconnect(fx);
+      _safeDisconnect(analyser);
+      _safeConnect(preMix, fx);
+      _safeConnect(fx, postGain);
+    }
+    function _setParam(name, v, atTime) {
+      const p = fx.parameters.get(name);
+      if (!p) return;
+      p.setValueAtTime(v, atTime);
+    }
+    const api = {
+      ctx,
+      Howler: Howler3,
+      preMix,
+      fx,
+      analyser,
+      postGain,
+      attachAnalyser,
+      detachAnalyser,
+      sharedTap: sharedTapOpts ? {
+        ringSize: sharedTapOpts.ringSize | 0,
+        samples: new Float32Array(sharedTapOpts.samplesSAB),
+        state: new Int32Array(sharedTapOpts.stateSAB)
+      } : null,
+      setFxGain(v, atTime = ctx.currentTime) {
+        const x = Number(v);
+        if (!Number.isFinite(x)) return;
+        _setParam("fxGain", x, atTime);
+      },
+      rampFxGainLinear(v, endTime) {
+        const x = Number(v);
+        const t = Number(endTime);
+        if (!Number.isFinite(x) || !Number.isFinite(t)) return;
+        const p = fx.parameters.get("fxGain");
+        if (!p) return;
+        p.linearRampToValueAtTime(x, t);
+      },
+      setSoftClip(enabled, drive = 1) {
+        _setParam("clipEnabled", enabled ? 1 : 0, ctx.currentTime);
+        const d = Number(drive);
+        if (Number.isFinite(d)) _setParam("clipDrive", d, ctx.currentTime);
+      },
+      setOutputGain(v, atTime = ctx.currentTime) {
+        const x = Number(v);
+        if (!Number.isFinite(x)) return;
+        postGain.gain.setValueAtTime(x, atTime);
+      },
+      setMeterConfig({ enabled, hz } = {}) {
+        fx.port.postMessage({ type: "meter", enabled, hz });
+      },
+      setSharedTapConfig({ enabled, monoMode } = {}) {
+        fx.port.postMessage({ type: "sharedTap", enabled: enabled == null ? void 0 : !!enabled, monoMode });
+      },
+      ping(id = 1) {
+        fx.port.postMessage({ type: "ping", id: id | 0 });
+      },
+      getPingState() {
+        return { ...pingState };
+      },
+      getMeter() {
+        return { ...meterState };
+      },
+      getFrequencyData(outU8) {
+        const buf = outU8 || new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(buf);
+        return buf;
+      },
+      getTimeDomainData(outU8) {
+        const buf = outU8 || new Uint8Array(analyser.fftSize);
+        analyser.getByteTimeDomainData(buf);
+        return buf;
+      },
+      createInputGain(value = 1) {
+        const g = ctx.createGain();
+        g.gain.value = Number.isFinite(+value) ? +value : 1;
+        _safeConnect(g, preMix);
+        return g;
+      },
+      createBus(value = 1) {
+        const bus = ctx.createGain();
+        bus.gain.value = Number.isFinite(+value) ? +value : 1;
+        _safeConnect(bus, preMix);
+        return bus;
+      },
+      createOscillatorInput({
+        type = "sine",
+        frequency = 220,
+        gain = 0.12,
+        start = true
+      } = {}) {
+        const osc = ctx.createOscillator();
+        osc.type = type;
+        osc.frequency.setValueAtTime(Number.isFinite(+frequency) ? +frequency : 220, ctx.currentTime);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(Number.isFinite(+gain) ? +gain : 0.12, ctx.currentTime);
+        osc.connect(g);
+        _safeConnect(g, preMix);
+        if (start) osc.start();
+        return {
+          osc,
+          gainNode: g,
+          stop(atTime = ctx.currentTime) {
+            try {
+              osc.stop(atTime);
+            } catch (e) {
+              console.error(e);
+            }
+          },
+          disconnect() {
+            _safeDisconnect(osc);
+            _safeDisconnect(g);
+          }
+        };
+      },
+      disconnect({ restoreDestination = true, revokeModuleURL = false } = {}) {
+        _safeDisconnect(Howler3.masterGain, preMix);
+        _safeDisconnect(preMix);
+        _safeDisconnect(fx);
+        _safeDisconnect(analyser);
+        _safeDisconnect(postGain, ctx.destination);
+        if (restoreDestination) {
+          _safeConnect(Howler3.masterGain, ctx.destination);
+        }
+        if (revokeModuleURL) {
+          const st22 = _getOrCreateCtxState(ctx);
+          if (st22.moduleURL) {
+            try {
+              URL.revokeObjectURL(st22.moduleURL);
+            } catch (e) {
+              console.error(e);
+            }
+            st22.moduleURL = null;
+            st22.workletLoaded = false;
+          }
+        }
+        const st2 = _getOrCreateCtxState(ctx);
+        st2.graph = null;
+      }
+    };
+    st.graph = { installed: true, api };
+    _CTX_STATE.set(ctx, st);
+    if (opts.autoReinstallOnUnload && typeof Howler3.unload === "function" && !Howler3.__workletUnloadPatched) {
+      const prevUnload = Howler3.unload.bind(Howler3);
+      Howler3.unload = function(...args) {
+        const r = prevUnload(...args);
+        Promise.resolve().then(() => ensureHowlerWorklet(howlInstance, opts)).catch(() => {
+        });
+        return r;
+      };
+      Howler3.__workletUnloadPatched = true;
+    }
+    return api;
+  }
+
+  // audio/howlerAudio.js
+  function _isBrowser() {
+    return typeof window !== "undefined" && typeof document !== "undefined";
+  }
+  async function _decodeAudioData(ctx, ab) {
+    return await new Promise((resolve, reject) => {
+      try {
+        const p = ctx.decodeAudioData(ab, resolve, reject);
+        if (p && typeof p.then === "function") p.then(resolve, reject);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+  function _coerceFile(fileLike) {
+    if (!fileLike) return null;
+    if (typeof File !== "undefined" && fileLike instanceof File) return fileLike;
+    const files = fileLike && fileLike.files;
+    if (files && typeof files.length === "number") return files[0] || null;
+    if (Array.isArray(fileLike)) return fileLike[0] || null;
+    if (typeof FileList !== "undefined" && fileLike instanceof FileList) return fileLike[0] || null;
+    return fileLike;
+  }
+  async function _fileToArrayBuffer(file) {
+    if (file && typeof file.arrayBuffer === "function") return await file.arrayBuffer();
+    return await new Promise((resolve, reject) => {
+      try {
+        const fr = new FileReader();
+        fr.onerror = () => reject(new Error("FileReader failed."));
+        fr.onload = () => resolve(fr.result);
+        fr.readAsArrayBuffer(file);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+  async function _fetchArrayBufferDefault(url3) {
+    const res = await fetch(String(url3), { mode: "cors", credentials: "same-origin" });
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText || ""}`.trim());
+    return await res.arrayBuffer();
+  }
+  function createHowlerAudioController({ ensureHowlerWorklet: ensureHowlerWorklet2, Howler: Howler3, fetchArrayBuffer } = {}) {
+    if (!_isBrowser()) throw new Error("Browser environment required.");
+    if (typeof ensureHowlerWorklet2 !== "function") throw new Error("ensureHowlerWorklet required.");
+    if (!Howler3) throw new Error("Howler required. Import it and pass it in.");
+    const state = {
+      ctx: null,
+      api: null,
+      analyser: null,
+      osc: null,
+      oscGain: null,
+      bufSrc: null,
+      fetchArrayBuffer: typeof fetchArrayBuffer === "function" ? fetchArrayBuffer : null
+    };
+    function _stopNodes() {
+      if (state.osc) {
+        try {
+          state.osc.stop();
+        } catch (e) {
+          console.error(e);
+        }
+        try {
+          state.osc.disconnect();
+        } catch (e) {
+          console.error(e);
+        }
+        state.osc = null;
+      }
+      if (state.oscGain) {
+        try {
+          state.oscGain.disconnect();
+        } catch (e) {
+          console.error(e);
+        }
+        state.oscGain = null;
+      }
+      if (state.bufSrc) {
+        try {
+          state.bufSrc.stop();
+        } catch (e) {
+          console.error(e);
+        }
+        try {
+          state.bufSrc.disconnect();
+        } catch (e) {
+          console.error(e);
+        }
+        state.bufSrc = null;
+      }
+    }
+    async function init({ analyser, outputGain, fxGain } = {}) {
+      if (state.api) return;
+      state.api = await ensureHowlerWorklet2(null, {
+        Howler: Howler3,
+        useAnalyser: true,
+        meterEnabled: false,
+        analyser: analyser || { fftSize: 1024, smoothingTimeConstant: 0 }
+      });
+      state.ctx = state.api.ctx;
+      state.analyser = state.api.analyser;
+      try {
+        if (state.ctx && typeof state.ctx.resume === "function") await state.ctx.resume();
+      } catch (e) {
+        console.error(e);
+      }
+      setOutputGain(outputGain);
+      setFxGain(fxGain);
+    }
+    async function playOsc({ hz, gain, outputGain, fxGain } = {}) {
+      if (!state.api || !state.ctx) throw new Error("init() first");
+      _stopNodes();
+      setOutputGain(outputGain);
+      setFxGain(fxGain);
+      const ctx = state.ctx;
+      const freq = Number.isFinite(hz) ? Math.max(10, Math.min(24e3, hz)) : 440;
+      const g = Number.isFinite(gain) ? Math.max(0, Math.min(1, gain)) : 0.12;
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      const gn = ctx.createGain();
+      gn.gain.setValueAtTime(g, ctx.currentTime);
+      const inG = state.api.createInputGain(1);
+      osc.connect(gn);
+      gn.connect(inG);
+      osc.start();
+      state.osc = osc;
+      state.oscGain = gn;
+    }
+    async function playMp3({ url: url3, loop, outputGain, fxGain } = {}) {
+      if (!state.api || !state.ctx) throw new Error("init() first");
+      _stopNodes();
+      setOutputGain(outputGain);
+      setFxGain(fxGain);
+      const ctx = state.ctx;
+      const fetchAB = state.fetchArrayBuffer || _fetchArrayBufferDefault;
+      const ab = await fetchAB(String(url3), { method: "GET" });
+      const buf = await _decodeAudioData(ctx, ab.slice(0));
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = !!loop;
+      const inG = state.api.createInputGain(1);
+      src.connect(inG);
+      src.start();
+      state.bufSrc = src;
+      src.onended = () => {
+        if (state.bufSrc === src) state.bufSrc = null;
+      };
+    }
+    async function playUrl({ url: url3, loop, outputGain, fxGain } = {}) {
+      return await playMp3({ url: url3, loop, outputGain, fxGain });
+    }
+    async function playFile({ file, loop, outputGain, fxGain } = {}) {
+      if (!state.api || !state.ctx) throw new Error("init() first");
+      const f = _coerceFile(file);
+      if (!f) throw new Error("file required.");
+      _stopNodes();
+      setOutputGain(outputGain);
+      setFxGain(fxGain);
+      const ctx = state.ctx;
+      const ab = await _fileToArrayBuffer(f);
+      const buf = await _decodeAudioData(ctx, ab.slice(0));
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = !!loop;
+      const inG = state.api.createInputGain(1);
+      src.connect(inG);
+      src.start();
+      state.bufSrc = src;
+      src.onended = () => {
+        if (state.bufSrc === src) state.bufSrc = null;
+      };
+    }
+    function stop() {
+      _stopNodes();
+    }
+    function shutdown() {
+      _stopNodes();
+    }
+    function setOutputGain(v) {
+      const x = Number(v);
+      try {
+        if (state.api && Number.isFinite(x)) state.api.setOutputGain(x);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    function setFxGain(v) {
+      const x = Number(v);
+      try {
+        if (state.api && Number.isFinite(x)) state.api.setFxGain(x);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    function setFetchArrayBuffer(fn) {
+      state.fetchArrayBuffer = typeof fn === "function" ? fn : null;
+    }
+    function getAnalyser() {
+      return state.analyser;
+    }
+    function getCtxState() {
+      return state.ctx ? String(state.ctx.state || "unknown") : "none";
+    }
+    function getSampleRate() {
+      return state.ctx ? state.ctx.sampleRate || 0 : 0;
+    }
+    return {
+      init,
+      playOsc,
+      playMp3,
+      playUrl,
+      playFile,
+      stop,
+      shutdown,
+      setOutputGain,
+      setFxGain,
+      setFetchArrayBuffer,
+      getAnalyser,
+      getCtxState,
+      getSampleRate
+    };
+  }
+
+  // render/gradientRenderer.js
+  function _syncCanvas(canvas) {
+    const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
+    const w = Math.max(1, canvas.clientWidth * dpr | 0);
+    const h = Math.max(1, canvas.clientHeight * dpr | 0);
+    if ((canvas.width | 0) !== w) canvas.width = w;
+    if ((canvas.height | 0) !== h) canvas.height = h;
+    return { w, h };
+  }
+  function createGradientRenderer(canvas) {
+    const ctx2d = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    const gradRes = 512;
+    const gradCanvas = document.createElement("canvas");
+    gradCanvas.width = gradRes;
+    gradCanvas.height = 1;
+    const gradCtx = gradCanvas.getContext("2d", {
+      alpha: false,
+      willReadFrequently: true
+    });
+    const gradImg = gradCtx.createImageData(gradRes, 1);
+    const gradPix = gradImg.data;
+    let dirty = false;
+    function updateRGBA(rgba512x4) {
+      if (!rgba512x4 || rgba512x4.length !== gradPix.length) return;
+      gradPix.set(rgba512x4);
+      dirty = true;
+    }
+    function draw() {
+      if (!ctx2d) return;
+      const { w: W, h: H } = _syncCanvas(canvas);
+      if (dirty) {
+        gradCtx.putImageData(gradImg, 0, 0);
+        dirty = false;
+      }
+      ctx2d.clearRect(0, 0, W, H);
+      ctx2d.drawImage(gradCanvas, 0, 0, gradRes, 1, 0, 0, W, H);
+    }
+    return { updateRGBA, draw };
+  }
+
+  // palette/palette.worker.js
+  var import_meta2 = {};
+  var url2;
+  if (typeof process !== "undefined") {
+    try {
+      if (typeof import_meta2 !== "undefined") {
+        globalThis.__filename = fileURLToPath(import_meta2.url);
+        globalThis.__dirname = fileURLToPath(new URL(".", import_meta2.url));
+      }
+      let p = __require("path");
+      url2 = p.join(process.cwd(), __dirname, "dist", "palette.worker.js");
+    } catch {
+    }
+  } else {
+    let href = globalThis.location.href;
+    let relLoc = href.split("/");
+    relLoc.pop();
+    relLoc = relLoc.join("/");
+    url2 = relLoc + "/dist/palette.worker.js";
+  }
+  var palette_worker_default = url2;
+
+  // palette/paletteWorkerClient.js
+  function _hasSAB() {
+    return typeof SharedArrayBuffer !== "undefined" && !!globalThis.crossOriginIsolated;
+  }
+  function createPaletteWorkerClient(analyser, initialConfig = {}) {
+    const N = 512;
+    const sabOk = _hasSAB();
+    const w = new Worker(palette_worker_default);
+    let ready = false;
+    let error = null;
+    const binsTmp = new Uint8Array(N);
+    let binsSAB = null;
+    let outSAB = null;
+    let stateSAB = null;
+    let metricsSAB = null;
+    let binsView = null;
+    let outView = null;
+    let st = null;
+    let met = null;
+    let outFallback = new Uint8Array(N * 4);
+    let metFallback = {
+      mean: 0,
+      rms: 0,
+      centroid: 0,
+      bass: 0,
+      mid: 0,
+      treble: 0,
+      flux: 0,
+      beat: 0,
+      driftPhase: 0,
+      hueDriver: 0,
+      bpm: 0,
+      beatConfidence: 0,
+      peak: 0
+    };
+    let outSeqFallback = 0;
+    w.onmessage = (e) => {
+      const m = e && e.data;
+      if (!m || typeof m !== "object") return;
+      if (m.type === "ready") {
+        ready = true;
+        return;
+      }
+      if (m.type === "error") {
+        error = String(m.message || "worker error");
+        return;
+      }
+      if (m.type === "rgba") {
+        const rgba = m.rgba;
+        if (rgba && rgba.length === outFallback.length) outFallback.set(rgba);
+        outSeqFallback = m.seq | 0 || outSeqFallback + 1;
+        if (m.metrics && typeof m.metrics === "object") {
+          metFallback = { ...metFallback, ...m.metrics };
+        }
+      }
+    };
+    w.onerror = (e) => {
+      error = e && e.message ? e.message : "worker error";
+    };
+    if (sabOk) {
+      binsSAB = new SharedArrayBuffer(Uint8Array.BYTES_PER_ELEMENT * N);
+      outSAB = new SharedArrayBuffer(Uint8Array.BYTES_PER_ELEMENT * (N * 4));
+      stateSAB = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 2);
+      metricsSAB = new SharedArrayBuffer(Float32Array.BYTES_PER_ELEMENT * 16);
+      binsView = new Uint8Array(binsSAB);
+      outView = new Uint8Array(outSAB);
+      st = new Int32Array(stateSAB);
+      met = new Float32Array(metricsSAB);
+      Atomics.store(st, 0, 0);
+      Atomics.store(st, 1, 0);
+      w.postMessage({
+        type: "init",
+        N,
+        binsSAB,
+        outSAB,
+        stateSAB,
+        metricsSAB,
+        ...initialConfig
+      });
+    } else {
+      w.postMessage({
+        type: "init",
+        N,
+        noSAB: 1,
+        ...initialConfig
+      });
+    }
+    function pumpBins() {
+      if (!analyser || typeof analyser.getByteFrequencyData !== "function") return;
+      analyser.getByteFrequencyData(binsTmp);
+      if (sabOk && binsView && st) {
+        binsView.set(binsTmp);
+        Atomics.add(st, 0, 1);
+      } else {
+        try {
+          w.postMessage({ type: "bins", bins: binsTmp });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    function getRGBA() {
+      return sabOk && outView ? outView : outFallback;
+    }
+    function getOutSeq() {
+      return sabOk && st ? Atomics.load(st, 1) | 0 : outSeqFallback | 0;
+    }
+    function readMetrics() {
+      if (sabOk && met) {
+        return {
+          mean: met[0] || 0,
+          rms: met[1] || 0,
+          centroid: met[2] || 0,
+          bass: met[3] || 0,
+          mid: met[4] || 0,
+          treble: met[5] || 0,
+          flux: met[6] || 0,
+          beat: met[7] || 0,
+          driftPhase: met[8] || 0,
+          hueDriver: met[9] || 0,
+          bpm: met[10] || 0,
+          beatConfidence: met[11] || 0,
+          peak: met[12] || 0
+        };
+      }
+      return metFallback;
+    }
+    function config(c) {
+      try {
+        w.postMessage({ type: "config", ...c || {} });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    function reset() {
+      binsTmp.fill(0);
+      if (sabOk && binsView && st) {
+        binsView.fill(0);
+        Atomics.add(st, 0, 1);
+      } else {
+        try {
+          w.postMessage({ type: "bins", bins: binsTmp });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      try {
+        w.postMessage({ type: "reset" });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    function stop() {
+      try {
+        w.postMessage({ type: "stop" });
+      } catch (e) {
+        console.error(e);
+      }
+      try {
+        w.terminate();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    function getState() {
+      return { ready, error, sabOk };
+    }
+    return {
+      pumpBins,
+      getRGBA,
+      getOutSeq,
+      readMetrics,
+      config,
+      reset,
+      stop,
+      getState
+    };
+  }
+
+  // ui/soundPaletteSidebarBridge.js
+  var SOUND_MODE_OPTIONS = [
+    { value: "1", label: "Global response" },
+    { value: "2", label: "Local warp" },
+    { value: "3", label: "Bass/treble split" },
+    { value: "4", label: "Centroid drive" }
+  ];
+  function byId(root, id) {
+    if (!root || !id) return null;
+    if (typeof root.getElementById === "function") return root.getElementById(id);
+    if (typeof root.querySelector === "function")
+      return root.querySelector(`#${id}`);
+    return document.getElementById(id);
+  }
+  function on(node, type, fn, opts) {
+    if (!node || !type || !fn) return;
+    node.addEventListener(type, fn, opts);
+  }
+  function num(node, fallback = 0) {
+    if (!node) return fallback;
+    const v = Number(node.value);
+    return Number.isFinite(v) ? v : fallback;
+  }
+  function intNum(node, fallback = 0) {
+    if (!node) return fallback | 0;
+    const v = Number(node.value);
+    return Number.isFinite(v) ? v | 0 : fallback | 0;
+  }
+  function clamp(x, a, b) {
+    return x < a ? a : x > b ? b : x;
+  }
+  function setText(node, s) {
+    if (node) node.textContent = String(s);
+  }
+  function safeDispatch(name, detail) {
+    try {
+      window.dispatchEvent(new CustomEvent(name, { detail }));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  function fillBlackGradientRGBA(out) {
+    out.fill(0);
+    for (let i = 0; i < (out.length / 4 | 0); i++) out[i * 4 + 3] = 255;
+    return out;
+  }
+  function getGPUTextureUsage() {
+    if (typeof GPUTextureUsage !== "undefined") return GPUTextureUsage;
+    if (typeof globalThis !== "undefined" && globalThis.GPUTextureUsage)
+      return globalThis.GPUTextureUsage;
+    return null;
+  }
+  function isGpuDeviceLike(device) {
+    return !!(device && typeof device.createTexture === "function" && device.queue && typeof device.queue.writeTexture === "function");
+  }
+  function pickGpuDevice(options = {}) {
+    const direct = options.device || options.gpuDevice || null;
+    if (isGpuDeviceLike(direct)) return direct;
+    const rg = options.renderGlobals || null;
+    if (!rg) return null;
+    const candidates = [
+      rg.device,
+      rg.gpuDevice,
+      rg.webgpuDevice,
+      rg?.gpu?.device,
+      rg?.engine?._device,
+      rg?.engine?._webgpu?.device
+    ];
+    for (const c of candidates) {
+      if (isGpuDeviceLike(c)) return c;
+    }
+    return null;
+  }
+  function createSoundPaletteGpuTexture(device, opts = {}) {
+    if (!isGpuDeviceLike(device)) return null;
+    const Nraw = Number(opts.N ?? opts.n ?? opts.width ?? opts.size ?? 512);
+    let N = Number.isFinite(Nraw) ? Nraw | 0 : 512;
+    if (N < 1) N = 512;
+    if (N !== 256 && N !== 512 && N !== 1024) N = 512;
+    const usageFlags = getGPUTextureUsage();
+    if (!usageFlags) return null;
+    const texture = device.createTexture({
+      size: [N, 1, 1],
+      format: "rgba8unorm",
+      usage: usageFlags.TEXTURE_BINDING | usageFlags.COPY_DST
+    });
+    const view = texture.createView({ dimension: "2d" });
+    const sampler = device.createSampler({
+      magFilter: "linear",
+      minFilter: "linear",
+      mipmapFilter: "nearest",
+      addressModeU: "clamp-to-edge",
+      addressModeV: "clamp-to-edge"
+    });
+    const staging = new Uint8Array(N * 4);
+    return {
+      device,
+      N,
+      width: N,
+      texture,
+      view,
+      sampler,
+      gradTex: texture,
+      gradView: view,
+      paletteTexture: texture,
+      paletteView: view,
+      rgbaStaging: staging
+    };
+  }
+  function writeSoundPaletteGpuTexture(gpu, rgba) {
+    if (!gpu || !gpu.texture || !gpu.device || !gpu.device.queue || !rgba)
+      return false;
+    if (!(rgba instanceof Uint8Array)) return false;
+    if ((rgba.length | 0) !== (gpu.N | 0) * 4) return false;
+    gpu.device.queue.writeTexture(
+      { texture: gpu.texture },
+      rgba,
+      { bytesPerRow: (gpu.N | 0) * 4, rowsPerImage: 1 },
+      { width: gpu.N | 0, height: 1, depthOrArrayLayers: 1 }
+    );
+    return true;
+  }
+  function destroySoundPaletteGpuTexture(gpu) {
+    if (!gpu) return;
+    try {
+      if (gpu.texture) gpu.texture.destroy();
+    } catch (e) {
+      console.error(e);
+    }
+    gpu.texture = null;
+    gpu.view = null;
+    gpu.sampler = null;
+    gpu.gradTex = null;
+    gpu.gradView = null;
+    gpu.paletteTexture = null;
+    gpu.paletteView = null;
+    gpu.rgbaStaging = null;
+  }
+  function populateSoundModes(selectEl) {
+    if (!selectEl) return;
+    if (selectEl.options && selectEl.options.length > 0) return;
+    for (const opt of SOUND_MODE_OPTIONS) {
+      const o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      selectEl.appendChild(o);
+    }
+    if (!selectEl.value) selectEl.value = "1";
+  }
+  function initSoundPaletteSidebarBridge(options = {}) {
+    const root = options.root || document;
+    const els = {
+      canvas: byId(root, "sndMiniCanvas"),
+      status: byId(root, "sndPreviewStatus"),
+      metrics: byId(root, "sndPreviewMetrics"),
+      log: byId(root, "sndPreviewLog"),
+      enable: byId(root, "sndEnable"),
+      volume: byId(root, "sndVolume"),
+      volumeOut: byId(root, "sndVolumeOut"),
+      btnPlay: byId(root, "sndMp3Btn"),
+      btnStop: byId(root, "sndStopBtn"),
+      loop: byId(root, "sndLoop"),
+      upload: byId(root, "sndUpload"),
+      uploadName: byId(root, "sndUploadName"),
+      soundMode: byId(root, "sndSoundMode"),
+      soundStrength: byId(root, "sndSoundStrength"),
+      baseHueShift: byId(root, "sndBaseHueShift"),
+      autoHueDrift: byId(root, "sndAutoHueDrift"),
+      beatFlash: byId(root, "sndBeatFlash"),
+      beatFade: byId(root, "sndBeatFade"),
+      beatStep: byId(root, "sndBeatStep"),
+      hueWiggle: byId(root, "sndHueWiggle"),
+      shimmer: byId(root, "sndShimmer"),
+      warp: byId(root, "sndWarp"),
+      colorPop: byId(root, "sndColorPop"),
+      brightnessBounce: byId(root, "sndBrightnessBounce"),
+      smoothUp: byId(root, "sndSmoothUp"),
+      smoothDown: byId(root, "sndSmoothDown"),
+      freqSmooth: byId(root, "sndFreqSmooth"),
+      contrast: byId(root, "sndContrast"),
+      boost: byId(root, "sndBoost"),
+      noiseGate: byId(root, "sndNoiseGate"),
+      bassVsTreble: byId(root, "sndBassVsTreble"),
+      fps: byId(root, "sndFps"),
+      colorScheme: byId(root, "colorScheme"),
+      colorSchemeOut: byId(root, "colorSchemeOut"),
+      gammaMode: byId(root, "sndGammaMode"),
+      gammaAmount: byId(root, "sndGammaAmount"),
+      gammaMin: byId(root, "sndGammaMin"),
+      gammaMax: byId(root, "sndGammaMax"),
+      gammaMaxHz: byId(root, "sndGammaMaxHz"),
+      gammaAutoDrift: byId(root, "sndGammaAutoDrift"),
+      gammaSpeed: byId(root, "sndGammaSpeed"),
+      gammaEps: byId(root, "sndGammaEps"),
+      gammaWanderSec: byId(root, "sndGammaWanderSec"),
+      gammaWanderBlendSec: byId(root, "sndGammaWanderBlendSec")
+    };
+    if (!els.canvas || !els.btnPlay || !els.btnStop || !els.upload) {
+      return null;
+    }
+    populateSoundModes(els.soundMode);
+    const audio = createHowlerAudioController({
+      ensureHowlerWorklet,
+      Howler: import_howler.Howler
+    });
+    const renderer = createGradientRenderer(els.canvas);
+    const blankRGBA = fillBlackGradientRGBA(new Uint8Array(512 * 4));
+    const state = {
+      initialized: false,
+      running: true,
+      raf: 0,
+      pumpTimer: 0,
+      worker: null,
+      lastSeq: -1,
+      lastStatusT: 0,
+      frameRGBA: new Uint8Array(512 * 4),
+      gpu: null,
+      gpuEnabled: !!(options.gpuTexture ?? true),
+      lastMetrics: {
+        mean: 0,
+        rms: 0,
+        centroid: 0,
+        bass: 0,
+        mid: 0,
+        treble: 0,
+        flux: 0,
+        beat: 0,
+        driftPhase: 0,
+        hueDriver: 0,
+        bpm: 0,
+        beatConfidence: 0,
+        peak: 0
+      },
+      loadedFile: null,
+      loadedFileName: "",
+      playing: false,
+      stopArmed: false,
+      stopArmTimer: 0
+    };
+    function isAudioPaletteEnabled() {
+      return !!(els.enable && els.enable.checked);
+    }
+    function _setStopButtonState() {
+      const hasFile = !!state.loadedFile;
+      if (els.btnStop) els.btnStop.disabled = !hasFile;
+    }
+    function _clearStopArm() {
+      state.stopArmed = false;
+      if (state.stopArmTimer) {
+        try {
+          clearTimeout(state.stopArmTimer);
+        } catch {
+        }
+        state.stopArmTimer = 0;
+      }
+    }
+    function _armStopForUnload() {
+      state.stopArmed = true;
+      if (state.stopArmTimer) {
+        try {
+          clearTimeout(state.stopArmTimer);
+        } catch {
+        }
+        state.stopArmTimer = 0;
+      }
+      state.stopArmTimer = setTimeout(() => {
+        state.stopArmTimer = 0;
+        state.stopArmed = false;
+      }, 900);
+    }
+    function syncGradTexModeToRuntime() {
+      const enabled = isAudioPaletteEnabled() ? 1 : 0;
+      const ss = options && typeof options.setState === "function" ? options.setState : null;
+      if (ss) {
+        ss({ gradTexMode: enabled });
+        return;
+      }
+      const rg = options && options.renderGlobals;
+      if (rg && rg.paramsState) {
+        rg.paramsState.gradTexMode = enabled;
+        rg.cameraDirty = true;
+      }
+    }
+    function _numOr(node, fallback) {
+      if (!node) return fallback;
+      const v = Number(node.value);
+      return Number.isFinite(v) ? v : fallback;
+    }
+    function _intOr(node, fallback) {
+      if (!node) return fallback | 0;
+      const v = Number(node.value);
+      return Number.isFinite(v) ? v | 0 : fallback | 0;
+    }
+    function syncGammaAudioToRuntime() {
+      const ss = options && typeof options.setState === "function" ? options.setState : null;
+      const mode = _intOr(els.gammaMode, 0);
+      const payload = {
+        gammaAudioMode: mode,
+        gammaAudioAmount: _numOr(els.gammaAmount, 0.15),
+        gammaAudioMin: _numOr(els.gammaMin, -0.5),
+        gammaAudioMax: _numOr(els.gammaMax, 0.5),
+        gammaAudioMaxHz: _numOr(els.gammaMaxHz, 2),
+        gammaAudioAutoDrift: _numOr(els.gammaAutoDrift, 0),
+        gammaAudioSpeed: _numOr(els.gammaSpeed, 1),
+        gammaAudioEps: _numOr(els.gammaEps, 1e-3),
+        gammaAudioWanderSec: _numOr(els.gammaWanderSec, 4),
+        gammaAudioWanderBlendSec: _numOr(els.gammaWanderBlendSec, 0.6)
+      };
+      if (ss) {
+        ss(payload);
+        return;
+      }
+      const rg = options && options.renderGlobals;
+      if (rg && rg.paramsState) {
+        Object.assign(rg.paramsState, payload);
+        rg.computeDirty = true;
+        rg.cameraDirty = true;
+      }
+    }
+    function _setGammaControlsEnabled(onFlag) {
+      const nodes = [
+        els.gammaMode,
+        els.gammaAmount,
+        els.gammaMin,
+        els.gammaMax,
+        els.gammaMaxHz,
+        els.gammaAutoDrift,
+        els.gammaSpeed,
+        els.gammaEps,
+        els.gammaWanderSec,
+        els.gammaWanderBlendSec
+      ].filter(Boolean);
+      for (const n of nodes) n.disabled = !onFlag;
+    }
+    function ensureGpu(width = 512) {
+      if (!state.gpuEnabled) return null;
+      if (state.gpu && state.gpu.texture && (state.gpu.N | 0) === (width | 0))
+        return state.gpu;
+      if (state.gpu) {
+        destroySoundPaletteGpuTexture(state.gpu);
+        state.gpu = null;
+      }
+      const device = pickGpuDevice(options);
+      if (!device) return null;
+      const gpu = createSoundPaletteGpuTexture(device, { width });
+      if (!gpu) return null;
+      state.gpu = gpu;
+      try {
+        const initRGBA = (blankRGBA.length | 0) === (gpu.N | 0) * 4 ? blankRGBA : fillBlackGradientRGBA(new Uint8Array((gpu.N | 0) * 4));
+        writeSoundPaletteGpuTexture(gpu, initRGBA);
+      } catch (e) {
+        console.error(e);
+      }
+      return state.gpu;
+    }
+    function uploadGpuRGBA(rgba) {
+      if (!rgba || !(rgba instanceof Uint8Array)) return false;
+      const width = rgba.length / 4 | 0;
+      if (width <= 0) return false;
+      const gpu = ensureGpu(width);
+      if (!gpu) return false;
+      try {
+        return writeSoundPaletteGpuTexture(gpu, rgba);
+      } catch (e) {
+        console.error(e);
+        return false;
+      }
+    }
+    function readWorkerConfig() {
+      let baseStyle = 0;
+      if (els.colorScheme) {
+        baseStyle = intNum(els.colorScheme, 0);
+      } else if (els.colorSchemeOut) {
+        baseStyle = intNum(els.colorSchemeOut, 0);
+      }
+      return {
+        fps: clamp(intNum(els.fps, 30), 5, 120),
+        reactToSound: 1,
+        baseStyle: clamp(baseStyle | 0, 0, 33),
+        soundMode: clamp(intNum(els.soundMode, 1), 1, 4),
+        baseHueShift: num(els.baseHueShift, 0),
+        soundStrength: clamp(num(els.soundStrength, 1), 0, 3),
+        hueWiggle: clamp(num(els.hueWiggle, 0.25), 0, 2),
+        shimmer: clamp(num(els.shimmer, 0.22), 0, 2),
+        warp: clamp(num(els.warp, 0.22), 0, 2),
+        colorPop: clamp(num(els.colorPop, 0.25), 0, 2),
+        brightnessBounce: clamp(num(els.brightnessBounce, 0.22), 0, 2),
+        autoHueDrift: clamp(num(els.autoHueDrift, 0.1), 0, 2),
+        beatFlash: clamp(num(els.beatFlash, 0.35), 0, 3),
+        beatFade: clamp(num(els.beatFade, 0.9), 0.7, 0.999),
+        beatStep: clamp(num(els.beatStep, 0.08), 0, 0.5),
+        smoothUp: clamp(num(els.smoothUp, 0.35), 0.01, 1),
+        smoothDown: clamp(num(els.smoothDown, 0.08), 1e-3, 1),
+        freqSmooth: clamp(intNum(els.freqSmooth, 2), 0, 16),
+        contrast: clamp(num(els.contrast, 9), 0.1, 64),
+        boost: clamp(num(els.boost, 1), 0, 8),
+        noiseGate: clamp(num(els.noiseGate, 0), 0, 0.5),
+        bassVsTreble: clamp(num(els.bassVsTreble, 0), -1, 1)
+      };
+    }
+    function readUiCfgSnapshot() {
+      return {
+        enabled: isAudioPaletteEnabled(),
+        mixMode: "hue",
+        blend: 1,
+        soundStrength: clamp(num(els.soundStrength, 1), 0, 3),
+        baseHueShift: num(els.baseHueShift, 0),
+        soundMode: clamp(intNum(els.soundMode, 1), 1, 4),
+        fps: clamp(intNum(els.fps, 30), 5, 120)
+      };
+    }
+    function updateStatusLabel(text) {
+      setText(els.status, text);
+    }
+    function logLine(text) {
+      setText(els.log, text);
+    }
+    function updateMetricsText(metrics) {
+      const m = metrics || state.lastMetrics;
+      setText(
+        els.metrics,
+        `peak ${(+m.peak || 0).toFixed(3)} | bpm ${(+m.bpm || 0).toFixed(1)} | beat ${(+m.beat || 0).toFixed(3)} | hue ${(+m.hueDriver || 0).toFixed(6)}`
+      );
+    }
+    function dispatchUpdate(rgba, seq, metrics) {
+      const enabled = isAudioPaletteEnabled();
+      const gpu = state.gpu;
+      const detail = {
+        rgba,
+        seq: seq | 0,
+        metrics: { ...metrics || state.lastMetrics },
+        enabled,
+        mixMode: "hue",
+        blend: 1,
+        texture: enabled && gpu ? gpu.texture : null,
+        view: enabled && gpu ? gpu.view : null,
+        sampler: enabled && gpu ? gpu.sampler : null,
+        width: gpu ? gpu.N | 0 : rgba && rgba.length ? rgba.length / 4 | 0 : 0
+      };
+      safeDispatch("palette-gradient:update", detail);
+      safeDispatch("fractal-sound-palette:update", detail);
+      if (typeof options.onUpdate === "function") {
+        try {
+          options.onUpdate(detail);
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    }
+    function emitCurrentFrameUpdate() {
+      let rgba = null;
+      if (state.worker && typeof state.worker.getRGBA === "function") {
+        rgba = copyStableRGBA();
+      }
+      if (!rgba) {
+        rgba = state.frameRGBA && state.frameRGBA.length ? state.frameRGBA : blankRGBA;
+      }
+      if (rgba) {
+        uploadGpuRGBA(rgba);
+        dispatchUpdate(rgba, state.lastSeq, state.lastMetrics);
+      }
+    }
+    function clearPreview() {
+      if (!state.frameRGBA || state.frameRGBA.length !== blankRGBA.length) {
+        state.frameRGBA = new Uint8Array(blankRGBA.length);
+      }
+      state.frameRGBA.set(blankRGBA);
+      renderer.updateRGBA(blankRGBA);
+      renderer.draw();
+      uploadGpuRGBA(blankRGBA);
+      dispatchUpdate(state.frameRGBA, state.lastSeq, state.lastMetrics);
+    }
+    function stopPump() {
+      if (!state.pumpTimer) return;
+      clearInterval(state.pumpTimer);
+      state.pumpTimer = 0;
+    }
+    function startPump() {
+      stopPump();
+      if (!state.worker) return;
+      const fps = clamp(intNum(els.fps, 30), 5, 120);
+      const ms = Math.max(10, Math.floor(1e3 / fps));
+      state.pumpTimer = setInterval(() => {
+        if (!state.worker) return;
+        state.worker.pumpBins();
+      }, ms);
+    }
+    function applyWorkerConfig() {
+      if (state.worker) {
+        try {
+          state.worker.config(readWorkerConfig());
+        } catch (err) {
+          console.error(err);
+        }
+        startPump();
+      }
+      emitCurrentFrameUpdate();
+    }
+    function applyGains() {
+      const v = clamp(num(els.volume, 1), 0, 4);
+      try {
+        audio.setOutputGain(v);
+      } catch (e) {
+        console.error(e);
+      }
+      try {
+        audio.setFxGain(v);
+      } catch (e) {
+        console.error(e);
+      }
+      if (els.volumeOut) setText(els.volumeOut, v.toFixed(2));
+    }
+    function copyStableRGBA() {
+      if (!state.worker || typeof state.worker.getRGBA !== "function")
+        return null;
+      const rgbaSrc = state.worker.getRGBA();
+      if (!rgbaSrc || !(rgbaSrc instanceof Uint8Array)) return null;
+      const needed = rgbaSrc.length | 0;
+      if (!needed || needed % 4 !== 0) return null;
+      if (!state.frameRGBA || (state.frameRGBA.length | 0) !== needed) {
+        state.frameRGBA = new Uint8Array(needed);
+      }
+      let tries = 0;
+      while (tries < 3) {
+        const s0 = state.worker.getOutSeq ? state.worker.getOutSeq() | 0 : state.lastSeq | 0;
+        state.frameRGBA.set(rgbaSrc);
+        const s1 = state.worker.getOutSeq ? state.worker.getOutSeq() | 0 : state.lastSeq | 0;
+        if (s0 === s1) break;
+        tries++;
+      }
+      return state.frameRGBA;
+    }
+    function drawLoop(t) {
+      if (!state.running) return;
+      const nowSec = (t || performance.now()) * 1e-3;
+      if (state.worker) {
+        const seq = state.worker.getOutSeq();
+        if (seq !== state.lastSeq) {
+          state.lastSeq = seq;
+          const frame = copyStableRGBA();
+          const metrics = state.worker.readMetrics ? state.worker.readMetrics() : { ...state.lastMetrics };
+          state.lastMetrics = metrics || state.lastMetrics;
+          if (frame) {
+            renderer.updateRGBA(frame);
+            uploadGpuRGBA(frame);
+            dispatchUpdate(frame, seq, state.lastMetrics);
+          }
+          updateMetricsText(state.lastMetrics);
+        }
+      }
+      renderer.draw();
+      if (!state.lastStatusT || nowSec - state.lastStatusT > 0.25) {
+        const wst = state.worker ? state.worker.getState() : null;
+        const ctxState = audio.getCtxState();
+        const sampleRate = audio.getSampleRate() | 0;
+        const sabMode = wst ? !!wst.sabOk : false;
+        updateStatusLabel(
+          `ctx:${ctxState} | sr:${sampleRate || 0} | ${sabMode ? "SAB" : "msg"}`
+        );
+        state.lastStatusT = nowSec;
+      }
+      state.raf = requestAnimationFrame(drawLoop);
+    }
+    async function ensureInit() {
+      if (state.initialized) return;
+      updateStatusLabel("initializing...");
+      logLine("Initializing audio + palette worker...");
+      await audio.init({
+        analyser: { fftSize: 1024, smoothingTimeConstant: 0 },
+        outputGain: clamp(num(els.volume, 1), 0, 4),
+        fxGain: clamp(num(els.volume, 1), 0, 4)
+      });
+      state.worker = createPaletteWorkerClient(
+        audio.getAnalyser(),
+        readWorkerConfig()
+      );
+      state.initialized = true;
+      state.lastSeq = -1;
+      ensureGpu(512);
+      startPump();
+      if (!state.raf) state.raf = requestAnimationFrame(drawLoop);
+      const wst = state.worker.getState();
+      if (wst && wst.sabOk) {
+        logLine("Ready. SharedArrayBuffer mode active.");
+      } else {
+        logLine(
+          "Ready. Message mode active (no SharedArrayBuffer / no COOP+COEP)."
+        );
+      }
+      updateStatusLabel("ready");
+      applyGains();
+      emitCurrentFrameUpdate();
+      _setStopButtonState();
+    }
+    async function playSelectedFile() {
+      const file = els.upload && els.upload.files ? els.upload.files[0] : null;
+      if (!file) {
+        try {
+          els.upload.click();
+        } catch (e) {
+          console.error(e);
+        }
+        return;
+      }
+      await ensureInit();
+      applyGains();
+      _clearStopArm();
+      await audio.playFile({
+        file,
+        loop: !!(els.loop && els.loop.checked),
+        outputGain: clamp(num(els.volume, 1), 0, 4),
+        fxGain: clamp(num(els.volume, 1), 0, 4)
+      });
+      state.loadedFile = file;
+      state.loadedFileName = file.name || "audio file";
+      state.playing = true;
+      setText(els.uploadName, state.loadedFileName);
+      logLine(`Playing: ${state.loadedFileName}`);
+      emitCurrentFrameUpdate();
+      _setStopButtonState();
+    }
+    function stop() {
+      try {
+        audio.stop();
+      } catch (e) {
+        console.error(e);
+      }
+      if (state.worker) {
+        try {
+          state.worker.reset();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      state.playing = false;
+      state.lastSeq = -1;
+      updateMetricsText(null);
+      clearPreview();
+      logLine("Stopped.");
+      emitCurrentFrameUpdate();
+      _setStopButtonState();
+    }
+    function unloadSong() {
+      try {
+        audio.stop();
+      } catch (e) {
+        console.error(e);
+      }
+      if (state.worker) {
+        try {
+          state.worker.reset();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      state.playing = false;
+      state.loadedFile = null;
+      state.loadedFileName = "";
+      if (els.upload) {
+        try {
+          els.upload.value = "";
+        } catch {
+        }
+      }
+      setText(els.uploadName, "none");
+      state.lastSeq = -1;
+      updateMetricsText(null);
+      clearPreview();
+      logLine("Unloaded.");
+      emitCurrentFrameUpdate();
+      _clearStopArm();
+      _setStopButtonState();
+    }
+    function stopMaybeUnload() {
+      if (!state.loadedFile) return;
+      if (!state.playing && state.stopArmed) {
+        unloadSong();
+        return;
+      }
+      stop();
+      _armStopForUnload();
+      logLine("Stopped. Click stop again to unload.");
+    }
+    function destroy() {
+      state.running = false;
+      stopPump();
+      if (state.raf) {
+        try {
+          cancelAnimationFrame(state.raf);
+        } catch (e) {
+          console.error(e);
+        }
+        state.raf = 0;
+      }
+      _clearStopArm();
+      try {
+        audio.shutdown();
+      } catch (e) {
+        console.error(e);
+      }
+      if (state.worker) {
+        try {
+          state.worker.stop();
+        } catch (e) {
+          console.error(e);
+        }
+        state.worker = null;
+      }
+      if (state.gpu) {
+        destroySoundPaletteGpuTexture(state.gpu);
+        state.gpu = null;
+      }
+      state.loadedFile = null;
+      state.loadedFileName = "";
+      state.playing = false;
+      state.initialized = false;
+    }
+    function bindConfigListeners() {
+      const cfgNodes = [
+        els.soundMode,
+        els.soundStrength,
+        els.baseHueShift,
+        els.autoHueDrift,
+        els.beatFlash,
+        els.beatFade,
+        els.beatStep,
+        els.hueWiggle,
+        els.shimmer,
+        els.warp,
+        els.colorPop,
+        els.brightnessBounce,
+        els.smoothUp,
+        els.smoothDown,
+        els.freqSmooth,
+        els.contrast,
+        els.boost,
+        els.noiseGate,
+        els.bassVsTreble,
+        els.fps,
+        els.colorScheme,
+        els.colorSchemeOut
+      ].filter(Boolean);
+      for (const n of cfgNodes) {
+        on(n, "change", applyWorkerConfig);
+        on(n, "input", applyWorkerConfig);
+      }
+      if (els.enable) {
+        on(els.enable, "change", () => {
+          syncGradTexModeToRuntime();
+          _setGammaControlsEnabled(isAudioPaletteEnabled());
+          syncGammaAudioToRuntime();
+          applyWorkerConfig();
+        });
+        on(els.enable, "input", () => {
+          syncGradTexModeToRuntime();
+          _setGammaControlsEnabled(isAudioPaletteEnabled());
+          syncGammaAudioToRuntime();
+          applyWorkerConfig();
+        });
+        syncGradTexModeToRuntime();
+        _setGammaControlsEnabled(isAudioPaletteEnabled());
+        syncGammaAudioToRuntime();
+      } else {
+        _setGammaControlsEnabled(false);
+        syncGammaAudioToRuntime();
+      }
+      const gammaNodes = [
+        els.gammaMode,
+        els.gammaAmount,
+        els.gammaMin,
+        els.gammaMax,
+        els.gammaMaxHz,
+        els.gammaAutoDrift,
+        els.gammaSpeed,
+        els.gammaEps,
+        els.gammaWanderSec,
+        els.gammaWanderBlendSec
+      ].filter(Boolean);
+      for (const n of gammaNodes) {
+        on(n, "change", () => {
+          syncGammaAudioToRuntime();
+          emitCurrentFrameUpdate();
+        });
+        on(n, "input", () => {
+          syncGammaAudioToRuntime();
+          emitCurrentFrameUpdate();
+        });
+      }
+      if (els.volume) {
+        on(els.volume, "change", applyGains);
+        on(els.volume, "input", applyGains);
+      }
+    }
+    function bindPlaybackListeners() {
+      els.btnPlay.disabled = false;
+      on(els.btnPlay, "click", () => {
+        playSelectedFile().catch((e) => {
+          logLine(e && e.message ? e.message : String(e));
+        });
+      });
+      on(els.btnStop, "click", () => {
+        stopMaybeUnload();
+      });
+      on(els.upload, "change", () => {
+        const file = els.upload.files && els.upload.files[0] ? els.upload.files[0] : null;
+        setText(els.uploadName, file ? file.name || "audio file" : "none");
+        if (!file) {
+          state.loadedFile = null;
+          state.loadedFileName = "";
+          state.playing = false;
+          _clearStopArm();
+          _setStopButtonState();
+          emitCurrentFrameUpdate();
+          return;
+        }
+        playSelectedFile().catch((e) => {
+          logLine(e && e.message ? e.message : String(e));
+        });
+      });
+    }
+    function attachGpuDevice(device) {
+      if (!isGpuDeviceLike(device)) return false;
+      options.device = device;
+      options.gpuDevice = device;
+      const width = state.frameRGBA && state.frameRGBA.length ? state.frameRGBA.length / 4 | 0 : 512;
+      if (state.gpu) {
+        destroySoundPaletteGpuTexture(state.gpu);
+        state.gpu = null;
+      }
+      const gpu = ensureGpu(width);
+      if (!gpu) return false;
+      if (state.frameRGBA && state.frameRGBA.length === gpu.N * 4) {
+        uploadGpuRGBA(state.frameRGBA);
+      } else {
+        clearPreview();
+      }
+      emitCurrentFrameUpdate();
+      return true;
+    }
+    function getRGBA() {
+      if (!state.worker) return state.frameRGBA || blankRGBA;
+      const frame = copyStableRGBA();
+      return frame || state.frameRGBA || blankRGBA;
+    }
+    function readMetrics() {
+      if (!state.worker) return { ...state.lastMetrics };
+      return state.worker.readMetrics ? state.worker.readMetrics() : { ...state.lastMetrics };
+    }
+    function getState() {
+      const wst = state.worker ? state.worker.getState() : { ready: false, error: null, sabOk: false };
+      const enabled = isAudioPaletteEnabled();
+      return {
+        initialized: state.initialized,
+        enabled,
+        worker: wst,
+        audioCtxState: audio.getCtxState(),
+        sampleRate: audio.getSampleRate() | 0,
+        metrics: { ...state.lastMetrics },
+        seq: state.lastSeq | 0,
+        cfg: readUiCfgSnapshot(),
+        loaded: {
+          hasFile: !!state.loadedFile,
+          name: state.loadedFileName || "",
+          playing: !!state.playing
+        },
+        gpu: {
+          enabled: !!state.gpuEnabled,
+          ready: !!(state.gpu && state.gpu.texture && state.gpu.view),
+          width: state.gpu ? state.gpu.N | 0 : 0,
+          texture: state.gpu ? state.gpu.texture : null,
+          view: state.gpu ? state.gpu.view : null,
+          sampler: state.gpu ? state.gpu.sampler : null
+        }
+      };
+    }
+    function getPaletteTexture() {
+      return state.gpu ? state.gpu.texture : null;
+    }
+    function getPaletteView() {
+      return state.gpu ? state.gpu.view : null;
+    }
+    function getPaletteSampler() {
+      return state.gpu ? state.gpu.sampler : null;
+    }
+    function getGradientTexture() {
+      return getPaletteTexture();
+    }
+    function getGradientView() {
+      return getPaletteView();
+    }
+    function syncGpuTextureNow() {
+      const frame = getRGBA();
+      const ok = uploadGpuRGBA(frame);
+      emitCurrentFrameUpdate();
+      return ok;
+    }
+    bindConfigListeners();
+    bindPlaybackListeners();
+    ensureGpu(512);
+    clearPreview();
+    applyGains();
+    updateMetricsText(null);
+    updateStatusLabel("idle");
+    logLine(
+      'Choose a file with "Play song" to start the sidebar audio palette preview.'
+    );
+    if (!state.raf) state.raf = requestAnimationFrame(drawLoop);
+    _setStopButtonState();
+    const api = {
+      init: ensureInit,
+      stop: stopMaybeUnload,
+      destroy,
+      playSelectedFile,
+      getRGBA,
+      readMetrics,
+      getState,
+      applyConfig: applyWorkerConfig,
+      attachGpuDevice,
+      syncGpuTextureNow,
+      getPaletteTexture,
+      getPaletteView,
+      getPaletteSampler,
+      getGradientTexture,
+      getGradientView
+    };
+    globalThis.FractalSoundPaletteSidebar = api;
+    globalThis.soundPaletteGetState = () => {
+      try {
+        return api.getState();
+      } catch (e) {
+        console.error(e);
+        return null;
+      }
+    };
+    return api;
+  }
+
+  // ui.js
+  function wireButtonClick(id, fn) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    el.addEventListener("click", () => {
+      try {
+        fn();
+      } catch (err) {
+        console.error(err);
+      }
+    });
+    return el;
+  }
+  function ensureSidebarMarkup() {
+    if (document.getElementById("ui")) return;
+    document.body.insertAdjacentHTML("afterbegin", fractalComponent_default);
+  }
+  function initSidebarCollapse(ui) {
+    const button = document.getElementById("toggle-ui");
+    if (!button || !ui) return;
+    const setToggleVisual = (collapsed) => {
+      button.textContent = collapsed ? "\u25B6" : "\u25C0";
+      button.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      button.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
+    };
+    setToggleVisual(ui.classList.contains("collapsed"));
+    button.addEventListener("click", () => {
+      const isCollapsed = ui.classList.toggle("collapsed");
+      setToggleVisual(isCollapsed);
+    });
+    const hdr = ui.querySelector(".ui-header");
+    if (hdr) {
+      hdr.addEventListener("click", (e) => {
+        if (e.target !== button) button.click();
+      });
+    }
+  }
+  var initUI = () => {
+    ensureSidebarMarkup();
+    const ui = document.getElementById("ui");
+    initSidebarCollapse(ui);
+    wireButtonClick("resetCameraBtn", () => {
+      if (typeof window.resetViewCamera === "function") window.resetViewCamera();
+    });
+    wireButtonClick("exportFullBtn", () => {
+      if (typeof window.exportFractalFullRes === "function") {
+        window.exportFractalFullRes();
+      }
+    });
+    wireButtonClick("exportCanvasBtn", () => {
+      if (typeof window.exportFractalCanvas === "function") {
+        window.exportFractalCanvas();
+      }
+    });
+    const controlsApi = initControlsUI({ renderGlobals, setState });
+    initPresetsUI({ renderGlobals, setState, controlsApi });
+    try {
+      const bridgeApi = initSoundPaletteSidebarBridge({
+        renderGlobals,
+        setState,
+        controlsApi,
+        root: document,
+        sidebar: ui
+      });
+      if (bridgeApi && typeof bridgeApi.then === "function") {
+        bridgeApi.catch(console.error);
+      }
+      if (renderGlobals && typeof renderGlobals === "object") {
+        renderGlobals.soundPaletteSidebarBridge = bridgeApi || null;
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // index.js
   initUI();
   initRender().catch(console.error);
 })();
+/*! Bundled license information:
+
+howler/dist/howler.js:
+  (*!
+   *  howler.js v2.2.4
+   *  howlerjs.com
+   *
+   *  (c) 2013-2020, James Simpson of GoldFire Studios
+   *  goldfirestudios.com
+   *
+   *  MIT License
+   *)
+  (*!
+   *  Spatial Plugin - Adds support for stereo and 3D audio where Web Audio is supported.
+   *  
+   *  howler.js v2.2.4
+   *  howlerjs.com
+   *
+   *  (c) 2013-2020, James Simpson of GoldFire Studios
+   *  goldfirestudios.com
+   *
+   *  MIT License
+   *)
+*/

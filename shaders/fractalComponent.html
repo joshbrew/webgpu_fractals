@@ -571,6 +571,579 @@
 
       <details class="section">
         <summary>
+          <span class="section-title">Sound Palette</span>
+          <span class="section-badge" title="Audio-driven palette overrides"
+            >audio</span
+          >
+        </summary>
+
+        <div class="row">
+          <div
+            class="sound-preview"
+            style="display: grid; gap: 8px; width: 100%"
+          >
+            <canvas
+              id="sndMiniCanvas"
+              width="512"
+              height="48"
+              aria-label="Audio palette gradient preview"
+              title="Live audio palette gradient preview"
+              style="
+                width: 100%;
+                height: 56px;
+                display: block;
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.14);
+                background: #0e1014;
+              "
+            ></canvas>
+
+            <div
+              class="sound-preview-meta"
+              style="
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex-wrap: wrap;
+              "
+            >
+              <span id="sndPreviewStatus" class="pill">idle</span>
+              <span id="sndPreviewMetrics" class="pill mono">
+                peak 0.000 | bpm 0.0 | beat 0.000 | hue 0.000000
+              </span>
+            </div>
+
+            <div id="sndPreviewLog" class="hint mono" aria-live="polite">
+              Choose a file with "Play song" to start the sidebar audio palette
+              preview.
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <label
+            class="control check"
+            title="Enable audio-driven palette gradient + hue driving"
+          >
+            <input id="sndEnable" type="checkbox" />
+            <span class="check-text">Enable audio palette</span>
+          </label>
+
+          <div class="hint">
+            Uses the audio worker to generate a live palette gradient from the
+            playing song while the base palette stays tied to the main Palette
+            selector.
+          </div>
+        </div>
+
+        <div class="row">
+          <label class="control" title="Overall audio volume">
+            <span class="lbl">Volume</span>
+            <input
+              id="sndVolume"
+              type="range"
+              min="0"
+              max="4"
+              step="0.01"
+              value="1"
+              style="width: 180px"
+            />
+          </label>
+
+          <span id="sndVolumeOut" class="pill mono" title="Current volume"
+            >1.00</span
+          >
+        </div>
+
+        <div class="row button-row">
+          <button
+            id="sndMp3Btn"
+            type="button"
+            title="Choose and play an audio file"
+            disabled
+          >
+            Play song
+          </button>
+
+          <button id="sndStopBtn" type="button" title="Stop audio" disabled>
+            Stop
+          </button>
+        </div>
+
+        <div class="row">
+          <label class="control check" title="Loop song/file">
+            <input id="sndLoop" type="checkbox" checked />
+            <span class="check-text">Loop</span>
+          </label>
+
+          <span class="spacer"></span>
+
+          <span id="sndUploadName" class="pill" title="Selected file"
+            >none</span
+          >
+
+          <input
+            id="sndUpload"
+            type="file"
+            accept="audio/*"
+            style="display: none"
+          />
+        </div>
+
+        <div class="row">
+          <label
+            class="control select"
+            title="Sound-to-color mapping mode (worker)"
+          >
+            <span class="lbl">Sound mode</span>
+            <select id="sndSoundMode"></select>
+            <span class="spacer"></span>
+          </label>
+
+          <label class="control" title="Reaction strength">
+            <span class="lbl">Strength</span>
+            <input
+              id="sndSoundStrength"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="3"
+              step="0.01"
+              value="1"
+            />
+          </label>
+
+          <label
+            class="control"
+            title="Base hue shift for the audio palette generator"
+          >
+            <span class="lbl">Base hue shift</span>
+            <input
+              id="sndBaseHueShift"
+              class="numeric-input"
+              type="number"
+              min="-10"
+              max="10"
+              step="0.001"
+              value="0"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="control" title="Auto hue drift (smooth roll)">
+            <span class="lbl">Auto drift</span>
+            <input
+              id="sndAutoHueDrift"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="2"
+              step="0.01"
+              value="0.1"
+            />
+          </label>
+
+          <label class="control" title="Beat flash">
+            <span class="lbl">Beat flash</span>
+            <input
+              id="sndBeatFlash"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="3"
+              step="0.01"
+              value="0.35"
+            />
+          </label>
+
+          <label class="control" title="Beat fade">
+            <span class="lbl">Beat fade</span>
+            <input
+              id="sndBeatFade"
+              class="numeric-input"
+              type="number"
+              min="0.70"
+              max="0.999"
+              step="0.001"
+              value="0.9"
+            />
+          </label>
+
+          <label class="control" title="Beat hue jump">
+            <span class="lbl">Beat step</span>
+            <input
+              id="sndBeatStep"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="0.5"
+              step="0.01"
+              value="0.08"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label
+            class="control select"
+            title="Modulate fractal gamma with the audio palette beat/phase. This triggers recompute at a limited rate."
+          >
+            <span class="lbl">Gamma drive</span>
+            <select id="sndGammaMode" title="Gamma modulation mode">
+              <option value="0">Off</option>
+              <option value="1">Step (beat phase)</option>
+              <option value="2">Sine (smooth)</option>
+              <option value="3">Wander (segments)</option>
+            </select>
+            <span class="spacer"></span>
+          </label>
+
+          <label class="control" title="Step amplitude (mode: Step)">
+            <span class="lbl">Amount</span>
+            <input
+              id="sndGammaAmount"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="10"
+              step="0.001"
+              value="0.15"
+            />
+          </label>
+
+          <label
+            class="control"
+            title="Minimum gamma (modes: Sine/Wander, also clamps Step)"
+          >
+            <span class="lbl">Min</span>
+            <input
+              id="sndGammaMin"
+              class="numeric-input"
+              type="number"
+              min="0.05"
+              max="50"
+              step="0.001"
+              value="-0.5"
+            />
+          </label>
+
+          <label
+            class="control"
+            title="Maximum gamma (modes: Sine/Wander, also clamps Step)"
+          >
+            <span class="lbl">Max</span>
+            <input
+              id="sndGammaMax"
+              class="numeric-input"
+              type="number"
+              min="0.05"
+              max="50"
+              step="0.001"
+              value="0.5"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label
+            class="control"
+            title="Max gamma updates per second (limits recompute rate)"
+          >
+            <span class="lbl">Max Hz</span>
+            <input
+              id="sndGammaMaxHz"
+              class="numeric-input"
+              type="number"
+              min="0.1"
+              max="240"
+              step="0.1"
+              value="60.0"
+            />
+          </label>
+
+          <label class="control" title="Speed multiplier (modes: Sine/Wander)">
+            <span class="lbl">Speed</span>
+            <input
+              id="sndGammaSpeed"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="16"
+              step="0.01"
+              value="1.0"
+            />
+          </label>
+
+          <label
+            class="control"
+            title="Gamma phase auto-drift (Hz). 0 uses the worker phase (tied to hue). >0 runs its own independent phase."
+          >
+            <span class="lbl">Auto drift</span>
+            <input
+              id="sndGammaAutoDrift"
+              class="numeric-input"
+              type="number"
+              min="0"
+              max="16"
+              step="0.01"
+              value="0"
+            />
+          </label>
+
+          <label
+            class="control"
+            title="Ignore tiny gamma changes smaller than this (avoids constant recompute)"
+          >
+            <span class="lbl">Eps</span>
+            <input
+              id="sndGammaEps"
+              class="numeric-input"
+              type="number"
+              min="0.000001"
+              max="0.1"
+              step="0.0001"
+              value="0.0005"
+            />
+          </label>
+        </div>
+
+        <div class="row">
+          <label
+            class="control"
+            title="How long each wander segment lasts (mode: Wander)"
+          >
+            <span class="lbl">Wander sec</span>
+            <input
+              id="sndGammaWanderSec"
+              class="numeric-input"
+              type="number"
+              min="0.5"
+              max="30"
+              step="0.1"
+              value="4.0"
+            />
+          </label>
+
+          <label
+            class="control"
+            title="How long it blends between wander targets (mode: Wander)"
+          >
+            <span class="lbl">Blend sec</span>
+            <input
+              id="sndGammaWanderBlendSec"
+              class="numeric-input"
+              type="number"
+              min="0.05"
+              max="10"
+              step="0.05"
+              value="0.6"
+            />
+          </label>
+
+          <span class="spacer"></span>
+        </div>
+
+        <div class="hint">
+          Gamma drive triggers fractal recompute at most <b>Max Hz</b> times per
+          second. <b>Auto drift</b> is independent from hue: set it to 0 to
+          follow the song phase, or set a nonzero Hz to run its own oscillator.
+          <b>Sine</b> oscillates smoothly between Min/Max offsets.
+          <b>Wander</b> picks a new center/amplitude every few seconds and
+          blends over Blend sec.
+        </div>
+
+        <details class="section">
+          <summary>
+            <span class="section-title">Sound shaping</span>
+            <span class="section-badge" title="Advanced palette shaping"
+              >adv</span
+            >
+          </summary>
+
+          <div class="row">
+            <label class="control" title="Hue wiggle">
+              <span class="lbl">Hue wiggle</span>
+              <input
+                id="sndHueWiggle"
+                class="numeric-input"
+                type="number"
+                min="0"
+                max="2"
+                step="0.01"
+                value="0.25"
+              />
+            </label>
+
+            <label class="control" title="Shimmer">
+              <span class="lbl">Shimmer</span>
+              <input
+                id="sndShimmer"
+                class="numeric-input"
+                type="number"
+                min="0"
+                max="2"
+                step="0.01"
+                value="0.22"
+              />
+            </label>
+
+            <label class="control" title="Warp amount">
+              <span class="lbl">Warp</span>
+              <input
+                id="sndWarp"
+                class="numeric-input"
+                type="number"
+                min="0"
+                max="2"
+                step="0.01"
+                value="0.22"
+              />
+            </label>
+          </div>
+
+          <div class="row">
+            <label class="control" title="Color pop (saturation)">
+              <span class="lbl">Color pop</span>
+              <input
+                id="sndColorPop"
+                class="numeric-input"
+                type="number"
+                min="0"
+                max="2"
+                step="0.01"
+                value="0.25"
+              />
+            </label>
+
+            <label class="control" title="Brightness bounce">
+              <span class="lbl">Brightness</span>
+              <input
+                id="sndBrightnessBounce"
+                class="numeric-input"
+                type="number"
+                min="0"
+                max="2"
+                step="0.01"
+                value="0.22"
+              />
+            </label>
+          </div>
+
+          <div class="row">
+            <label class="control" title="Smooth up (react faster)">
+              <span class="lbl">Smooth up</span>
+              <input
+                id="sndSmoothUp"
+                class="numeric-input"
+                type="number"
+                min="0.01"
+                max="1"
+                step="0.01"
+                value="0.35"
+              />
+            </label>
+
+            <label class="control" title="Smooth down (linger)">
+              <span class="lbl">Smooth down</span>
+              <input
+                id="sndSmoothDown"
+                class="numeric-input"
+                type="number"
+                min="0.001"
+                max="1"
+                step="0.001"
+                value="0.08"
+              />
+            </label>
+
+            <label class="control" title="Frequency smoothing">
+              <span class="lbl">Freq smooth</span>
+              <input
+                id="sndFreqSmooth"
+                class="numeric-input"
+                type="number"
+                min="0"
+                max="16"
+                step="1"
+                value="2"
+              />
+            </label>
+          </div>
+
+          <div class="row">
+            <label class="control" title="Contrast (more punch)">
+              <span class="lbl">Contrast</span>
+              <input
+                id="sndContrast"
+                class="numeric-input"
+                type="number"
+                min="0.1"
+                max="64"
+                step="0.1"
+                value="9"
+              />
+            </label>
+
+            <label class="control" title="Boost (overall)">
+              <span class="lbl">Boost</span>
+              <input
+                id="sndBoost"
+                class="numeric-input"
+                type="number"
+                min="0"
+                max="8"
+                step="0.01"
+                value="1"
+              />
+            </label>
+
+            <label class="control" title="Noise gate (ignore quiet)">
+              <span class="lbl">Gate</span>
+              <input
+                id="sndNoiseGate"
+                class="numeric-input"
+                type="number"
+                min="0"
+                max="0.5"
+                step="0.001"
+                value="0"
+              />
+            </label>
+
+            <label class="control" title="Bass vs treble bias">
+              <span class="lbl">Bass/Treble</span>
+              <input
+                id="sndBassVsTreble"
+                class="numeric-input"
+                type="number"
+                min="-1"
+                max="1"
+                step="0.01"
+                value="0"
+              />
+            </label>
+          </div>
+
+          <div class="row">
+            <label class="control" title="Worker updates per second">
+              <span class="lbl">Updates/s</span>
+              <input
+                id="sndFps"
+                class="numeric-input"
+                type="number"
+                min="5"
+                max="120"
+                step="1"
+                value="30"
+              />
+            </label>
+          </div>
+        </details>
+      </details>
+
+      <details class="section">
+        <summary>
           <span class="section-title">Warps</span>
           <span
             class="section-badge"
@@ -904,6 +1477,22 @@
               value="1"
             />
           </label>
+        </div>
+
+        <div class="row">
+          <label class="control select" title="What drives vertex displacement">
+            <span class="lbl">Disp source</span>
+            <select id="dispSource" title="Vertex displacement source">
+              <option value="0">Off</option>
+              <option value="1">SDF</option>
+              <option value="2">Hue bounce</option>
+            </select>
+            <span class="spacer"></span>
+          </label>
+          <div class="hint">
+            SDF uses the SDF mode picker below. Hue bounce animates using time
+            and the fractal color texture.
+          </div>
         </div>
 
         <div class="row">

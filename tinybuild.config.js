@@ -47,10 +47,10 @@ const config = {
         host: "localhost", //'localhost' or '127.0.0.1' etc.
         port: 8080, //e.g. port 80, 443, 8000
         //redirect: 'http://localhost:8082', //instead of serving the default content, redirect to another url
-        // headers: {  
-        //     'Cross-Origin-Opener-Policy': 'same-origin', //shared array buffer settings
-        //     'Cross-Origin-Embedder-Policy': 'credentialless'
-        // }, //global header overrides
+        headers: { 
+            'Cross-Origin-Opener-Policy': 'same-origin',  
+            'Cross-Origin-Embedder-Policy': 'require-corp',  
+        }, //global header overrides
         startpage: 'index.html',  //default home page/app entry point 
         hotreload: 5000,  //hotreload websocket server port
         socket_protocol: "ws", //frontend socket protocol, wss for served, ws for localhost

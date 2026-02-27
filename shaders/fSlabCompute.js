@@ -849,43 +849,6 @@ export class SlabMeshPipelineGPU {
     this.device.queue.writeBuffer(this._slabComputeUBO, offsetBytes >>> 0, buf);
   }
 
-  _prepareWallsForLayer(layerIndex, slabParams) {
-    const N = this._chunks.length;
-    if (!N || !this._slabComputeUBO) return 1;
-
-    const step = Math.max(1, (slabParams.meshStep ?? 1) | 0);
-
-    for (let i = 0; i < N; ++i) {
-      const c = this._chunks[i];
-      if (!c || !c._bgCompute) continue;
-
-      const offX = (c.offsetX ?? 0) | 0;
-      const offY = (c.offsetY ?? 0) | 0;
-      const chunkW = (c.width ?? 0) | 0;
-      const chunkH = (c.height ?? 0) | 0;
-
-      this._writeSlabComputeUniformAt(
-        i * this.uniformStride,
-        slabParams,
-        layerIndex >>> 0,
-        c._slabMaxWalls >>> 0,
-        offX >>> 0,
-        offY >>> 0,
-        chunkW >>> 0,
-        chunkH >>> 0,
-      );
-
-      this.device.queue.writeBuffer(c._wallCount, 0, new Uint32Array([0]));
-      this.device.queue.writeBuffer(
-        c._wallDrawArgs,
-        0,
-        new Uint32Array([6, 0, 0, 0]),
-      );
-    }
-
-    return step;
-  }
-
   /* -------------------------------------------------------------- */
   /*  Model buffers                                                 */
   /* -------------------------------------------------------------- */
@@ -1013,61 +976,6 @@ export class SlabMeshPipelineGPU {
     return step;
   }
 
-  _encodeComputeWallsPass(encoder, step) {
-    const N = this._chunks.length;
-    if (!N) return;
-
-    const pass = encoder.beginComputePass();
-
-    pass.setPipeline(this._computeBuild);
-
-    for (let i = 0; i < N; ++i) {
-      const c = this._chunks[i];
-      if (!c || !c._bgCompute) continue;
-
-      const w = (c.width ?? 0) | 0;
-      const h = (c.height ?? 0) | 0;
-
-      const cellsX = Math.max(0, Math.floor((w - 1) / step));
-      const cellsY = Math.max(0, Math.floor((h - 1) / step));
-      if (cellsX <= 0 || cellsY <= 0) continue;
-
-      pass.setBindGroup(0, c._bgCompute, [i * this.uniformStride]);
-      pass.dispatchWorkgroups(Math.ceil(cellsX / 8), Math.ceil(cellsY / 8), 1);
-    }
-
-    pass.setPipeline(this._computeFinalize);
-
-    for (let i = 0; i < N; ++i) {
-      const c = this._chunks[i];
-      if (!c || !c._bgCompute) continue;
-
-      pass.setBindGroup(0, c._bgCompute, [i * this.uniformStride]);
-      pass.dispatchWorkgroups(1, 1, 1);
-    }
-
-    pass.end();
-  }
-
-  /**
-   * @param {number} layerIndex
-   * @param {object} slabParams
-   */
-  async computeWallsForLayer(layerIndex, slabParams = {}) {
-    const N = this._chunks.length;
-    if (!N) return;
-
-    const step = this._prepareWallsForLayer(layerIndex, slabParams);
-
-    const encoder = this.device.createCommandEncoder();
-    this._encodeComputeWallsPass(encoder, step);
-    this.device.queue.submit([encoder.finish()]);
-    await this.device.queue.onSubmittedWorkDone();
-  }
-
-  async compute(layerIndex, slabParams = {}) {
-    await this.computeWallsForLayer(layerIndex, slabParams);
-  }
 
   _encodeComputeWallsPass(encoder, step) {
     const N = this._chunks.length;
